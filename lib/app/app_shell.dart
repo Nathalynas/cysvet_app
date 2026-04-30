@@ -237,25 +237,60 @@ class _DesktopNavigationMenuState extends State<_DesktopNavigationMenu> {
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 300),
         curve: Curves.easeInOut,
-        width: _isHovering ? 256 : 80,
+        width: _isHovering ? 280 : 80,
         color: AppTheme.tertiaryColor,
         child: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
-            child: Column(
-              children: [
-                for (var index = 0; index < AppShell._items.length; index++)
-                  _NavigationTile(
-                    item: AppShell._items[index],
-                    isSelected: widget.currentIndex == index,
-                    isCompact: !_isHovering,
-                    isDesktop: true,
-                    onTap: () {
-                      widget.onDestinationSelected(index);
-                    },
+          child: Stack(
+            children: [
+              Padding(
+                padding: EdgeInsets.fromLTRB(_isHovering ? 24 : 12, 16, 12, 16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    SizedBox(height: _isHovering ? 46.8 : 0),
+                    if (_isHovering)
+                      Container(
+                        height: 1,
+                        color: AppTheme.borderColor,
+                        margin: const EdgeInsets.only(bottom: 18),
+                      ),
+                    for (var index = 0; index < AppShell._items.length; index++)
+                      _NavigationTile(
+                        item: AppShell._items[index],
+                        isSelected: widget.currentIndex == index,
+                        isCompact: !_isHovering,
+                        isDesktop: true,
+                        onTap: () {
+                          widget.onDestinationSelected(index);
+                        },
+                      ),
+                  ],
+                ),
+              ),
+              if (_isHovering)
+                Positioned(
+                  top: 16,
+                  left: 24,
+                  right: 12,
+                  child: Text(
+                    'CYSVET',
+                    style: TextStyle(
+                      color: AppTheme.primaryColor,
+                      fontSize: 26,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
-              ],
-            ),
+                ),
+              Positioned(
+                right: 0,
+                top: 0,
+                bottom: 0,
+                child: Container(
+                  width: 1,
+                  color: AppTheme.borderColor,
+                ),
+              ),
+            ],
           ),
         ),
       ),
@@ -278,27 +313,36 @@ class _MobileNavigationBar extends StatelessWidget {
       color: AppTheme.tertiaryColor,
       child: SafeArea(
         top: false,
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(6, 6, 6, 8),
-          child: Row(
-            children: [
-              for (var index = 0; index < AppShell._items.length; index++)
-                Expanded(
-                  flex: 1,
-                  child: Container(
-                    constraints: const BoxConstraints(maxWidth: 80),
-                    child: _NavigationTile(
-                      item: AppShell._items[index],
-                      isSelected: currentIndex == index,
-                      isCompact: true,
-                      onTap: () {
-                        onDestinationSelected(index);
-                      },
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              height: 1,
+              color: AppTheme.borderColor,
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(6, 6, 6, 8),
+              child: Row(
+                children: [
+                  for (var index = 0; index < AppShell._items.length; index++)
+                    Expanded(
+                      flex: 1,
+                      child: Container(
+                        constraints: const BoxConstraints(maxWidth: 80),
+                        child: _NavigationTile(
+                          item: AppShell._items[index],
+                          isSelected: currentIndex == index,
+                          isCompact: true,
+                          onTap: () {
+                            onDestinationSelected(index);
+                          },
+                        ),
+                      ),
                     ),
-                  ),
-                ),
-            ],
-          ),
+                ],
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -336,20 +380,16 @@ class _NavigationTileState extends State<_NavigationTile> {
     
     if (widget.isSelected) {
       if (widget.isDesktop) {
-        // Desktop: texto primary, fundo secondary
         textColor = AppTheme.primaryColor;
         backgroundColor = AppTheme.secondaryColor;
       } else {
-        // Mobile: fundo inteiro na cor primary, texto branco
         textColor = Colors.white;
         backgroundColor = AppTheme.primaryColor;
       }
     } else if (_isHovering) {
-      // Hover: neutral (mais sutil)
       textColor = AppTheme.textColor;
       backgroundColor = AppTheme.neutralColor;
     } else {
-      // Normal
       textColor = AppTheme.mutedTextColor;
       backgroundColor = Colors.transparent;
     }
@@ -364,8 +404,8 @@ class _NavigationTileState extends State<_NavigationTile> {
             : Row(
                 children: [
                   Icon(widget.isSelected ? widget.item.selectedIcon : widget.item.icon, size: 24),
-                  const SizedBox(width: 12),
-                  Expanded(
+                  const SizedBox(width: 8),
+                  Flexible(
                     child: Text(
                       widget.item.label,
                       maxLines: 1,
