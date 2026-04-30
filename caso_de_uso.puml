@@ -1,0 +1,35 @@
+@startuml
+left to right direction
+
+actor "Médico Veterinário" as Vet
+actor "Administrador" as Admin
+
+rectangle "Sistema de Gestão Reprodutiva" {
+  usecase "Fazer login" as UC1
+  usecase "Cadastrar propriedade" as UC2
+  usecase "Cadastrar animal" as UC3
+  usecase "Registrar visita técnica" as UC4
+  usecase "Registrar evento reprodutivo" as UC5
+  usecase "Consultar histórico" as UC6
+  usecase "Visualizar indicadores" as UC7
+  usecase "Gerar relatório PDF" as UC8
+  usecase "Exportar planilha" as UC9
+  usecase "Sincronizar dados" as UC10
+  usecase "Gerenciar usuários" as UC11
+}
+
+Vet --> UC1
+Vet --> UC2
+Vet --> UC3
+Vet --> UC4
+Vet --> UC5
+Vet --> UC6
+Vet --> UC7
+Vet --> UC8
+Vet --> UC9
+Vet --> UC10
+
+Admin --> UC1
+Admin --> UC11
+Admin --> UC7
+@enduml

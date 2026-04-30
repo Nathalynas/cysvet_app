@@ -1,0 +1,27 @@
+@startuml
+start
+
+:Realizar login;
+:Selecionar propriedade;
+:Selecionar animal;
+:Registrar visita técnica;
+:Preencher evento reprodutivo;
+:Salvar dados localmente;
+
+if (Há conexão com a internet?) then (Sim)
+  :Enviar dados para API;
+  :Persistir no banco remoto;
+  :Marcar registro como sincronizado;
+else (Não)
+  :Adicionar registro à fila de sincronização;
+  :Manter registro pendente;
+endif
+
+if (Usuário deseja gerar relatório?) then (Sim)
+  :Solicitar geração de PDF/XLSX;
+  :Exibir/baixar relatório;
+else (Não)
+endif
+
+stop
+@enduml

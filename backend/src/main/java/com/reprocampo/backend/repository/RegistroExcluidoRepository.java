@@ -1,0 +1,14 @@
+package com.reprocampo.backend.repository;
+
+import com.reprocampo.backend.entity.RegistroExcluido;
+import java.time.Instant;
+import java.util.List;
+import java.util.Optional;
+import org.springframework.data.jpa.repository.JpaRepository;
+
+public interface RegistroExcluidoRepository extends JpaRepository<RegistroExcluido, Long> {
+
+    List<RegistroExcluido> findAllByIdUsuarioAndDataAtualizacaoAfterOrderByDataAtualizacaoAsc(Long idUsuario, Instant dataAtualizacao);
+
+    Optional<RegistroExcluido> findByIdUsuarioAndNomeEntidadeAndIdExterno(Long idUsuario, String nomeEntidade, String idExterno);
+}

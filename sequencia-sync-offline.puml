@@ -1,0 +1,27 @@
+@startuml
+actor "Médico Veterinário" as Vet
+participant "App Expo" as App
+database "Banco Local\nSQLite / IndexedDB" as LocalDB
+participant "Serviço de Sincronização" as Sync
+participant "API Spring Boot" as API
+database "MySQL" as MySQL
+
+Vet -> App : Registrar visita/evento reprodutivo
+App -> LocalDB : Salvar registro local
+App -> LocalDB : Inserir item na sync_queue
+
+App -> Sync : Verificar conectividade
+
+alt Sem internet
+    Sync -> LocalDB : Manter registro como PENDING
+    Sync --> App : Operação concluída offline
+else Com internet
+    Sync -> LocalDB : Buscar registros pendentes
+    Sync -> API : Enviar payload do registro
+    API -> MySQL : Persistir dados
+    MySQL --> API : Confirmação
+    API --> Sync : Sucesso
+    Sync -> LocalDB : Atualizar status para SYNCED
+    Sync --> App : Sincronização concluída
+end
+@enduml
