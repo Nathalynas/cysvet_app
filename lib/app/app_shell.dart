@@ -1,3 +1,5 @@
+// ignore_for_file: deprecated_member_use
+
 import 'package:flutter/material.dart';
 import 'package:flutter_material_design_icons/flutter_material_design_icons.dart';
 import 'package:go_router/go_router.dart';
@@ -391,44 +393,41 @@ class _NavigationTileState extends State<_NavigationTile> {
       backgroundColor = AppTheme.neutralColor;
     } else {
       textColor = AppTheme.mutedTextColor;
-      backgroundColor = Colors.transparent;
+      backgroundColor = AppTheme.neutralColor.withOpacity(0.0);
     }
     
-    // No desktop encolhido, mostrar apenas ícone
-    // No desktop expandido, mostrar ícone + texto em linha
-    // No mobile, mostrar apenas ícone
-    final content = (widget.isDesktop && widget.isCompact)
-        ? Icon(widget.isSelected ? widget.item.selectedIcon : widget.item.icon, size: 24)
-        : (!widget.isDesktop && widget.isCompact)
-            ? Icon(widget.isSelected ? widget.item.selectedIcon : widget.item.icon, size: 24)
-            : Row(
-                children: [
-                  Icon(widget.isSelected ? widget.item.selectedIcon : widget.item.icon, size: 24),
-                  const SizedBox(width: 8),
-                  Flexible(
-                    child: Text(
-                      widget.item.label,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                ],
-              );
+    final icone = Icon(widget.isSelected ? widget.item.selectedIcon : widget.item.icon);
+
+    final content = widget.isCompact
+        ? icone
+        : Row(
+            children: [
+              icone,
+              const SizedBox(width: 8),
+              Flexible(
+                child: Text(
+                  widget.item.label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          );
 
     return MouseRegion(
       onEnter: (_) => setState(() => _isHovering = true),
       onExit: (_) => setState(() => _isHovering = false),
+      cursor: SystemMouseCursors.click,
       child: Padding(
         padding: EdgeInsets.symmetric(
           horizontal: widget.isCompact ? 2 : 0,
           vertical: widget.isCompact ? 0 : 4,
         ),
-        child: InkWell(
+        child: GestureDetector(
           onTap: widget.onTap,
-          mouseCursor: SystemMouseCursors.click,
-          borderRadius: BorderRadius.circular(18),
+          behavior: HitTestBehavior.opaque,
           child: SizedBox(
-            width: (widget.isDesktop && widget.isCompact) || (!widget.isDesktop && widget.isCompact) ? 58 : null,
+            width: widget.isCompact ? 58 : null,
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 180),
               curve: Curves.easeOut,
@@ -442,7 +441,10 @@ class _NavigationTileState extends State<_NavigationTile> {
                 borderRadius: BorderRadius.circular(18),
               ),
               child: IconTheme(
-                data: IconThemeData(color: textColor, size: widget.isDesktop ? 24 : (widget.isCompact ? 22 : 24)),
+                data: IconThemeData(
+                  color: textColor, 
+                  size: widget.isDesktop ? 24 : (widget.isCompact ? 22 : 24)
+                ),
                 child: DefaultTextStyle(
                   style: (labelStyle ?? const TextStyle()).copyWith(
                     color: textColor,
