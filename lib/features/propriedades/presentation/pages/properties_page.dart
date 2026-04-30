@@ -1,4 +1,3 @@
-
 import 'package:flutter/material.dart';
 
 import '../../../../app/theme.dart';
@@ -8,11 +7,15 @@ class PropertiesPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Scaffold(
+    return Scaffold(
       backgroundColor: AppTheme.backgroundColor,
-      body: SafeArea(
-        child: Center(
-          child: Text('Propriedades'),
+      body: const SafeArea(
+        child: Padding(
+          padding: EdgeInsets.all(16),
+          child: Text(
+            'Lista de propriedades atendidas.',
+            style: TextStyle(fontSize: 16),
+          ),
         ),
       ),
     );
