@@ -10,11 +10,11 @@
         <relativePath/>
     </parent>
 
-    <groupId>com.reprocampo</groupId>
+    <groupId>com.cysvet</groupId>
     <artifactId>backend</artifactId>
     <version>0.0.1-SNAPSHOT</version>
-    <name>reprocampo-backend</name>
-    <description>Backend Spring Boot para ReproCampo</description>
+    <name>cysvet-backend</name>
+    <description>Backend Spring Boot para Cysvet</description>
 
     <properties>
         <java.version>17</java.version>

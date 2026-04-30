@@ -1,2 +1,13 @@
 backend/target/
+backend/.plugins/
+backend/.metadata/
+backend/.settings/
+backend/.idea/
+backend/.project
+backend/.classpath
+backend/.factorypath
+backend/data/*.mv.db
+backend/data/*.trace.db
 *.log
+.metadata/
+backend/.settings/

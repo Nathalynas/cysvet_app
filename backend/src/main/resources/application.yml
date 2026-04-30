@@ -1,9 +1,9 @@
 spring:
   datasource:
-    url: ${DB_URL:jdbc:h2:mem:reprocampo;MODE=MySQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE}
+    url: jdbc:mysql://localhost:3306/cysvet?useSSL=false&serverTimezone=America/Sao_Paulo&allowPublicKeyRetrieval=true
     username: root
     password: mysql
-    driver-class-name: ${DB_DRIVER:org.h2.Driver}
+    driver-class-name: com.mysql.cj.jdbc.Driver
 
   h2:
     console:
@@ -21,6 +21,7 @@ spring:
   flyway:
     enabled: true
     locations: classpath:db/migration
+    baseline-on-migrate: true
 
   jackson:
     serialization:
@@ -31,6 +32,6 @@ server:
 
 app:
   jwt:
-    secret: ${JWT_SECRET:reprocampo-super-secret-key-for-development-only-change-me}
+    secret: ${JWT_SECRET:cysvet-super-secret-key-for-development-only-change-me}
     expiration-ms: ${JWT_EXPIRATION_MS:3600000}
     refresh-expiration-ms: ${JWT_REFRESH_EXPIRATION_MS:604800000}
