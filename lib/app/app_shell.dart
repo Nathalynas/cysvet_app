@@ -245,17 +245,16 @@ class _DesktopNavigationMenuState extends State<_DesktopNavigationMenu> {
           child: Stack(
             children: [
               Padding(
-                padding: EdgeInsets.fromLTRB(_isHovering ? 24 : 12, 16, 12, 16),
+                padding: EdgeInsets.fromLTRB(_isHovering ? 12 : 12, 16, 12, 16),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    SizedBox(height: _isHovering ? 46.8 : 0),
-                    if (_isHovering)
-                      Container(
-                        height: 1,
-                        color: AppTheme.borderColor,
-                        margin: const EdgeInsets.only(bottom: 18),
-                      ),
+                    const SizedBox(height: 47), 
+                    Container(
+                      height: 1,
+                      color: AppTheme.borderColor,
+                      margin: const EdgeInsets.only(bottom: 18),
+                    ),
                     for (var index = 0; index < AppShell._items.length; index++)
                       _NavigationTile(
                         item: AppShell._items[index],
@@ -269,20 +268,50 @@ class _DesktopNavigationMenuState extends State<_DesktopNavigationMenu> {
                   ],
                 ),
               ),
-              if (_isHovering)
-                Positioned(
-                  top: 16,
-                  left: 24,
-                  right: 12,
-                  child: Text(
-                    'CYSVET',
-                    style: TextStyle(
-                      color: AppTheme.primaryColor,
-                      fontSize: 26,
-                      fontWeight: FontWeight.w700,
-                    ),
+              Positioned(
+                top: 20,
+                left: 0,
+                right: 0,
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 300),
+                  curve: Curves.easeInOut,
+                  alignment: _isHovering ? Alignment.centerLeft : Alignment.center,
+                  padding: EdgeInsets.only(
+                    left: _isHovering ? 16 : 0,
+                    right: _isHovering ? 12 : 0,
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        'C',
+                        style: TextStyle(
+                          color: AppTheme.primaryColor,
+                          fontSize: 26,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      AnimatedContainer(
+                        duration: const Duration(milliseconds: 300),
+                        curve: Curves.easeInOut,
+                        width: _isHovering ? 90 : 0, 
+                        child: SingleChildScrollView(
+                          scrollDirection: Axis.horizontal,
+                          physics: const NeverScrollableScrollPhysics(), 
+                          child: Text(
+                            'YSVET',
+                            style: TextStyle(
+                              color: AppTheme.primaryColor,
+                              fontSize: 26,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
+              ),
               Positioned(
                 right: 0,
                 top: 0,
