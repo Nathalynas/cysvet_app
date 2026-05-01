@@ -2,7 +2,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/network/api_client.dart';
-import '../domain/auth_session.dart';
+import '../domain/auth_session_model.dart';
 
 final authRepositoryProvider = Provider<AuthRepository>((ref) {
   return AuthRepository(ref.watch(apiClientProvider));
@@ -13,7 +13,7 @@ class AuthRepository {
 
   final Dio _dio;
 
-  Future<AuthSession> register({
+  Future<AuthSessionModel> register({
     required String name,
     required String email,
     required String password,
@@ -23,10 +23,10 @@ class AuthRepository {
       data: {'name': name.trim(), 'email': email.trim(), 'password': password},
     );
 
-    return AuthSessionMapper.fromMap(_asMap(response.data));
+    return AuthSessionModelMapper.fromMap(_asMap(response.data));
   }
 
-  Future<AuthSession> login({
+  Future<AuthSessionModel> login({
     required String email,
     required String password,
   }) async {
@@ -35,7 +35,7 @@ class AuthRepository {
       data: {'email': email.trim(), 'password': password},
     );
 
-    return AuthSessionMapper.fromMap(_asMap(response.data));
+    return AuthSessionModelMapper.fromMap(_asMap(response.data));
   }
 
   Future<void> logout(String refreshToken) async {

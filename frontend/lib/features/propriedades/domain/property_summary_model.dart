@@ -1,10 +1,10 @@
 import 'package:dart_mappable/dart_mappable.dart';
 
-part 'property_summary.mapper.dart';
+part 'property_summary_model.mapper.dart';
 
 @MappableClass()
-class PropertySummary with PropertySummaryMappable {
-  const PropertySummary({
+class PropertySummaryModel with PropertySummaryModelMappable {
+  const PropertySummaryModel({
     this.id = 0,
     this.idExterno = '',
     this.nome = '',

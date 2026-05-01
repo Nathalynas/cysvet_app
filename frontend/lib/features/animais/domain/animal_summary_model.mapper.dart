@@ -6,102 +6,95 @@
 // ignore_for_file: unused_element, unnecessary_cast, override_on_non_overriding_member
 // ignore_for_file: strict_raw_type, inference_failure_on_untyped_parameter
 
-part of 'animal_summary.dart';
+part of 'animal_summary_model.dart';
 
-class AnimalSummaryMapper extends ClassMapperBase<AnimalSummary> {
-  AnimalSummaryMapper._();
+class AnimalSummaryModelMapper extends ClassMapperBase<AnimalSummaryModel> {
+  AnimalSummaryModelMapper._();
 
-  static AnimalSummaryMapper? _instance;
-  static AnimalSummaryMapper ensureInitialized() {
+  static AnimalSummaryModelMapper? _instance;
+  static AnimalSummaryModelMapper ensureInitialized() {
     if (_instance == null) {
-      MapperContainer.globals.use(_instance = AnimalSummaryMapper._());
+      MapperContainer.globals.use(_instance = AnimalSummaryModelMapper._());
     }
     return _instance!;
   }
 
   @override
-  final String id = 'AnimalSummary';
+  final String id = 'AnimalSummaryModel';
 
-  static int _$id(AnimalSummary v) => v.id;
-  static const Field<AnimalSummary, int> _f$id = Field(
+  static int _$id(AnimalSummaryModel v) => v.id;
+  static const Field<AnimalSummaryModel, int> _f$id = Field(
     'id',
     _$id,
     opt: true,
     def: 0,
   );
-  static String _$idExterno(AnimalSummary v) => v.idExterno;
-  static const Field<AnimalSummary, String> _f$idExterno = Field(
+  static String _$idExterno(AnimalSummaryModel v) => v.idExterno;
+  static const Field<AnimalSummaryModel, String> _f$idExterno = Field(
     'idExterno',
     _$idExterno,
     opt: true,
     def: '',
   );
-  static int _$idPropriedade(AnimalSummary v) => v.idPropriedade;
-  static const Field<AnimalSummary, int> _f$idPropriedade = Field(
+  static int _$idPropriedade(AnimalSummaryModel v) => v.idPropriedade;
+  static const Field<AnimalSummaryModel, int> _f$idPropriedade = Field(
     'idPropriedade',
     _$idPropriedade,
     opt: true,
     def: 0,
   );
-  static String _$idExternoPropriedade(AnimalSummary v) =>
+  static String _$idExternoPropriedade(AnimalSummaryModel v) =>
       v.idExternoPropriedade;
-  static const Field<AnimalSummary, String> _f$idExternoPropriedade = Field(
-    'idExternoPropriedade',
-    _$idExternoPropriedade,
-    opt: true,
-    def: '',
-  );
-  static String _$codigo(AnimalSummary v) => v.codigo;
-  static const Field<AnimalSummary, String> _f$codigo = Field(
+  static const Field<AnimalSummaryModel, String> _f$idExternoPropriedade =
+      Field('idExternoPropriedade', _$idExternoPropriedade, opt: true, def: '');
+  static String _$codigo(AnimalSummaryModel v) => v.codigo;
+  static const Field<AnimalSummaryModel, String> _f$codigo = Field(
     'codigo',
     _$codigo,
     opt: true,
     def: '',
   );
-  static String _$categoria(AnimalSummary v) => v.categoria;
-  static const Field<AnimalSummary, String> _f$categoria = Field(
+  static String _$categoria(AnimalSummaryModel v) => v.categoria;
+  static const Field<AnimalSummaryModel, String> _f$categoria = Field(
     'categoria',
     _$categoria,
     opt: true,
     def: '',
   );
-  static DateTime? _$dataNascimento(AnimalSummary v) => v.dataNascimento;
-  static const Field<AnimalSummary, DateTime> _f$dataNascimento = Field(
+  static DateTime? _$dataNascimento(AnimalSummaryModel v) => v.dataNascimento;
+  static const Field<AnimalSummaryModel, DateTime> _f$dataNascimento = Field(
     'dataNascimento',
     _$dataNascimento,
     opt: true,
     hook: _NullableDateTimeHook(),
   );
-  static int _$numeroLactacao(AnimalSummary v) => v.numeroLactacao;
-  static const Field<AnimalSummary, int> _f$numeroLactacao = Field(
+  static int _$numeroLactacao(AnimalSummaryModel v) => v.numeroLactacao;
+  static const Field<AnimalSummaryModel, int> _f$numeroLactacao = Field(
     'numeroLactacao',
     _$numeroLactacao,
     opt: true,
     def: 0,
   );
-  static DateTime? _$dataUltimoParto(AnimalSummary v) => v.dataUltimoParto;
-  static const Field<AnimalSummary, DateTime> _f$dataUltimoParto = Field(
+  static DateTime? _$dataUltimoParto(AnimalSummaryModel v) => v.dataUltimoParto;
+  static const Field<AnimalSummaryModel, DateTime> _f$dataUltimoParto = Field(
     'dataUltimoParto',
     _$dataUltimoParto,
     opt: true,
     hook: _NullableDateTimeHook(),
   );
-  static int? _$diasEmLactacao(AnimalSummary v) => v.diasEmLactacao;
-  static const Field<AnimalSummary, int> _f$diasEmLactacao = Field(
+  static int? _$diasEmLactacao(AnimalSummaryModel v) => v.diasEmLactacao;
+  static const Field<AnimalSummaryModel, int> _f$diasEmLactacao = Field(
     'diasEmLactacao',
     _$diasEmLactacao,
     opt: true,
   );
-  static String? _$historicoReprodutivo(AnimalSummary v) =>
+  static String? _$historicoReprodutivo(AnimalSummaryModel v) =>
       v.historicoReprodutivo;
-  static const Field<AnimalSummary, String> _f$historicoReprodutivo = Field(
-    'historicoReprodutivo',
-    _$historicoReprodutivo,
-    opt: true,
-  );
+  static const Field<AnimalSummaryModel, String> _f$historicoReprodutivo =
+      Field('historicoReprodutivo', _$historicoReprodutivo, opt: true);
 
   @override
-  final MappableFields<AnimalSummary> fields = const {
+  final MappableFields<AnimalSummaryModel> fields = const {
     #id: _f$id,
     #idExterno: _f$idExterno,
     #idPropriedade: _f$idPropriedade,
@@ -115,8 +108,8 @@ class AnimalSummaryMapper extends ClassMapperBase<AnimalSummary> {
     #historicoReprodutivo: _f$historicoReprodutivo,
   };
 
-  static AnimalSummary _instantiate(DecodingData data) {
-    return AnimalSummary(
+  static AnimalSummaryModel _instantiate(DecodingData data) {
+    return AnimalSummaryModel(
       id: data.dec(_f$id),
       idExterno: data.dec(_f$idExterno),
       idPropriedade: data.dec(_f$idPropriedade),
@@ -134,64 +127,73 @@ class AnimalSummaryMapper extends ClassMapperBase<AnimalSummary> {
   @override
   final Function instantiate = _instantiate;
 
-  static AnimalSummary fromMap(Map<String, dynamic> map) {
-    return ensureInitialized().decodeMap<AnimalSummary>(map);
+  static AnimalSummaryModel fromMap(Map<String, dynamic> map) {
+    return ensureInitialized().decodeMap<AnimalSummaryModel>(map);
   }
 
-  static AnimalSummary fromJson(String json) {
-    return ensureInitialized().decodeJson<AnimalSummary>(json);
+  static AnimalSummaryModel fromJson(String json) {
+    return ensureInitialized().decodeJson<AnimalSummaryModel>(json);
   }
 }
 
-mixin AnimalSummaryMappable {
+mixin AnimalSummaryModelMappable {
   String toJson() {
-    return AnimalSummaryMapper.ensureInitialized().encodeJson<AnimalSummary>(
-      this as AnimalSummary,
-    );
+    return AnimalSummaryModelMapper.ensureInitialized()
+        .encodeJson<AnimalSummaryModel>(this as AnimalSummaryModel);
   }
 
   Map<String, dynamic> toMap() {
-    return AnimalSummaryMapper.ensureInitialized().encodeMap<AnimalSummary>(
-      this as AnimalSummary,
-    );
+    return AnimalSummaryModelMapper.ensureInitialized()
+        .encodeMap<AnimalSummaryModel>(this as AnimalSummaryModel);
   }
 
-  AnimalSummaryCopyWith<AnimalSummary, AnimalSummary, AnimalSummary>
-  get copyWith => _AnimalSummaryCopyWithImpl<AnimalSummary, AnimalSummary>(
-    this as AnimalSummary,
-    $identity,
-    $identity,
-  );
+  AnimalSummaryModelCopyWith<
+    AnimalSummaryModel,
+    AnimalSummaryModel,
+    AnimalSummaryModel
+  >
+  get copyWith =>
+      _AnimalSummaryModelCopyWithImpl<AnimalSummaryModel, AnimalSummaryModel>(
+        this as AnimalSummaryModel,
+        $identity,
+        $identity,
+      );
   @override
   String toString() {
-    return AnimalSummaryMapper.ensureInitialized().stringifyValue(
-      this as AnimalSummary,
+    return AnimalSummaryModelMapper.ensureInitialized().stringifyValue(
+      this as AnimalSummaryModel,
     );
   }
 
   @override
   bool operator ==(Object other) {
-    return AnimalSummaryMapper.ensureInitialized().equalsValue(
-      this as AnimalSummary,
+    return AnimalSummaryModelMapper.ensureInitialized().equalsValue(
+      this as AnimalSummaryModel,
       other,
     );
   }
 
   @override
   int get hashCode {
-    return AnimalSummaryMapper.ensureInitialized().hashValue(
-      this as AnimalSummary,
+    return AnimalSummaryModelMapper.ensureInitialized().hashValue(
+      this as AnimalSummaryModel,
     );
   }
 }
 
-extension AnimalSummaryValueCopy<$R, $Out>
-    on ObjectCopyWith<$R, AnimalSummary, $Out> {
-  AnimalSummaryCopyWith<$R, AnimalSummary, $Out> get $asAnimalSummary =>
-      $base.as((v, t, t2) => _AnimalSummaryCopyWithImpl<$R, $Out>(v, t, t2));
+extension AnimalSummaryModelValueCopy<$R, $Out>
+    on ObjectCopyWith<$R, AnimalSummaryModel, $Out> {
+  AnimalSummaryModelCopyWith<$R, AnimalSummaryModel, $Out>
+  get $asAnimalSummaryModel => $base.as(
+    (v, t, t2) => _AnimalSummaryModelCopyWithImpl<$R, $Out>(v, t, t2),
+  );
 }
 
-abstract class AnimalSummaryCopyWith<$R, $In extends AnimalSummary, $Out>
+abstract class AnimalSummaryModelCopyWith<
+  $R,
+  $In extends AnimalSummaryModel,
+  $Out
+>
     implements ClassCopyWith<$R, $In, $Out> {
   $R call({
     int? id,
@@ -206,17 +208,19 @@ abstract class AnimalSummaryCopyWith<$R, $In extends AnimalSummary, $Out>
     int? diasEmLactacao,
     String? historicoReprodutivo,
   });
-  AnimalSummaryCopyWith<$R2, $In, $Out2> $chain<$R2, $Out2>(Then<$Out2, $R2> t);
+  AnimalSummaryModelCopyWith<$R2, $In, $Out2> $chain<$R2, $Out2>(
+    Then<$Out2, $R2> t,
+  );
 }
 
-class _AnimalSummaryCopyWithImpl<$R, $Out>
-    extends ClassCopyWithBase<$R, AnimalSummary, $Out>
-    implements AnimalSummaryCopyWith<$R, AnimalSummary, $Out> {
-  _AnimalSummaryCopyWithImpl(super.value, super.then, super.then2);
+class _AnimalSummaryModelCopyWithImpl<$R, $Out>
+    extends ClassCopyWithBase<$R, AnimalSummaryModel, $Out>
+    implements AnimalSummaryModelCopyWith<$R, AnimalSummaryModel, $Out> {
+  _AnimalSummaryModelCopyWithImpl(super.value, super.then, super.then2);
 
   @override
-  late final ClassMapperBase<AnimalSummary> $mapper =
-      AnimalSummaryMapper.ensureInitialized();
+  late final ClassMapperBase<AnimalSummaryModel> $mapper =
+      AnimalSummaryModelMapper.ensureInitialized();
   @override
   $R call({
     int? id,
@@ -248,7 +252,7 @@ class _AnimalSummaryCopyWithImpl<$R, $Out>
     }),
   );
   @override
-  AnimalSummary $make(CopyWithData data) => AnimalSummary(
+  AnimalSummaryModel $make(CopyWithData data) => AnimalSummaryModel(
     id: data.get(#id, or: $value.id),
     idExterno: data.get(#idExterno, or: $value.idExterno),
     idPropriedade: data.get(#idPropriedade, or: $value.idPropriedade),
@@ -269,8 +273,8 @@ class _AnimalSummaryCopyWithImpl<$R, $Out>
   );
 
   @override
-  AnimalSummaryCopyWith<$R2, AnimalSummary, $Out2> $chain<$R2, $Out2>(
+  AnimalSummaryModelCopyWith<$R2, AnimalSummaryModel, $Out2> $chain<$R2, $Out2>(
     Then<$Out2, $R2> t,
-  ) => _AnimalSummaryCopyWithImpl<$R2, $Out2>($value, $cast, t);
+  ) => _AnimalSummaryModelCopyWithImpl<$R2, $Out2>($value, $cast, t);
 }
 

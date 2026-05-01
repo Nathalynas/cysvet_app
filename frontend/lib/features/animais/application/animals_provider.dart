@@ -2,14 +2,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../auth/application/auth_state.dart';
 import '../data/animals_repository.dart';
-import '../domain/animal_summary.dart';
+import '../domain/animal_summary_model.dart';
 
 final animalsPropertyFilterProvider =
     NotifierProvider<AnimalsPropertyFilterNotifier, int?>(
       AnimalsPropertyFilterNotifier.new,
     );
 
-final animalsProvider = FutureProvider<List<AnimalSummary>>((ref) async {
+final animalsProvider = FutureProvider<List<AnimalSummaryModel>>((ref) async {
   final session = ref.watch(authSessionProvider);
   final propertyId = ref.watch(animalsPropertyFilterProvider);
 

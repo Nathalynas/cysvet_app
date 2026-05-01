@@ -2,7 +2,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/network/api_client.dart';
-import '../domain/visit_summary.dart';
+import '../domain/visit_summary_model.dart';
 
 final visitsRepositoryProvider = Provider<VisitsRepository>((ref) {
   return VisitsRepository(ref.watch(apiClientProvider));
@@ -13,7 +13,7 @@ class VisitsRepository {
 
   final Dio _dio;
 
-  Future<List<VisitSummary>> list({int? propertyId}) async {
+  Future<List<VisitSummaryModel>> list({int? propertyId}) async {
     final response = await _dio.get<Object?>(
       '/api/visits',
       queryParameters: {
@@ -22,7 +22,7 @@ class VisitsRepository {
     );
 
     final items = _asList(response.data);
-    return items.map(VisitSummaryMapper.fromMap).toList(growable: false);
+    return items.map(VisitSummaryModelMapper.fromMap).toList(growable: false);
   }
 
   List<Map<String, dynamic>> _asList(Object? data) {

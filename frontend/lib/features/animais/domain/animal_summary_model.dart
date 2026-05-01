@@ -1,25 +1,36 @@
 import 'package:dart_mappable/dart_mappable.dart';
 
-part 'visit_summary.mapper.dart';
+part 'animal_summary_model.mapper.dart';
 
 @MappableClass()
-class VisitSummary with VisitSummaryMappable {
-  const VisitSummary({
+class AnimalSummaryModel with AnimalSummaryModelMappable {
+  const AnimalSummaryModel({
     this.id = 0,
     this.idExterno = '',
     this.idPropriedade = 0,
     this.idExternoPropriedade = '',
-    this.dataVisita,
-    this.observacoes,
+    this.codigo = '',
+    this.categoria = '',
+    this.dataNascimento,
+    this.numeroLactacao = 0,
+    this.dataUltimoParto,
+    this.diasEmLactacao,
+    this.historicoReprodutivo,
   });
 
   final int id;
   final String idExterno;
   final int idPropriedade;
   final String idExternoPropriedade;
+  final String codigo;
+  final String categoria;
   @MappableField(hook: _NullableDateTimeHook())
-  final DateTime? dataVisita;
-  final String? observacoes;
+  final DateTime? dataNascimento;
+  final int numeroLactacao;
+  @MappableField(hook: _NullableDateTimeHook())
+  final DateTime? dataUltimoParto;
+  final int? diasEmLactacao;
+  final String? historicoReprodutivo;
 }
 
 class _NullableDateTimeHook extends MappingHook {

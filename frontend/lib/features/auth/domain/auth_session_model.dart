@@ -1,23 +1,23 @@
 import 'package:dart_mappable/dart_mappable.dart';
 
-part 'auth_session.mapper.dart';
+part 'auth_session_model.mapper.dart';
 
 @MappableClass()
-class AuthSession with AuthSessionMappable {
-  const AuthSession({
+class AuthSessionModel with AuthSessionModelMappable {
+  const AuthSessionModel({
     this.accessToken = '',
     this.refreshToken = '',
-    this.user = const AuthenticatedUser(),
+    this.user = const AuthenticatedUserModel(),
   });
 
   final String accessToken;
   final String refreshToken;
-  final AuthenticatedUser user;
+  final AuthenticatedUserModel user;
 }
 
 @MappableClass()
-class AuthenticatedUser with AuthenticatedUserMappable {
-  const AuthenticatedUser({
+class AuthenticatedUserModel with AuthenticatedUserModelMappable {
+  const AuthenticatedUserModel({
     this.id = 0,
     this.name = '',
     this.email = '',

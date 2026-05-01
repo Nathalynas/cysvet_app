@@ -2,14 +2,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../auth/application/auth_state.dart';
 import '../data/visits_repository.dart';
-import '../domain/visit_summary.dart';
+import '../domain/visit_summary_model.dart';
 
 final visitsPropertyFilterProvider =
     NotifierProvider<VisitsPropertyFilterNotifier, int?>(
       VisitsPropertyFilterNotifier.new,
     );
 
-final visitsProvider = FutureProvider<List<VisitSummary>>((ref) async {
+final visitsProvider = FutureProvider<List<VisitSummaryModel>>((ref) async {
   final session = ref.watch(authSessionProvider);
   final propertyId = ref.watch(visitsPropertyFilterProvider);
 

@@ -1,11 +1,12 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../data/auth_repository.dart';
-import '../domain/auth_session.dart';
+import '../domain/auth_session_model.dart';
 
-final authSessionProvider = NotifierProvider<AuthSessionNotifier, AuthSession?>(
-  AuthSessionNotifier.new,
-);
+final authSessionProvider =
+    NotifierProvider<AuthSessionNotifier, AuthSessionModel?>(
+      AuthSessionNotifier.new,
+    );
 final authBusyProvider = NotifierProvider<BusyNotifier, bool>(BusyNotifier.new);
 
 final authControllerProvider = Provider<AuthController>((ref) {
@@ -64,11 +65,11 @@ class AuthController {
   }
 }
 
-class AuthSessionNotifier extends Notifier<AuthSession?> {
+class AuthSessionNotifier extends Notifier<AuthSessionModel?> {
   @override
-  AuthSession? build() => null;
+  AuthSessionModel? build() => null;
 
-  void setSession(AuthSession? session) {
+  void setSession(AuthSessionModel? session) {
     state = session;
   }
 

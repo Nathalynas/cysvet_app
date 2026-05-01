@@ -2,7 +2,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/network/api_client.dart';
-import '../domain/property_summary.dart';
+import '../domain/property_summary_model.dart';
 
 final propertiesRepositoryProvider = Provider<PropertiesRepository>((ref) {
   return PropertiesRepository(ref.watch(apiClientProvider));
@@ -13,11 +13,11 @@ class PropertiesRepository {
 
   final Dio _dio;
 
-  Future<List<PropertySummary>> list() async {
+  Future<List<PropertySummaryModel>> list() async {
     final response = await _dio.get<Object?>('/api/properties');
     final items = _asList(response.data);
 
-    return items.map(PropertySummaryMapper.fromMap).toList(growable: false);
+    return items.map(PropertySummaryModelMapper.fromMap).toList(growable: false);
   }
 
   List<Map<String, dynamic>> _asList(Object? data) {

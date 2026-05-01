@@ -4,7 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../app/theme.dart';
 import '../../../../core/presentation/async_value_view.dart';
 import '../../application/properties_provider.dart';
-import '../../domain/property_summary.dart';
+import '../../domain/property_summary_model.dart';
 
 class PropertiesPage extends ConsumerWidget {
   const PropertiesPage({super.key});
@@ -18,7 +18,7 @@ class PropertiesPage extends ConsumerWidget {
       body: SafeArea(
         child: RefreshIndicator(
           onRefresh: () => ref.refresh(propertiesProvider.future),
-          child: AsyncValueView<List<PropertySummary>>(
+          child: AsyncValueView<List<PropertySummaryModel>>(
             value: properties,
             loadingMessage: 'Buscando propriedades...',
             emptyMessage: 'Nenhuma propriedade encontrada para este usuario.',

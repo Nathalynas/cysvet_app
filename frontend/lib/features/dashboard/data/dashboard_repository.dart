@@ -2,7 +2,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/network/api_client.dart';
-import '../domain/dashboard_metrics.dart';
+import '../domain/dashboard_metrics_model.dart';
 
 final dashboardRepositoryProvider = Provider<DashboardRepository>((ref) {
   return DashboardRepository(ref.watch(apiClientProvider));
@@ -13,7 +13,7 @@ class DashboardRepository {
 
   final Dio _dio;
 
-  Future<DashboardMetrics> fetch({int? propertyId}) async {
+  Future<DashboardMetricsModel> fetch({int? propertyId}) async {
     final response = await _dio.get<Object?>(
       '/api/dashboard',
       queryParameters: {
@@ -21,7 +21,7 @@ class DashboardRepository {
       },
     );
 
-    return DashboardMetricsMapper.fromMap(_asMap(response.data));
+    return DashboardMetricsModelMapper.fromMap(_asMap(response.data));
   }
 
   Map<String, dynamic> _asMap(Object? data) {

@@ -1,10 +1,10 @@
 import 'package:dart_mappable/dart_mappable.dart';
 
-part 'dashboard_metrics.mapper.dart';
+part 'dashboard_metrics_model.mapper.dart';
 
 @MappableClass()
-class DashboardMetrics with DashboardMetricsMappable {
-  const DashboardMetrics({
+class DashboardMetricsModel with DashboardMetricsModelMappable {
+  const DashboardMetricsModel({
     this.totalPropriedades = 0,
     this.totalAnimais = 0,
     this.totalEventos = 0,

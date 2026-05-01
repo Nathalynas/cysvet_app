@@ -5,9 +5,9 @@ import '../../../../app/theme.dart';
 import '../../../../core/presentation/async_value_view.dart';
 import '../../../../core/utils/formatters.dart';
 import '../../../propriedades/application/properties_provider.dart';
-import '../../../propriedades/domain/property_summary.dart';
+import '../../../propriedades/domain/property_summary_model.dart';
 import '../../application/dashboard_provider.dart';
-import '../../domain/dashboard_metrics.dart';
+import '../../domain/dashboard_metrics_model.dart';
 
 class DashboardPage extends ConsumerWidget {
   const DashboardPage({super.key});
@@ -18,7 +18,7 @@ class DashboardPage extends ConsumerWidget {
     final properties = ref.watch(propertiesProvider);
     final selectedPropertyId = ref.watch(dashboardPropertyFilterProvider);
     final propertyOptions =
-        properties.asData?.value ?? const <PropertySummary>[];
+        properties.asData?.value ?? const <PropertySummaryModel>[];
 
     return Scaffold(
       backgroundColor: AppTheme.backgroundColor,
@@ -36,7 +36,7 @@ class DashboardPage extends ConsumerWidget {
                 },
               ),
               const SizedBox(height: 16),
-              AsyncValueView<DashboardMetrics>(
+              AsyncValueView<DashboardMetricsModel>(
                 value: dashboard,
                 loadingMessage: 'Buscando indicadores do backend...',
                 onRetry: () => ref.invalidate(dashboardProvider),
@@ -57,7 +57,7 @@ class _PropertyFilterCard extends StatelessWidget {
     required this.onChanged,
   });
 
-  final List<PropertySummary> properties;
+  final List<PropertySummaryModel> properties;
   final int? selectedPropertyId;
   final ValueChanged<int?> onChanged;
 
@@ -105,7 +105,7 @@ class _PropertyFilterCard extends StatelessWidget {
 class _DashboardContent extends StatelessWidget {
   const _DashboardContent({required this.metrics});
 
-  final DashboardMetrics metrics;
+  final DashboardMetricsModel metrics;
 
   @override
   Widget build(BuildContext context) {

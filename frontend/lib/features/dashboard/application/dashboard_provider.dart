@@ -2,14 +2,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../auth/application/auth_state.dart';
 import '../data/dashboard_repository.dart';
-import '../domain/dashboard_metrics.dart';
+import '../domain/dashboard_metrics_model.dart';
 
 final dashboardPropertyFilterProvider =
     NotifierProvider<DashboardPropertyFilterNotifier, int?>(
       DashboardPropertyFilterNotifier.new,
     );
 
-final dashboardProvider = FutureProvider<DashboardMetrics>((ref) async {
+final dashboardProvider = FutureProvider<DashboardMetricsModel>((ref) async {
   final session = ref.watch(authSessionProvider);
   final propertyId = ref.watch(dashboardPropertyFilterProvider);
 

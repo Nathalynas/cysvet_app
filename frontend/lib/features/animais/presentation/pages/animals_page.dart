@@ -5,9 +5,9 @@ import '../../../../app/theme.dart';
 import '../../../../core/presentation/async_value_view.dart';
 import '../../../../core/utils/formatters.dart';
 import '../../../propriedades/application/properties_provider.dart';
-import '../../../propriedades/domain/property_summary.dart';
+import '../../../propriedades/domain/property_summary_model.dart';
 import '../../application/animals_provider.dart';
-import '../../domain/animal_summary.dart';
+import '../../domain/animal_summary_model.dart';
 
 class AnimalsPage extends ConsumerWidget {
   const AnimalsPage({super.key});
@@ -18,7 +18,7 @@ class AnimalsPage extends ConsumerWidget {
     final properties = ref.watch(propertiesProvider);
     final selectedPropertyId = ref.watch(animalsPropertyFilterProvider);
     final propertyOptions =
-        properties.asData?.value ?? const <PropertySummary>[];
+        properties.asData?.value ?? const <PropertySummaryModel>[];
     final propertyById = {
       for (final property in propertyOptions) property.id: property,
     };
@@ -39,7 +39,7 @@ class AnimalsPage extends ConsumerWidget {
                 },
               ),
               const SizedBox(height: 16),
-              AsyncValueView<List<AnimalSummary>>(
+              AsyncValueView<List<AnimalSummaryModel>>(
                 value: animals,
                 loadingMessage: 'Buscando animais...',
                 emptyMessage: 'Nenhum animal encontrado para o filtro atual.',
@@ -74,7 +74,7 @@ class _AnimalsFilterCard extends StatelessWidget {
     required this.onChanged,
   });
 
-  final List<PropertySummary> properties;
+  final List<PropertySummaryModel> properties;
   final int? selectedPropertyId;
   final ValueChanged<int?> onChanged;
 
@@ -110,7 +110,7 @@ class _AnimalsFilterCard extends StatelessWidget {
 class _AnimalCard extends StatelessWidget {
   const _AnimalCard({required this.animal, required this.propertyName});
 
-  final AnimalSummary animal;
+  final AnimalSummaryModel animal;
   final String propertyName;
 
   @override

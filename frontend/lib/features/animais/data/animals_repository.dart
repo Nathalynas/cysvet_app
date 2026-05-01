@@ -2,7 +2,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/network/api_client.dart';
-import '../domain/animal_summary.dart';
+import '../domain/animal_summary_model.dart';
 
 final animalsRepositoryProvider = Provider<AnimalsRepository>((ref) {
   return AnimalsRepository(ref.watch(apiClientProvider));
@@ -13,7 +13,7 @@ class AnimalsRepository {
 
   final Dio _dio;
 
-  Future<List<AnimalSummary>> list({int? propertyId}) async {
+  Future<List<AnimalSummaryModel>> list({int? propertyId}) async {
     final response = await _dio.get<Object?>(
       '/api/animals',
       queryParameters: {
@@ -22,7 +22,7 @@ class AnimalsRepository {
     );
 
     final items = _asList(response.data);
-    return items.map(AnimalSummaryMapper.fromMap).toList(growable: false);
+    return items.map(AnimalSummaryModelMapper.fromMap).toList(growable: false);
   }
 
   List<Map<String, dynamic>> _asList(Object? data) {
