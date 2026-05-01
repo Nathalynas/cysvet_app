@@ -23,7 +23,7 @@ class AuthRepository {
       data: {'name': name.trim(), 'email': email.trim(), 'password': password},
     );
 
-    return AuthSession.fromJson(_asMap(response.data));
+    return AuthSessionMapper.fromMap(_asMap(response.data));
   }
 
   Future<AuthSession> login({
@@ -35,7 +35,7 @@ class AuthRepository {
       data: {'email': email.trim(), 'password': password},
     );
 
-    return AuthSession.fromJson(_asMap(response.data));
+    return AuthSessionMapper.fromMap(_asMap(response.data));
   }
 
   Future<void> logout(String refreshToken) async {

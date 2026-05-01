@@ -1,12 +1,17 @@
-class DashboardMetrics {
+import 'package:dart_mappable/dart_mappable.dart';
+
+part 'dashboard_metrics.mapper.dart';
+
+@MappableClass()
+class DashboardMetrics with DashboardMetricsMappable {
   const DashboardMetrics({
-    required this.totalPropriedades,
-    required this.totalAnimais,
-    required this.totalEventos,
-    required this.taxaPrenhez,
-    required this.taxaServico,
-    required this.mediaInseminacoes,
-    required this.intervaloMedioPartos,
+    this.totalPropriedades = 0,
+    this.totalAnimais = 0,
+    this.totalEventos = 0,
+    this.taxaPrenhez = 0.0,
+    this.taxaServico = 0.0,
+    this.mediaInseminacoes = 0.0,
+    this.intervaloMedioPartos = 0.0,
   });
 
   final int totalPropriedades;
@@ -16,17 +21,4 @@ class DashboardMetrics {
   final double taxaServico;
   final double mediaInseminacoes;
   final double intervaloMedioPartos;
-
-  factory DashboardMetrics.fromJson(Map<String, dynamic> json) {
-    return DashboardMetrics(
-      totalPropriedades: (json['totalPropriedades'] as num?)?.toInt() ?? 0,
-      totalAnimais: (json['totalAnimais'] as num?)?.toInt() ?? 0,
-      totalEventos: (json['totalEventos'] as num?)?.toInt() ?? 0,
-      taxaPrenhez: (json['taxaPrenhez'] as num?)?.toDouble() ?? 0,
-      taxaServico: (json['taxaServico'] as num?)?.toDouble() ?? 0,
-      mediaInseminacoes: (json['mediaInseminacoes'] as num?)?.toDouble() ?? 0,
-      intervaloMedioPartos:
-          (json['intervaloMedioPartos'] as num?)?.toDouble() ?? 0,
-    );
-  }
 }

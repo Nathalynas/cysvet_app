@@ -22,7 +22,7 @@ class AnimalsRepository {
     );
 
     final items = _asList(response.data);
-    return items.map(AnimalSummary.fromJson).toList(growable: false);
+    return items.map(AnimalSummaryMapper.fromMap).toList(growable: false);
   }
 
   List<Map<String, dynamic>> _asList(Object? data) {

@@ -17,9 +17,7 @@ class PropertiesRepository {
     final response = await _dio.get<Object?>('/api/properties');
     final items = _asList(response.data);
 
-    return items
-        .map((item) => PropertySummary.fromJson(item))
-        .toList(growable: false);
+    return items.map(PropertySummaryMapper.fromMap).toList(growable: false);
   }
 
   List<Map<String, dynamic>> _asList(Object? data) {

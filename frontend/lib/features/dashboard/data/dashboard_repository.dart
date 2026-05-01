@@ -21,7 +21,7 @@ class DashboardRepository {
       },
     );
 
-    return DashboardMetrics.fromJson(_asMap(response.data));
+    return DashboardMetricsMapper.fromMap(_asMap(response.data));
   }
 
   Map<String, dynamic> _asMap(Object? data) {

@@ -1,16 +1,21 @@
-class AnimalSummary {
+import 'package:dart_mappable/dart_mappable.dart';
+
+part 'animal_summary.mapper.dart';
+
+@MappableClass()
+class AnimalSummary with AnimalSummaryMappable {
   const AnimalSummary({
-    required this.id,
-    required this.idExterno,
-    required this.idPropriedade,
-    required this.idExternoPropriedade,
-    required this.codigo,
-    required this.categoria,
-    required this.dataNascimento,
-    required this.numeroLactacao,
-    required this.dataUltimoParto,
-    required this.diasEmLactacao,
-    required this.historicoReprodutivo,
+    this.id = 0,
+    this.idExterno = '',
+    this.idPropriedade = 0,
+    this.idExternoPropriedade = '',
+    this.codigo = '',
+    this.categoria = '',
+    this.dataNascimento,
+    this.numeroLactacao = 0,
+    this.dataUltimoParto,
+    this.diasEmLactacao,
+    this.historicoReprodutivo,
   });
 
   final int id;
@@ -19,33 +24,28 @@ class AnimalSummary {
   final String idExternoPropriedade;
   final String codigo;
   final String categoria;
+  @MappableField(hook: _NullableDateTimeHook())
   final DateTime? dataNascimento;
   final int numeroLactacao;
+  @MappableField(hook: _NullableDateTimeHook())
   final DateTime? dataUltimoParto;
   final int? diasEmLactacao;
   final String? historicoReprodutivo;
-
-  factory AnimalSummary.fromJson(Map<String, dynamic> json) {
-    return AnimalSummary(
-      id: (json['id'] as num?)?.toInt() ?? 0,
-      idExterno: json['idExterno'] as String? ?? '',
-      idPropriedade: (json['idPropriedade'] as num?)?.toInt() ?? 0,
-      idExternoPropriedade: json['idExternoPropriedade'] as String? ?? '',
-      codigo: json['codigo'] as String? ?? '',
-      categoria: json['categoria'] as String? ?? '',
-      dataNascimento: _parseDate(json['dataNascimento'] as String?),
-      numeroLactacao: (json['numeroLactacao'] as num?)?.toInt() ?? 0,
-      dataUltimoParto: _parseDate(json['dataUltimoParto'] as String?),
-      diasEmLactacao: (json['diasEmLactacao'] as num?)?.toInt(),
-      historicoReprodutivo: json['historicoReprodutivo'] as String?,
-    );
-  }
 }
 
-DateTime? _parseDate(String? value) {
-  if (value == null || value.isEmpty) {
-    return null;
-  }
+class _NullableDateTimeHook extends MappingHook {
+  const _NullableDateTimeHook();
 
-  return DateTime.tryParse(value);
+  @override
+  Object? beforeDecode(Object? value) {
+    if (value is String) {
+      if (value.isEmpty) {
+        return null;
+      }
+
+      return DateTime.tryParse(value);
+    }
+
+    return value;
+  }
 }

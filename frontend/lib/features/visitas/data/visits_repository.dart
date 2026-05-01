@@ -22,7 +22,7 @@ class VisitsRepository {
     );
 
     final items = _asList(response.data);
-    return items.map(VisitSummary.fromJson).toList(growable: false);
+    return items.map(VisitSummaryMapper.fromMap).toList(growable: false);
   }
 
   List<Map<String, dynamic>> _asList(Object? data) {

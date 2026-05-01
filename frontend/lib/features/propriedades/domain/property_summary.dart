@@ -1,12 +1,17 @@
-class PropertySummary {
+import 'package:dart_mappable/dart_mappable.dart';
+
+part 'property_summary.mapper.dart';
+
+@MappableClass()
+class PropertySummary with PropertySummaryMappable {
   const PropertySummary({
-    required this.id,
-    required this.idExterno,
-    required this.nome,
-    required this.nomeProprietario,
-    required this.cidade,
-    required this.estado,
-    required this.observacoes,
+    this.id = 0,
+    this.idExterno = '',
+    this.nome = '',
+    this.nomeProprietario = '',
+    this.cidade,
+    this.estado,
+    this.observacoes,
   });
 
   final int id;
@@ -16,18 +21,6 @@ class PropertySummary {
   final String? cidade;
   final String? estado;
   final String? observacoes;
-
-  factory PropertySummary.fromJson(Map<String, dynamic> json) {
-    return PropertySummary(
-      id: (json['id'] as num?)?.toInt() ?? 0,
-      idExterno: json['idExterno'] as String? ?? '',
-      nome: json['nome'] as String? ?? '',
-      nomeProprietario: json['nomeProprietario'] as String? ?? '',
-      cidade: json['cidade'] as String?,
-      estado: json['estado'] as String?,
-      observacoes: json['observacoes'] as String?,
-    );
-  }
 
   String get localizacao {
     final parts = [
