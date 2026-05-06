@@ -95,6 +95,13 @@ class AppButton extends StatelessWidget {
   }) {
     return ButtonStyle(
       elevation: WidgetStateProperty.all(outlined ? 0 : 1),
+      mouseCursor: WidgetStateProperty.resolveWith((states) {
+        if (states.contains(WidgetState.disabled)) {
+          return SystemMouseCursors.basic;
+        }
+
+        return SystemMouseCursors.click;
+      }),
       backgroundColor: WidgetStateProperty.resolveWith((states) {
         if (states.contains(WidgetState.disabled)) {
           return outlined ? Colors.transparent : Colors.grey.shade300;

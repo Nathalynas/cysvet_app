@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 
-import '../../app/theme.dart';
 import 'app_button.dart';
 
 class AppDialog extends StatelessWidget {
@@ -173,6 +172,9 @@ class AppDialog extends StatelessWidget {
       AppButton(
         text: cancelText ?? 'Cancelar',
         outlined: true,
+        height: 40,
+        fontSize: 14,
+        padding: const EdgeInsets.symmetric(horizontal: 16),
         onPressed: confirmLoading
             ? null
             : (onCancel ?? () => Navigator.of(context).maybePop()),
@@ -180,6 +182,9 @@ class AppDialog extends StatelessWidget {
       AppButton(
         text: confirmText ?? 'Confirmar',
         loading: confirmLoading,
+        height: 40,
+        fontSize: 14,
+        padding: const EdgeInsets.symmetric(horizontal: 16),
         onPressed: onConfirm ?? () => Navigator.of(context).maybePop(),
       ),
     ]);
@@ -202,44 +207,83 @@ class _DialogHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final hasTitle = title != null && title!.isNotEmpty;
+    final hasSubtitle = subtitle != null && subtitle!.isNotEmpty;
+    final titleStyle = theme.textTheme.titleMedium?.copyWith(
+      color: colorScheme.primary,
+      fontSize: 20,
+      height: 1.2,
+      fontWeight: FontWeight.w700,
+    );
+    final subtitleStyle = theme.textTheme.bodyMedium?.copyWith(
+      color: colorScheme.onSurfaceVariant,
+    );
 
-    return Row(
+    if (!hasTitle) {
+      return Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Expanded(
+            child: hasSubtitle
+                ? Text(subtitle!, style: subtitleStyle)
+                : const SizedBox.shrink(),
+          ),
+          if (showCloseButton) ...[
+            const SizedBox(width: 12),
+            _CloseDialogButton(colorScheme: colorScheme),
+          ],
+        ],
+      );
+    }
+
+    return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              if (title != null && title!.isNotEmpty)
-                Text(
-                  title!,
-                  style: theme.textTheme.titleLarge?.copyWith(
-                    color: AppTheme.primaryColor,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              if (subtitle != null && subtitle!.isNotEmpty)
-                Padding(
-                  padding: EdgeInsets.only(
-                    top: title == null || title!.isEmpty ? 0 : 6,
-                  ),
-                  child: Text(
-                    subtitle!,
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-                ),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Expanded(child: Text(title!, style: titleStyle)),
+            if (showCloseButton) ...[
+              const SizedBox(width: 12),
+              _CloseDialogButton(colorScheme: colorScheme),
             ],
-          ),
+          ],
         ),
-        if (showCloseButton)
-          IconButton(
-            tooltip: 'Fechar',
-            onPressed: () => Navigator.of(context).maybePop(),
-            icon: const Icon(Icons.close),
+        if (hasSubtitle)
+          Padding(
+            padding: const EdgeInsets.only(top: 6),
+            child: Text(subtitle!, style: subtitleStyle),
           ),
       ],
+    );
+  }
+}
+
+class _CloseDialogButton extends StatelessWidget {
+  const _CloseDialogButton({required this.colorScheme});
+
+  final ColorScheme colorScheme;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox.square(
+      dimension: 40,
+      child: IconButton(
+        tooltip: 'Fechar',
+        mouseCursor: SystemMouseCursors.click,
+        style: IconButton.styleFrom(
+          backgroundColor: colorScheme.surfaceContainerHighest,
+          foregroundColor: colorScheme.primary,
+          fixedSize: const Size.square(40),
+          minimumSize: const Size.square(40),
+          padding: EdgeInsets.zero,
+          shape: const CircleBorder(),
+          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+        ),
+        onPressed: () => Navigator.of(context).maybePop(),
+        icon: const Icon(Icons.close, size: 20),
+      ),
     );
   }
 }

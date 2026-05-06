@@ -29,6 +29,15 @@ class AppTextField extends StatelessWidget {
     this.inputFormatters,
     this.autofocus = false,
     this.textInputAction,
+    this.fillColor,
+    this.contentPadding,
+    this.borderRadius,
+    this.borderColor,
+    this.focusedBorderColor,
+    this.isDense,
+    this.textStyle,
+    this.prefixIconConstraints,
+    this.suffixIconConstraints,
   });
 
   final String? label;
@@ -56,6 +65,15 @@ class AppTextField extends StatelessWidget {
   final List<TextInputFormatter>? inputFormatters;
   final bool autofocus;
   final TextInputAction? textInputAction;
+  final Color? fillColor;
+  final EdgeInsetsGeometry? contentPadding;
+  final double? borderRadius;
+  final Color? borderColor;
+  final Color? focusedBorderColor;
+  final bool? isDense;
+  final TextStyle? textStyle;
+  final BoxConstraints? prefixIconConstraints;
+  final BoxConstraints? suffixIconConstraints;
 
   @override
   Widget build(BuildContext context) {
@@ -73,17 +91,72 @@ class AppTextField extends StatelessWidget {
           : TextCapitalization.none,
       maxLines: obscureText ? 1 : maxLines,
       minLines: obscureText ? null : minLines,
+      style: textStyle,
       inputFormatters: _buildInputFormatters(),
       validator: _validate,
       onChanged: onChanged,
       onFieldSubmitted: onSubmitted,
       onTap: onTap,
-      decoration: InputDecoration(
-        labelText: _labelText,
-        hintText: hint,
-        prefixIcon: prefixIcon,
-        suffixIcon: _buildSuffixIcon(),
+      decoration: _buildDecoration(context),
+    );
+  }
+
+  InputDecoration _buildDecoration(BuildContext context) {
+    final theme = Theme.of(context);
+    final radiusValue = borderRadius ?? 12.0;
+    final effectiveBorderColor = borderColor ?? theme.colorScheme.outline;
+    final effectiveFocusedBorderColor =
+        focusedBorderColor ?? theme.colorScheme.primary;
+    final effectiveLabelColor = enabled
+        ? theme.colorScheme.onSurfaceVariant
+        : theme.disabledColor;
+
+    return InputDecoration(
+      labelText: _labelText,
+      hintText: hint,
+      prefixIcon: prefixIcon,
+      suffixIcon: _buildSuffixIcon(),
+      filled: true,
+      fillColor: fillColor ?? theme.colorScheme.surfaceContainerHighest,
+      floatingLabelBehavior: FloatingLabelBehavior.auto,
+      labelStyle: TextStyle(
+        color: effectiveLabelColor,
+        fontSize: 16,
+        fontWeight: FontWeight.w500,
       ),
+      floatingLabelStyle: TextStyle(
+        color: effectiveFocusedBorderColor,
+        fontSize: 14,
+        fontWeight: FontWeight.w600,
+      ),
+      contentPadding:
+          contentPadding ??
+          const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      isDense: isDense,
+      prefixIconConstraints: prefixIconConstraints,
+      suffixIconConstraints: suffixIconConstraints,
+      border: _buildCustomBorder(radiusValue, effectiveBorderColor),
+      enabledBorder: _buildCustomBorder(radiusValue, effectiveBorderColor),
+      focusedBorder: _buildCustomBorder(
+        radiusValue,
+        effectiveFocusedBorderColor,
+        width: 1.5,
+      ),
+      disabledBorder: _buildCustomBorder(
+        radiusValue,
+        theme.colorScheme.outline.withValues(alpha: 0.45),
+      ),
+    );
+  }
+
+  InputBorder _buildCustomBorder(
+    double radius,
+    Color color, {
+    double width = 1.0,
+  }) {
+    return OutlineInputBorder(
+      borderRadius: BorderRadius.all(Radius.circular(radius)),
+      borderSide: BorderSide(color: color, width: width),
     );
   }
 
