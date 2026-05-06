@@ -7,6 +7,7 @@ import '../features/auth/presentation/pages/login_page.dart';
 import '../features/dashboard/presentation/pages/dashboard_page.dart';
 import '../features/perfil/presentation/pages/profile_page.dart';
 import '../features/propriedades/presentation/pages/properties_page.dart';
+import '../features/splash/presentation/pages/splash_page.dart';
 import '../features/visitas/presentation/pages/visits_page.dart';
 import 'app_shell.dart';
 
@@ -14,23 +15,32 @@ final appRouterProvider = Provider<GoRouter>((ref) {
   final session = ref.watch(authSessionProvider);
 
   return GoRouter(
-    initialLocation: session == null ? '/login' : '/dashboard',
+    initialLocation: '/splash',
     redirect: (context, state) {
       final isAuthenticated = session != null;
-      final isLoginRoute = state.matchedLocation == '/login';
+      final location = state.matchedLocation;
 
-      if (!isAuthenticated && !isLoginRoute) {
+      final isPublicRoute = location == '/splash' || location == '/login';
+
+      if (!isAuthenticated && !isPublicRoute) {
         return '/login';
       }
 
-      if (isAuthenticated && isLoginRoute) {
+      if (isAuthenticated && location == '/login') {
         return '/dashboard';
       }
 
       return null;
     },
     routes: [
-      GoRoute(path: '/login', builder: (context, state) => const LoginPage()),
+      GoRoute(
+        path: '/splash',
+        builder: (context, state) => const SplashPage(),
+      ),
+      GoRoute(
+        path: '/login',
+        builder: (context, state) => const LoginPage(),
+      ),
       ShellRoute(
         builder: (context, state, child) {
           return AppShell(child: child);
