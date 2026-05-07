@@ -56,11 +56,11 @@ public class SyncService {
 
         return new PullSyncResponse(
                 Instant.now(),
-                propriedadeService.listUpdatedSince(user.getId(), baseInstant),
-                animalService.listUpdatedSince(user.getId(), baseInstant),
-                visitService.listUpdatedSince(user.getId(), baseInstant),
-                eventoReprodutivoService.listUpdatedSince(user.getId(), baseInstant),
-                deletedRecordService.findDeletedSince(user.getId(), baseInstant)
+                propriedadeService.listUpdatedSince(baseInstant),
+                animalService.listUpdatedSince(baseInstant),
+                visitService.listUpdatedSince(baseInstant),
+                eventoReprodutivoService.listUpdatedSince(baseInstant),
+                deletedRecordService.findDeletedSince(baseInstant)
         );
     }
 
@@ -139,25 +139,25 @@ public class SyncService {
     private SyncItemResponse deleteProperty(SyncItemRequest item, Usuario user) {
         DeleteRequest request = objectMapper.convertValue(item.payload(), DeleteRequest.class);
         return deleteEntity(item, user, request.idExterno(), "property", () -> propriedadeService.deleteByExternalId(request.idExterno(), user),
-                () -> propriedadeService.getByExternalId(request.idExterno(), user.getId()).getId());
+                () -> propriedadeService.getByExternalId(request.idExterno()).getId());
     }
 
     private SyncItemResponse deleteAnimal(SyncItemRequest item, Usuario user) {
         DeleteRequest request = objectMapper.convertValue(item.payload(), DeleteRequest.class);
         return deleteEntity(item, user, request.idExterno(), "animal", () -> animalService.deleteByExternalId(request.idExterno(), user),
-                () -> animalService.getByExternalId(request.idExterno(), user.getId()).getId());
+                () -> animalService.getByExternalId(request.idExterno()).getId());
     }
 
     private SyncItemResponse deleteEvent(SyncItemRequest item, Usuario user) {
         DeleteRequest request = objectMapper.convertValue(item.payload(), DeleteRequest.class);
         return deleteEntity(item, user, request.idExterno(), "event", () -> eventoReprodutivoService.deleteByExternalId(request.idExterno(), user),
-                () -> eventoReprodutivoService.getByExternalId(request.idExterno(), user.getId()).getId());
+                () -> eventoReprodutivoService.getByExternalId(request.idExterno()).getId());
     }
 
     private SyncItemResponse deleteVisit(SyncItemRequest item, Usuario user) {
         DeleteRequest request = objectMapper.convertValue(item.payload(), DeleteRequest.class);
         return deleteEntity(item, user, request.idExterno(), "visit", () -> visitService.deleteByExternalId(request.idExterno(), user),
-                () -> visitService.getByExternalId(request.idExterno(), user.getId()).getId());
+                () -> visitService.getByExternalId(request.idExterno()).getId());
     }
 
     private SyncItemResponse deleteEntity(

@@ -30,7 +30,7 @@ public class IndicadorReprodutivoService {
         DashboardResponse dashboard = dashboardService.getMetrics(idPropriedade, dataInicio, dataFim);
         IndicadorReprodutivo indicator = new IndicadorReprodutivo();
         indicator.setUsuario(user);
-        indicator.setPropriedade(idPropriedade == null ? null : propriedadeService.getEntity(idPropriedade, user.getId()));
+        indicator.setPropriedade(idPropriedade == null ? null : propriedadeService.getEntity(idPropriedade));
         indicator.setDataReferencia(LocalDate.now());
         indicator.setDataInicio(dataInicio);
         indicator.setDataFim(dataFim);
@@ -46,8 +46,7 @@ public class IndicadorReprodutivoService {
 
     @Transactional(readOnly = true)
     public List<IndicadorReprodutivoResponse> list() {
-        Usuario user = authenticatedUserProvider.getCurrentUser();
-        return reproductiveIndicatorRepository.findAllByUsuarioIdOrderByDataReferenciaDesc(user.getId()).stream()
+        return reproductiveIndicatorRepository.findAllByOrderByDataReferenciaDesc().stream()
                 .map(this::toResponse)
                 .toList();
     }

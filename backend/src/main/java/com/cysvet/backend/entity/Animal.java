@@ -14,7 +14,7 @@ import lombok.Setter;
 @Setter
 @Entity
 @Table(name = "animal")
-public class Animal extends BaseEntity {
+public class Animal extends TenantAwareEntity {
 
     @Column(name = "id_externo", nullable = false, unique = true, length = 64)
     private String idExterno;

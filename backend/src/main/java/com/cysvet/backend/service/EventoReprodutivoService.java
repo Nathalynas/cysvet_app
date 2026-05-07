@@ -28,34 +28,33 @@ public class EventoReprodutivoService {
 
     @Transactional(readOnly = true)
     public List<EventoReprodutivoResponse> list(Long idPropriedade, Long idAnimal) {
-        Usuario user = authenticatedUserProvider.getCurrentUser();
         List<EventoReprodutivo> events;
         if (idAnimal != null) {
-            events = eventoReprodutivoRepository.findAllByUsuarioIdAndAnimalIdOrderByDataEventoDesc(user.getId(), idAnimal);
+            events = eventoReprodutivoRepository.findAllByAnimalIdOrderByDataEventoDesc(idAnimal);
         } else if (idPropriedade != null) {
-            events = eventoReprodutivoRepository.findAllByUsuarioIdAndPropriedadeIdOrderByDataEventoDesc(user.getId(), idPropriedade);
+            events = eventoReprodutivoRepository.findAllByPropriedadeIdOrderByDataEventoDesc(idPropriedade);
         } else {
-            events = eventoReprodutivoRepository.findAllByUsuarioIdOrderByDataEventoDesc(user.getId());
+            events = eventoReprodutivoRepository.findAllByOrderByDataEventoDesc();
         }
         return events.stream().map(this::toResponse).toList();
     }
 
     @Transactional(readOnly = true)
-    public List<EventoReprodutivoResponse> listUpdatedSince(Long idUsuario, Instant dataAtualizacao) {
-        return eventoReprodutivoRepository.findAllByUsuarioIdAndDataAtualizacaoAfterOrderByDataAtualizacaoAsc(idUsuario, dataAtualizacao).stream()
+    public List<EventoReprodutivoResponse> listUpdatedSince(Instant dataAtualizacao) {
+        return eventoReprodutivoRepository.findAllByDataAtualizacaoAfterOrderByDataAtualizacaoAsc(dataAtualizacao).stream()
                 .map(this::toResponse)
                 .toList();
     }
 
     @Transactional(readOnly = true)
-    public EventoReprodutivo getEntity(Long id, Long idUsuario) {
-        return eventoReprodutivoRepository.findByIdAndUsuarioId(id, idUsuario)
+    public EventoReprodutivo getEntity(Long id) {
+        return eventoReprodutivoRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Evento reprodutivo nao encontrado"));
     }
 
     @Transactional(readOnly = true)
-    public EventoReprodutivo getByExternalId(String idExterno, Long idUsuario) {
-        return eventoReprodutivoRepository.findByIdExternoAndUsuarioId(idExterno, idUsuario)
+    public EventoReprodutivo getByExternalId(String idExterno) {
+        return eventoReprodutivoRepository.findByIdExterno(idExterno)
                 .orElseThrow(() -> new ResourceNotFoundException("Evento reprodutivo nao encontrado"));
     }
 
@@ -72,7 +71,7 @@ public class EventoReprodutivoService {
     @Transactional
     public EventoReprodutivoResponse update(Long id, EventoReprodutivoRequest request) {
         Usuario user = authenticatedUserProvider.getCurrentUser();
-        EventoReprodutivo event = getEntity(id, user.getId());
+        EventoReprodutivo event = getEntity(id);
         apply(event, request, user);
         EventoReprodutivo saved = eventoReprodutivoRepository.save(event);
         deletedRecordService.clearDeletionMarker("event", saved.getIdExterno(), user.getId());
@@ -82,14 +81,14 @@ public class EventoReprodutivoService {
     @Transactional
     public void delete(Long id) {
         Usuario user = authenticatedUserProvider.getCurrentUser();
-        EventoReprodutivo event = getEntity(id, user.getId());
+        EventoReprodutivo event = getEntity(id);
         eventoReprodutivoRepository.delete(event);
         deletedRecordService.registerDeletion("event", event.getIdExterno(), user.getId());
     }
 
     @Transactional
     public EventoReprodutivo upsertForSync(EventoReprodutivoRequest request, Instant dataAtualizacaoCliente, Usuario user) {
-        EventoReprodutivo event = eventoReprodutivoRepository.findByIdExternoAndUsuarioId(request.idExterno(), user.getId())
+        EventoReprodutivo event = eventoReprodutivoRepository.findByIdExterno(request.idExterno())
                 .orElseGet(EventoReprodutivo::new);
 
         if (event.getId() != null && dataAtualizacaoCliente != null && event.getDataAtualizacao().isAfter(dataAtualizacaoCliente)) {
@@ -104,32 +103,30 @@ public class EventoReprodutivoService {
 
     @Transactional
     public void deleteByExternalId(String idExterno, Usuario user) {
-        EventoReprodutivo event = getByExternalId(idExterno, user.getId());
+        EventoReprodutivo event = getByExternalId(idExterno);
         eventoReprodutivoRepository.delete(event);
         deletedRecordService.registerDeletion("event", event.getIdExterno(), user.getId());
     }
 
     @Transactional(readOnly = true)
     public List<EventoReprodutivo> findForProperty(Long idPropriedade, LocalDate dataInicio, LocalDate dataFim) {
-        Usuario user = authenticatedUserProvider.getCurrentUser();
         if (dataInicio != null && dataFim != null) {
-            return eventoReprodutivoRepository.findAllByUsuarioIdAndPropriedadeIdAndDataEventoBetweenOrderByDataEventoDesc(
-                    user.getId(),
+            return eventoReprodutivoRepository.findAllByPropriedadeIdAndDataEventoBetweenOrderByDataEventoDesc(
                     idPropriedade,
                     dataInicio,
                     dataFim
             );
         }
-        return eventoReprodutivoRepository.findAllByUsuarioIdAndPropriedadeIdOrderByDataEventoDesc(user.getId(), idPropriedade);
+        return eventoReprodutivoRepository.findAllByPropriedadeIdOrderByDataEventoDesc(idPropriedade);
     }
 
     private void apply(EventoReprodutivo event, EventoReprodutivoRequest request, Usuario user) {
         Propriedade property = request.idPropriedade() != null
-                ? propriedadeService.getEntity(request.idPropriedade(), user.getId())
-                : propriedadeService.getByExternalId(request.idExternoPropriedade(), user.getId());
+                ? propriedadeService.getEntity(request.idPropriedade())
+                : propriedadeService.getByExternalId(request.idExternoPropriedade());
         Animal animal = request.idAnimal() != null
-                ? animalService.getEntity(request.idAnimal(), user.getId())
-                : animalService.getByExternalId(request.idExternoAnimal(), user.getId());
+                ? animalService.getEntity(request.idAnimal())
+                : animalService.getByExternalId(request.idExternoAnimal());
 
         event.setIdExterno(request.idExterno());
         event.setPropriedade(property);

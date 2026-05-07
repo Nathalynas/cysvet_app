@@ -25,5 +25,5 @@ public class Usuario extends BaseEntity {
 
     @Enumerated(EnumType.STRING)
     @Column(name = "perfil", nullable = false)
-    private Perfil perfil = Perfil.USER;
+    private Perfil perfil = Perfil.VETERINARIO;
 }

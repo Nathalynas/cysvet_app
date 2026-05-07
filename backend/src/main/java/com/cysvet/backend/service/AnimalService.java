@@ -31,29 +31,28 @@ public class AnimalService {
 
     @Transactional(readOnly = true)
     public List<AnimalResponse> list(Long idPropriedade) {
-        Usuario user = authenticatedUserProvider.getCurrentUser();
         List<Animal> animals = idPropriedade == null
-                ? animalRepository.findAllByUsuarioIdOrderByCodigoAsc(user.getId())
-                : animalRepository.findAllByUsuarioIdAndPropriedadeIdOrderByCodigoAsc(user.getId(), idPropriedade);
+                ? animalRepository.findAllByOrderByCodigoAsc()
+                : animalRepository.findAllByPropriedadeIdOrderByCodigoAsc(idPropriedade);
         return animals.stream().map(this::toResponse).toList();
     }
 
     @Transactional(readOnly = true)
-    public List<AnimalResponse> listUpdatedSince(Long idUsuario, Instant dataAtualizacao) {
-        return animalRepository.findAllByUsuarioIdAndDataAtualizacaoAfterOrderByDataAtualizacaoAsc(idUsuario, dataAtualizacao).stream()
+    public List<AnimalResponse> listUpdatedSince(Instant dataAtualizacao) {
+        return animalRepository.findAllByDataAtualizacaoAfterOrderByDataAtualizacaoAsc(dataAtualizacao).stream()
                 .map(this::toResponse)
                 .toList();
     }
 
     @Transactional(readOnly = true)
-    public Animal getEntity(Long id, Long idUsuario) {
-        return animalRepository.findByIdAndUsuarioId(id, idUsuario)
+    public Animal getEntity(Long id) {
+        return animalRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Animal nao encontrado"));
     }
 
     @Transactional(readOnly = true)
-    public Animal getByExternalId(String idExterno, Long idUsuario) {
-        return animalRepository.findByIdExternoAndUsuarioId(idExterno, idUsuario)
+    public Animal getByExternalId(String idExterno) {
+        return animalRepository.findByIdExterno(idExterno)
                 .orElseThrow(() -> new ResourceNotFoundException("Animal nao encontrado"));
     }
 
@@ -70,7 +69,7 @@ public class AnimalService {
     @Transactional
     public AnimalResponse update(Long id, AnimalRequest request) {
         Usuario user = authenticatedUserProvider.getCurrentUser();
-        Animal animal = getEntity(id, user.getId());
+        Animal animal = getEntity(id);
         apply(animal, request, user);
         Animal saved = animalRepository.save(animal);
         deletedRecordService.clearDeletionMarker("animal", saved.getIdExterno(), user.getId());
@@ -80,8 +79,8 @@ public class AnimalService {
     @Transactional
     public void delete(Long id) {
         Usuario user = authenticatedUserProvider.getCurrentUser();
-        Animal animal = getEntity(id, user.getId());
-        reproductiveEventRepository.findAllByUsuarioIdAndAnimalIdOrderByDataEventoDesc(user.getId(), animal.getId())
+        Animal animal = getEntity(id);
+        reproductiveEventRepository.findAllByAnimalIdOrderByDataEventoDesc(animal.getId())
                 .forEach(event -> {
                     reproductiveEventRepository.delete(event);
                     deletedRecordService.registerDeletion("event", event.getIdExterno(), user.getId());
@@ -92,7 +91,7 @@ public class AnimalService {
 
     @Transactional
     public Animal upsertForSync(AnimalRequest request, Instant dataAtualizacaoCliente, Usuario user) {
-        Animal animal = animalRepository.findByIdExternoAndUsuarioId(request.idExterno(), user.getId())
+        Animal animal = animalRepository.findByIdExterno(request.idExterno())
                 .orElseGet(Animal::new);
 
         if (animal.getId() != null && dataAtualizacaoCliente != null && animal.getDataAtualizacao().isAfter(dataAtualizacaoCliente)) {
@@ -107,8 +106,8 @@ public class AnimalService {
 
     @Transactional
     public void deleteByExternalId(String idExterno, Usuario user) {
-        Animal animal = getByExternalId(idExterno, user.getId());
-        reproductiveEventRepository.findAllByUsuarioIdAndAnimalIdOrderByDataEventoDesc(user.getId(), animal.getId())
+        Animal animal = getByExternalId(idExterno);
+        reproductiveEventRepository.findAllByAnimalIdOrderByDataEventoDesc(animal.getId())
                 .forEach(event -> {
                     reproductiveEventRepository.delete(event);
                     deletedRecordService.registerDeletion("event", event.getIdExterno(), user.getId());
@@ -119,8 +118,8 @@ public class AnimalService {
 
     private void apply(Animal animal, AnimalRequest request, Usuario user) {
         Propriedade property = request.idPropriedade() != null
-                ? propriedadeService.getEntity(request.idPropriedade(), user.getId())
-                : propriedadeService.getByExternalId(request.idExternoPropriedade(), user.getId());
+                ? propriedadeService.getEntity(request.idPropriedade())
+                : propriedadeService.getByExternalId(request.idExternoPropriedade());
 
         animal.setIdExterno(request.idExterno());
         animal.setPropriedade(property);

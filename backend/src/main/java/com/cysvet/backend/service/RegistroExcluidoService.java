@@ -35,8 +35,8 @@ public class RegistroExcluidoService {
     }
 
     @Transactional(readOnly = true)
-    public List<RegistroExcluidoResponse> findDeletedSince(Long idUsuario, Instant since) {
-        return deletedRecordRepository.findAllByIdUsuarioAndDataAtualizacaoAfterOrderByDataAtualizacaoAsc(idUsuario, since).stream()
+    public List<RegistroExcluidoResponse> findDeletedSince(Instant since) {
+        return deletedRecordRepository.findAllByDataAtualizacaoAfterOrderByDataAtualizacaoAsc(since).stream()
                 .map(record -> new RegistroExcluidoResponse(record.getNomeEntidade(), record.getIdExterno(), record.getDataExclusao()))
                 .toList();
     }

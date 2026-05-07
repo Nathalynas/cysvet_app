@@ -11,7 +11,7 @@ import lombok.Setter;
 @Setter
 @Entity
 @Table(name = "registro_excluido")
-public class RegistroExcluido extends BaseEntity {
+public class RegistroExcluido extends TenantAwareEntity {
 
     @Column(name = "nome_entidade", nullable = false, length = 64)
     private String nomeEntidade;

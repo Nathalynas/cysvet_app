@@ -1,39 +1,17 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 
 import '../../../../app/theme.dart'; 
 
 class SplashPage extends StatefulWidget {
   const SplashPage({
     super.key,
-    this.redirectTo = '/login',
-    this.duration = const Duration(seconds: 3),
   });
-
-  final String redirectTo;
-  final Duration duration;
 
   @override
   State<SplashPage> createState() => _SplashPageState();
 }
 
 class _SplashPageState extends State<SplashPage> {
-  Timer? _timer;
-
-  @override
-  void initState() {
-    super.initState();
-    _timer = Timer(widget.duration, _redirect);
-  }
-
-  @override
-  void dispose() {
-    _timer?.cancel();
-    super.dispose();
-  }
-
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -76,10 +54,5 @@ class _SplashPageState extends State<SplashPage> {
         ),
       ),
     );
-  }
-
-  void _redirect() {
-    if (!mounted) return;
-    context.go(widget.redirectTo);
   }
 }

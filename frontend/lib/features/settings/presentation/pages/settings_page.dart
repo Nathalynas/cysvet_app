@@ -3,10 +3,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../app/theme.dart';
+import '../../../../core/network/api_error.dart';
 import '../../../../core/widgets/app_button.dart';
 import '../../../../core/widgets/app_form.dart';
 import '../../../../core/widgets/app_text_field.dart';
 import '../../../auth/application/auth_state.dart';
+import '../../../auth/data/auth_repository.dart';
 import '../../../auth/domain/auth_session_model.dart';
 
 class ConfiguracoesPage extends ConsumerStatefulWidget {
@@ -26,9 +28,12 @@ class _ConfiguracoesPageState extends ConsumerState<ConfiguracoesPage> {
   bool _isSavingUser = false;
   bool _isEditingCompany = false;
   bool _isSavingCompany = false;
+
   int? _syncedUserId;
   String _syncedUserName = '';
   String _syncedUserEmail = '';
+
+  int? _syncedCompanyId;
   String _companyName = '';
   String _companyEmail = '';
 
@@ -49,6 +54,7 @@ class _ConfiguracoesPageState extends ConsumerState<ConfiguracoesPage> {
     final theme = Theme.of(context);
 
     _syncUserControllers(session);
+    _syncCompanyControllers(session);
 
     if (session == null) {
       return Scaffold(
@@ -57,6 +63,7 @@ class _ConfiguracoesPageState extends ConsumerState<ConfiguracoesPage> {
       );
     }
 
+    final activeCompany = session.activeCompany;
     final canEditCompanyData = _canEditCompanyData(session.user);
 
     return Scaffold(
@@ -67,6 +74,7 @@ class _ConfiguracoesPageState extends ConsumerState<ConfiguracoesPage> {
           children: [
             _AppearanceCard(themeMode: themeMode),
             const SizedBox(height: 16),
+
             _EditableSettingsCard(
               title: 'Meus Dados',
               canEdit: true,
@@ -75,9 +83,64 @@ class _ConfiguracoesPageState extends ConsumerState<ConfiguracoesPage> {
               onEdit: () => setState(() => _isEditingUser = true),
               onCancel: () => _cancelUserEditing(session),
               onSubmit: _saveUserData,
-              fields: _buildUserFields(isEditing: _isEditingUser),
+              fields: [
+                ..._buildUserFields(isEditing: _isEditingUser),
+                const SizedBox(height: 12),
+                _InfoRow(label: 'Perfil', value: session.user.displayRole),
+              ],
             ),
+
             const SizedBox(height: 16),
+
+            _SettingsCard(
+              title: 'Empresa Ativa',
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  DropdownButtonFormField<int>(
+                    initialValue: activeCompany?.id,
+                    decoration: const InputDecoration(labelText: 'Empresa'),
+                    items: session.companies
+                        .map(
+                          (company) => DropdownMenuItem(
+                            value: company.id,
+                            child: Text(company.name),
+                          ),
+                        )
+                        .toList(),
+                    onChanged: (companyId) async {
+                      if (companyId == null ||
+                          companyId == session.activeCompanyId) {
+                        return;
+                      }
+
+                      await ref
+                          .read(authSessionProvider.notifier)
+                          .switchActiveCompany(companyId);
+
+                      if (!context.mounted) {
+                        return;
+                      }
+
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text(
+                            'Empresa ativa atualizada para esta sessão.',
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                  if (activeCompany != null) ...[
+                    const SizedBox(height: 16),
+                    _InfoRow(label: 'Tenant ID', value: activeCompany.id.toString()),
+                  ],
+                ],
+              ),
+            ),
+
+            const SizedBox(height: 16),
+
             _EditableSettingsCard(
               title: 'Dados da Empresa',
               canEdit: canEditCompanyData,
@@ -85,13 +148,17 @@ class _ConfiguracoesPageState extends ConsumerState<ConfiguracoesPage> {
               isLoading: _isSavingCompany,
               onEdit: () => setState(() => _isEditingCompany = true),
               onCancel: _cancelCompanyEditing,
-              onSubmit: _saveCompanyData,
+              onSubmit: () {
+                _saveCompanyData();
+              },
               fields: _buildCompanyFields(
                 canEdit: canEditCompanyData,
                 isEditing: _isEditingCompany,
               ),
             ),
+
             const SizedBox(height: 16),
+
             Align(
               alignment: Alignment.centerRight,
               child: AppButton(
@@ -187,6 +254,38 @@ class _ConfiguracoesPageState extends ConsumerState<ConfiguracoesPage> {
     _syncedUserEmail = user.email;
   }
 
+  void _syncCompanyControllers(AuthSessionModel? session) {
+    if (session == null || _isEditingCompany) {
+      return;
+    }
+
+    final activeCompany = session.activeCompany;
+
+    if (activeCompany == null) {
+      _companyNameController.clear();
+      _companyEmailController.clear();
+      _syncedCompanyId = null;
+      _companyName = '';
+      _companyEmail = '';
+      return;
+    }
+
+    final companyChanged =
+        _syncedCompanyId != activeCompany.id ||
+        _companyName != activeCompany.name ||
+        _companyEmail != activeCompany.email;
+
+    if (!companyChanged) {
+      return;
+    }
+
+    _companyNameController.text = activeCompany.name;
+    _companyEmailController.text = activeCompany.email;
+    _syncedCompanyId = activeCompany.id;
+    _companyName = activeCompany.name;
+    _companyEmail = activeCompany.email;
+  }
+
   void _cancelUserEditing(AuthSessionModel session) {
     _userNameController.text = session.user.name;
     _userEmailController.text = session.user.email;
@@ -211,13 +310,17 @@ class _ConfiguracoesPageState extends ConsumerState<ConfiguracoesPage> {
       email: _userEmailController.text.trim(),
       perfil: session.user.perfil,
     );
+
     final updatedSession = AuthSessionModel(
       accessToken: session.accessToken,
       refreshToken: session.refreshToken,
       user: user,
+      companies: session.companies,
+      activeCompanyId: session.activeCompanyId,
     );
 
     ref.read(authSessionProvider.notifier).setSession(updatedSession);
+
     _syncedUserId = user.id;
     _syncedUserName = user.name;
     _syncedUserEmail = user.email;
@@ -236,12 +339,13 @@ class _ConfiguracoesPageState extends ConsumerState<ConfiguracoesPage> {
     setState(() => _isEditingCompany = false);
   }
 
-  void _saveCompanyData() {
+  Future<void> _saveCompanyData() async {
     if (_isSavingCompany) {
       return;
     }
 
     final session = ref.read(authSessionProvider);
+
     if (session == null || !_canEditCompanyData(session.user)) {
       setState(() => _isEditingCompany = false);
       return;
@@ -249,15 +353,50 @@ class _ConfiguracoesPageState extends ConsumerState<ConfiguracoesPage> {
 
     setState(() => _isSavingCompany = true);
 
-    _companyName = _companyNameController.text.trim();
-    _companyEmail = _companyEmailController.text.trim();
+    try {
+      final updatedCompany = await ref
+          .read(authRepositoryProvider)
+          .updateActiveCompany(
+            name: _companyNameController.text,
+            email: _companyEmailController.text,
+          );
 
-    setState(() {
-      _isSavingCompany = false;
-      _isEditingCompany = false;
-    });
+      final updatedCompanies = session.companies
+          .map(
+            (company) =>
+                company.id == updatedCompany.id ? updatedCompany : company,
+          )
+          .toList(growable: false);
 
-    _showSessionUpdateMessage('Dados da empresa atualizados nesta sessão.');
+      final updatedSession = AuthSessionModel(
+        accessToken: session.accessToken,
+        refreshToken: session.refreshToken,
+        user: session.user,
+        companies: updatedCompanies,
+        activeCompanyId: session.activeCompanyId,
+      );
+
+      await ref.read(authSessionProvider.notifier).setSession(updatedSession);
+
+      _companyName = updatedCompany.name;
+      _companyEmail = updatedCompany.email;
+
+      setState(() {
+        _isSavingCompany = false;
+        _isEditingCompany = false;
+      });
+
+      _showSessionUpdateMessage('Dados da empresa atualizados.');
+    } catch (error) {
+      if (!mounted) {
+        return;
+      }
+
+      setState(() => _isSavingCompany = false);
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(describeError(error))));
+    }
   }
 
   Future<void> _logout() async {
@@ -415,7 +554,10 @@ class _SettingsCard extends StatelessWidget {
                     ),
                   ),
                 ),
-                if (trailing != null) ...[const SizedBox(width: 12), trailing!],
+                if (trailing != null) ...[
+                  const SizedBox(width: 12),
+                  trailing!,
+                ],
               ],
             ),
             const SizedBox(height: 16),
@@ -423,6 +565,32 @@ class _SettingsCard extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+class _InfoRow extends StatelessWidget {
+  const _InfoRow({required this.label, required this.value});
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: theme.textTheme.labelMedium?.copyWith(
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(value),
+      ],
     );
   }
 }

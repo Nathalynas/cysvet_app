@@ -1,12 +1,17 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../data/auth_repository.dart';
+import '../data/auth_session_storage.dart';
 import '../domain/auth_session_model.dart';
 
 final authSessionProvider =
     NotifierProvider<AuthSessionNotifier, AuthSessionModel?>(
       AuthSessionNotifier.new,
     );
+final authBootstrapProvider =
+    NotifierProvider<AuthBootstrapNotifier, bool>(AuthBootstrapNotifier.new);
 final authBusyProvider = NotifierProvider<BusyNotifier, bool>(BusyNotifier.new);
 
 final authControllerProvider = Provider<AuthController>((ref) {
@@ -24,7 +29,7 @@ class AuthController {
       final session = await _ref
           .read(authRepositoryProvider)
           .login(email: email, password: password);
-      _ref.read(authSessionProvider.notifier).setSession(session);
+      await _ref.read(authSessionProvider.notifier).setSession(session);
     } finally {
       _ref.read(authBusyProvider.notifier).setBusy(false);
     }
@@ -40,7 +45,7 @@ class AuthController {
       final session = await _ref
           .read(authRepositoryProvider)
           .register(name: name, email: email, password: password);
-      _ref.read(authSessionProvider.notifier).setSession(session);
+      await _ref.read(authSessionProvider.notifier).setSession(session);
     } finally {
       _ref.read(authBusyProvider.notifier).setBusy(false);
     }
@@ -59,22 +64,80 @@ class AuthController {
         }
       }
     } finally {
-      _ref.read(authSessionProvider.notifier).clearSession();
+      await _ref.read(authSessionProvider.notifier).clearSession();
       _ref.read(authBusyProvider.notifier).setBusy(false);
     }
   }
 }
 
 class AuthSessionNotifier extends Notifier<AuthSessionModel?> {
-  @override
-  AuthSessionModel? build() => null;
+  bool _restoreScheduled = false;
 
-  void setSession(AuthSessionModel? session) {
-    state = session;
+  @override
+  AuthSessionModel? build() {
+    if (!_restoreScheduled) {
+      _restoreScheduled = true;
+      Future.microtask(_restoreSession);
+    }
+
+    return null;
   }
 
-  void clearSession() {
+  Future<void> setSession(AuthSessionModel? session) async {
+    state = session;
+    if (session == null) {
+      await ref.read(authSessionStorageProvider).clear();
+      return;
+    }
+
+    await ref.read(authSessionStorageProvider).write(session);
+  }
+
+  Future<void> switchActiveCompany(int companyId) async {
+    final session = state;
+    if (session == null) {
+      return;
+    }
+
+    final companyExists = session.companies.any((company) => company.id == companyId);
+    if (!companyExists) {
+      return;
+    }
+
+    await setSession(
+      AuthSessionModel(
+        accessToken: session.accessToken,
+        refreshToken: session.refreshToken,
+        user: session.user,
+        activeCompanyId: companyId,
+        companies: session.companies,
+      ),
+    );
+  }
+
+  Future<void> clearSession() async {
     state = null;
+    await ref.read(authSessionStorageProvider).clear();
+  }
+
+  Future<void> _restoreSession() async {
+    try {
+      final restoredSession = await ref.read(authSessionStorageProvider).read();
+      if (restoredSession != null) {
+        state = restoredSession;
+      }
+    } finally {
+      ref.read(authBootstrapProvider.notifier).markReady();
+    }
+  }
+}
+
+class AuthBootstrapNotifier extends Notifier<bool> {
+  @override
+  bool build() => false;
+
+  void markReady() {
+    state = true;
   }
 }
 

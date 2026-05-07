@@ -6,5 +6,5 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface IndicadorReprodutivoRepository extends JpaRepository<IndicadorReprodutivo, Long> {
 
-    List<IndicadorReprodutivo> findAllByUsuarioIdOrderByDataReferenciaDesc(Long idUsuario);
+    List<IndicadorReprodutivo> findAllByOrderByDataReferenciaDesc();
 }

@@ -13,7 +13,7 @@ import lombok.Setter;
 @Setter
 @Entity
 @Table(name = "propriedade")
-public class Propriedade extends BaseEntity {
+public class Propriedade extends TenantAwareEntity {
 
     @Column(name = "id_externo", nullable = false, unique = true, length = 64)
     private String idExterno;

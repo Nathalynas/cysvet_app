@@ -10,9 +10,9 @@ import lombok.Setter;
 @Setter
 @Entity
 @Table(name = "mutacao_cliente")
-public class MutacaoCliente extends BaseEntity {
+public class MutacaoCliente extends TenantAwareEntity {
 
-    @Column(name = "chave_mutacao", nullable = false, unique = true, length = 128)
+    @Column(name = "chave_mutacao", nullable = false, length = 128)
     private String chaveMutacao;
 
     @Column(name = "nome_entidade", nullable = false)

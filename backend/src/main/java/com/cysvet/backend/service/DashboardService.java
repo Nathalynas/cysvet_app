@@ -30,24 +30,21 @@ public class DashboardService {
 
     @Transactional(readOnly = true)
     public DashboardResponse getMetrics(Long idPropriedade, LocalDate dataInicio, LocalDate dataFim) {
-        Usuario user = authenticatedUserProvider.getCurrentUser();
-
         List<Animal> animals = idPropriedade == null
-                ? animalRepository.findAllByUsuarioIdOrderByCodigoAsc(user.getId())
-                : animalRepository.findAllByUsuarioIdAndPropriedadeIdOrderByCodigoAsc(user.getId(), idPropriedade);
+                ? animalRepository.findAllByOrderByCodigoAsc()
+                : animalRepository.findAllByPropriedadeIdOrderByCodigoAsc(idPropriedade);
 
         List<EventoReprodutivo> events;
         if (idPropriedade == null) {
-            events = reproductiveEventRepository.findAllByUsuarioIdOrderByDataEventoDesc(user.getId());
+            events = reproductiveEventRepository.findAllByOrderByDataEventoDesc();
         } else if (dataInicio != null && dataFim != null) {
-            events = reproductiveEventRepository.findAllByUsuarioIdAndPropriedadeIdAndDataEventoBetweenOrderByDataEventoDesc(
-                    user.getId(),
+            events = reproductiveEventRepository.findAllByPropriedadeIdAndDataEventoBetweenOrderByDataEventoDesc(
                     idPropriedade,
                     dataInicio,
                     dataFim
             );
         } else {
-            events = reproductiveEventRepository.findAllByUsuarioIdAndPropriedadeIdOrderByDataEventoDesc(user.getId(), idPropriedade);
+            events = reproductiveEventRepository.findAllByPropriedadeIdOrderByDataEventoDesc(idPropriedade);
         }
 
         long inseminations = events.stream().filter(event -> event.getTipo() == TipoEventoReprodutivo.INSEMINATION).count();
@@ -65,7 +62,7 @@ public class DashboardService {
         double mediaInseminacoes = inseminatedAnimals == 0 ? 0.0 : (double) inseminations / inseminatedAnimals;
 
         return new DashboardResponse(
-                idPropriedade == null ? farmPropertyRepository.findAllByUsuarioIdOrderByNomeAsc(user.getId()).size() : 1,
+                idPropriedade == null ? farmPropertyRepository.findAllByOrderByNomeAsc().size() : 1,
                 animals.size(),
                 events.size(),
                 taxaPrenhez,

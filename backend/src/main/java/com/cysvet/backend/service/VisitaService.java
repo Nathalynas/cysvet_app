@@ -27,29 +27,28 @@ public class VisitaService {
 
     @Transactional(readOnly = true)
     public List<VisitaResponse> list(Long idPropriedade) {
-        Usuario user = authenticatedUserProvider.getCurrentUser();
         List<Visita> visits = idPropriedade == null
-                ? visitRepository.findAllByUsuarioIdOrderByDataVisitaDesc(user.getId())
-                : visitRepository.findAllByUsuarioIdAndPropriedadeIdOrderByDataVisitaDesc(user.getId(), idPropriedade);
+                ? visitRepository.findAllByOrderByDataVisitaDesc()
+                : visitRepository.findAllByPropriedadeIdOrderByDataVisitaDesc(idPropriedade);
         return visits.stream().map(this::toResponse).toList();
     }
 
     @Transactional(readOnly = true)
-    public List<VisitaResponse> listUpdatedSince(Long idUsuario, Instant since) {
-        return visitRepository.findAllByUsuarioIdAndDataAtualizacaoAfterOrderByDataAtualizacaoAsc(idUsuario, since).stream()
+    public List<VisitaResponse> listUpdatedSince(Instant since) {
+        return visitRepository.findAllByDataAtualizacaoAfterOrderByDataAtualizacaoAsc(since).stream()
                 .map(this::toResponse)
                 .toList();
     }
 
     @Transactional(readOnly = true)
-    public Visita getEntity(Long id, Long idUsuario) {
-        return visitRepository.findByIdAndUsuarioId(id, idUsuario)
+    public Visita getEntity(Long id) {
+        return visitRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Visita nao encontrada"));
     }
 
     @Transactional(readOnly = true)
-    public Visita getByExternalId(String idExterno, Long idUsuario) {
-        return visitRepository.findByIdExternoAndUsuarioId(idExterno, idUsuario)
+    public Visita getByExternalId(String idExterno) {
+        return visitRepository.findByIdExterno(idExterno)
                 .orElseThrow(() -> new ResourceNotFoundException("Visita nao encontrada"));
     }
 
@@ -66,7 +65,7 @@ public class VisitaService {
     @Transactional
     public VisitaResponse update(Long id, VisitaRequest request) {
         Usuario user = authenticatedUserProvider.getCurrentUser();
-        Visita visit = getEntity(id, user.getId());
+        Visita visit = getEntity(id);
         apply(visit, request, user);
         Visita saved = visitRepository.save(visit);
         deletedRecordService.clearDeletionMarker("visit", saved.getIdExterno(), user.getId());
@@ -76,14 +75,14 @@ public class VisitaService {
     @Transactional
     public void delete(Long id) {
         Usuario user = authenticatedUserProvider.getCurrentUser();
-        Visita visit = getEntity(id, user.getId());
+        Visita visit = getEntity(id);
         visitRepository.delete(visit);
         deletedRecordService.registerDeletion("visit", visit.getIdExterno(), user.getId());
     }
 
     @Transactional
     public Visita upsertForSync(VisitaRequest request, Instant dataAtualizacaoCliente, Usuario user) {
-        Visita visit = visitRepository.findByIdExternoAndUsuarioId(request.idExterno(), user.getId())
+        Visita visit = visitRepository.findByIdExterno(request.idExterno())
                 .orElseGet(Visita::new);
 
         if (visit.getId() != null && dataAtualizacaoCliente != null && visit.getDataAtualizacao().isAfter(dataAtualizacaoCliente)) {
@@ -98,7 +97,7 @@ public class VisitaService {
 
     @Transactional
     public void deleteByExternalId(String idExterno, Usuario user) {
-        Visita visit = getByExternalId(idExterno, user.getId());
+        Visita visit = getByExternalId(idExterno);
         visitRepository.delete(visit);
         deletedRecordService.registerDeletion("visit", visit.getIdExterno(), user.getId());
     }
@@ -119,8 +118,8 @@ public class VisitaService {
 
     private void apply(Visita visit, VisitaRequest request, Usuario user) {
         Propriedade property = request.idPropriedade() != null
-                ? propriedadeService.getEntity(request.idPropriedade(), user.getId())
-                : propriedadeService.getByExternalId(request.idExternoPropriedade(), user.getId());
+                ? propriedadeService.getEntity(request.idPropriedade())
+                : propriedadeService.getByExternalId(request.idExternoPropriedade());
 
         visit.setIdExterno(request.idExterno());
         visit.setPropriedade(property);

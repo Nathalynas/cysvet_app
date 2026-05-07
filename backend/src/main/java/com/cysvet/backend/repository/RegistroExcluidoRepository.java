@@ -8,7 +8,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface RegistroExcluidoRepository extends JpaRepository<RegistroExcluido, Long> {
 
-    List<RegistroExcluido> findAllByIdUsuarioAndDataAtualizacaoAfterOrderByDataAtualizacaoAsc(Long idUsuario, Instant dataAtualizacao);
+    List<RegistroExcluido> findAllByDataAtualizacaoAfterOrderByDataAtualizacaoAsc(Instant dataAtualizacao);
 
     Optional<RegistroExcluido> findByIdUsuarioAndNomeEntidadeAndIdExterno(Long idUsuario, String nomeEntidade, String idExterno);
 }

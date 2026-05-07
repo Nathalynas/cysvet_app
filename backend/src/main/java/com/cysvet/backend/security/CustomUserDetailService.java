@@ -2,6 +2,7 @@ package com.cysvet.backend.security;
 
 import com.cysvet.backend.entity.Usuario;
 import com.cysvet.backend.repository.UsuarioRepository;
+import com.cysvet.backend.tenant.BypassTenant;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -10,6 +11,7 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 
 @Service
+@BypassTenant
 @RequiredArgsConstructor
 public class CustomUserDetailService implements UserDetailsService {
 
@@ -20,7 +22,8 @@ public class CustomUserDetailService implements UserDetailsService {
         Usuario user = userRepository.findByEmail(username)
                 .orElseThrow(() -> new UsernameNotFoundException("Usuario nao encontrado"));
 
-        return new org.springframework.security.core.userdetails.User(
+        return new AuthenticatedUserPrincipal(
+                user.getId(),
                 user.getEmail(),
                 user.getSenha(),
                 java.util.List.of(new SimpleGrantedAuthority("ROLE_" + user.getPerfil().name()))

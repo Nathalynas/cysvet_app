@@ -8,11 +8,9 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface PropriedadeRepository extends JpaRepository<Propriedade, Long> {
 
-    List<Propriedade> findAllByUsuarioIdOrderByNomeAsc(Long idUsuario);
+    List<Propriedade> findAllByOrderByNomeAsc();
 
-    Optional<Propriedade> findByIdAndUsuarioId(Long id, Long idUsuario);
+    Optional<Propriedade> findByIdExterno(String idExterno);
 
-    Optional<Propriedade> findByIdExternoAndUsuarioId(String idExterno, Long idUsuario);
-
-    List<Propriedade> findAllByUsuarioIdAndDataAtualizacaoAfterOrderByDataAtualizacaoAsc(Long idUsuario, Instant dataAtualizacao);
+    List<Propriedade> findAllByDataAtualizacaoAfterOrderByDataAtualizacaoAsc(Instant dataAtualizacao);
 }

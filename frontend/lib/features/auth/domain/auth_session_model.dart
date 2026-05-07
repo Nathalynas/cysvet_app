@@ -8,11 +8,17 @@ class AuthSessionModel with AuthSessionModelMappable {
     this.accessToken = '',
     this.refreshToken = '',
     this.user = const AuthenticatedUserModel(),
+    this.activeCompanyId = 0,
+    this.companies = const [],
   });
 
   final String accessToken;
   final String refreshToken;
   final AuthenticatedUserModel user;
+  @MappableField(key: 'empresaAtivaId')
+  final int activeCompanyId;
+  @MappableField(key: 'empresas')
+  final List<AllowedCompanyModel> companies;
 }
 
 @MappableClass()
@@ -21,7 +27,7 @@ class AuthenticatedUserModel with AuthenticatedUserModelMappable {
     this.id = 0,
     this.name = '',
     this.email = '',
-    this.perfil = 'USER',
+    this.perfil = 'VETERINARIAN',
   });
 
   final int id;
@@ -30,6 +36,41 @@ class AuthenticatedUserModel with AuthenticatedUserModelMappable {
   final String perfil;
 }
 
+@MappableClass()
+class AllowedCompanyModel with AllowedCompanyModelMappable {
+  const AllowedCompanyModel({this.id = 0, this.name = '', this.email = ''});
+
+  final int id;
+  @MappableField(key: 'name')
+  final String name;
+  final String email;
+}
+
 extension AuthenticatedUserModelPermissions on AuthenticatedUserModel {
   bool get isAdmin => perfil.toUpperCase() == 'ADMIN';
+
+  bool get isVeterinarian => perfil.toUpperCase() == 'VETERINARIAN';
+
+  String get displayRole {
+    switch (perfil.toUpperCase()) {
+      case 'ADMIN':
+        return 'Administrador';
+      case 'VETERINARIAN':
+        return 'Veterinario';
+      default:
+        return perfil;
+    }
+  }
+}
+
+extension AuthSessionModelTenant on AuthSessionModel {
+  AllowedCompanyModel? get activeCompany {
+    for (final company in companies) {
+      if (company.id == activeCompanyId) {
+        return company;
+      }
+    }
+
+    return companies.isEmpty ? null : companies.first;
+  }
 }

@@ -31,28 +31,27 @@ public class PropriedadeService {
 
     @Transactional(readOnly = true)
     public List<PropriedadeResponse> list() {
-        Usuario user = authenticatedUserProvider.getCurrentUser();
-        return farmPropertyRepository.findAllByUsuarioIdOrderByNomeAsc(user.getId()).stream()
+        return farmPropertyRepository.findAllByOrderByNomeAsc().stream()
                 .map(this::toResponse)
                 .toList();
     }
 
     @Transactional(readOnly = true)
-    public List<PropriedadeResponse> listUpdatedSince(Long idUsuario, Instant dataAtualizacao) {
-        return farmPropertyRepository.findAllByUsuarioIdAndDataAtualizacaoAfterOrderByDataAtualizacaoAsc(idUsuario, dataAtualizacao).stream()
+    public List<PropriedadeResponse> listUpdatedSince(Instant dataAtualizacao) {
+        return farmPropertyRepository.findAllByDataAtualizacaoAfterOrderByDataAtualizacaoAsc(dataAtualizacao).stream()
                 .map(this::toResponse)
                 .toList();
     }
 
     @Transactional(readOnly = true)
-    public Propriedade getEntity(Long id, Long idUsuario) {
-        return farmPropertyRepository.findByIdAndUsuarioId(id, idUsuario)
+    public Propriedade getEntity(Long id) {
+        return farmPropertyRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Propriedade nao encontrada"));
     }
 
     @Transactional(readOnly = true)
-    public Propriedade getByExternalId(String idExterno, Long idUsuario) {
-        return farmPropertyRepository.findByIdExternoAndUsuarioId(idExterno, idUsuario)
+    public Propriedade getByExternalId(String idExterno) {
+        return farmPropertyRepository.findByIdExterno(idExterno)
                 .orElseThrow(() -> new ResourceNotFoundException("Propriedade nao encontrada"));
     }
 
@@ -69,7 +68,7 @@ public class PropriedadeService {
     @Transactional
     public PropriedadeResponse update(Long id, PropriedadeRequest request) {
         Usuario user = authenticatedUserProvider.getCurrentUser();
-        Propriedade property = getEntity(id, user.getId());
+        Propriedade property = getEntity(id);
         apply(property, request, user);
         Propriedade saved = farmPropertyRepository.save(property);
         deletedRecordService.clearDeletionMarker("property", saved.getIdExterno(), user.getId());
@@ -79,21 +78,21 @@ public class PropriedadeService {
     @Transactional
     public void delete(Long id) {
         Usuario user = authenticatedUserProvider.getCurrentUser();
-        Propriedade property = getEntity(id, user.getId());
+        Propriedade property = getEntity(id);
 
-        visitRepository.findAllByUsuarioIdAndPropriedadeIdOrderByDataVisitaDesc(user.getId(), property.getId())
+        visitRepository.findAllByPropriedadeIdOrderByDataVisitaDesc(property.getId())
                 .forEach(visit -> {
                     visitRepository.delete(visit);
                     deletedRecordService.registerDeletion("visit", visit.getIdExterno(), user.getId());
                 });
 
-        reproductiveEventRepository.findAllByUsuarioIdAndPropriedadeIdOrderByDataEventoDesc(user.getId(), property.getId())
+        reproductiveEventRepository.findAllByPropriedadeIdOrderByDataEventoDesc(property.getId())
                 .forEach(event -> {
                     reproductiveEventRepository.delete(event);
                     deletedRecordService.registerDeletion("event", event.getIdExterno(), user.getId());
                 });
 
-        animalRepository.findAllByUsuarioIdAndPropriedadeIdOrderByCodigoAsc(user.getId(), property.getId())
+        animalRepository.findAllByPropriedadeIdOrderByCodigoAsc(property.getId())
                 .forEach(animal -> {
                     animalRepository.delete(animal);
                     deletedRecordService.registerDeletion("animal", animal.getIdExterno(), user.getId());
@@ -105,7 +104,7 @@ public class PropriedadeService {
 
     @Transactional
     public Propriedade upsertForSync(PropriedadeRequest request, Instant dataAtualizacaoCliente, Usuario user) {
-        Propriedade property = farmPropertyRepository.findByIdExternoAndUsuarioId(request.idExterno(), user.getId())
+        Propriedade property = farmPropertyRepository.findByIdExterno(request.idExterno())
                 .orElseGet(Propriedade::new);
 
         if (property.getId() != null && dataAtualizacaoCliente != null && property.getDataAtualizacao().isAfter(dataAtualizacaoCliente)) {
@@ -120,21 +119,21 @@ public class PropriedadeService {
 
     @Transactional
     public void deleteByExternalId(String idExterno, Usuario user) {
-        Propriedade property = getByExternalId(idExterno, user.getId());
+        Propriedade property = getByExternalId(idExterno);
 
-        visitRepository.findAllByUsuarioIdAndPropriedadeIdOrderByDataVisitaDesc(user.getId(), property.getId())
+        visitRepository.findAllByPropriedadeIdOrderByDataVisitaDesc(property.getId())
                 .forEach(visit -> {
                     visitRepository.delete(visit);
                     deletedRecordService.registerDeletion("visit", visit.getIdExterno(), user.getId());
                 });
 
-        reproductiveEventRepository.findAllByUsuarioIdAndPropriedadeIdOrderByDataEventoDesc(user.getId(), property.getId())
+        reproductiveEventRepository.findAllByPropriedadeIdOrderByDataEventoDesc(property.getId())
                 .forEach(event -> {
                     reproductiveEventRepository.delete(event);
                     deletedRecordService.registerDeletion("event", event.getIdExterno(), user.getId());
                 });
 
-        animalRepository.findAllByUsuarioIdAndPropriedadeIdOrderByCodigoAsc(user.getId(), property.getId())
+        animalRepository.findAllByPropriedadeIdOrderByCodigoAsc(property.getId())
                 .forEach(animal -> {
                     animalRepository.delete(animal);
                     deletedRecordService.registerDeletion("animal", animal.getIdExterno(), user.getId());

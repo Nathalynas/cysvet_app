@@ -8,13 +8,11 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface VisitaRepository extends JpaRepository<Visita, Long> {
 
-    List<Visita> findAllByUsuarioIdOrderByDataVisitaDesc(Long idUsuario);
+    List<Visita> findAllByOrderByDataVisitaDesc();
 
-    List<Visita> findAllByUsuarioIdAndPropriedadeIdOrderByDataVisitaDesc(Long idUsuario, Long idPropriedade);
+    List<Visita> findAllByPropriedadeIdOrderByDataVisitaDesc(Long idPropriedade);
 
-    Optional<Visita> findByIdAndUsuarioId(Long id, Long idUsuario);
+    Optional<Visita> findByIdExterno(String idExterno);
 
-    Optional<Visita> findByIdExternoAndUsuarioId(String idExterno, Long idUsuario);
-
-    List<Visita> findAllByUsuarioIdAndDataAtualizacaoAfterOrderByDataAtualizacaoAsc(Long idUsuario, Instant dataAtualizacao);
+    List<Visita> findAllByDataAtualizacaoAfterOrderByDataAtualizacaoAsc(Instant dataAtualizacao);
 }

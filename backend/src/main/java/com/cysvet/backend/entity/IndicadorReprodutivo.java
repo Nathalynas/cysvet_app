@@ -14,7 +14,7 @@ import lombok.Setter;
 @Setter
 @Entity
 @Table(name = "indicador_reprodutivo")
-public class IndicadorReprodutivo extends BaseEntity {
+public class IndicadorReprodutivo extends TenantAwareEntity {
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "id_usuario", nullable = false)

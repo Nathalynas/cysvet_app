@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../features/animals/presentation/pages/animals_page.dart';
 import '../features/auth/application/auth_state.dart';
 import '../features/auth/presentation/pages/login_page.dart';
+import '../features/auth/presentation/pages/register_page.dart';
 import '../features/settings/presentation/pages/settings_page.dart';
 import '../features/dashboard/presentation/pages/dashboard_page.dart';
 import '../features/properties/presentation/pages/properties_page.dart';
@@ -15,21 +16,32 @@ import 'app_shell.dart';
 import 'theme.dart';
 
 final appRouterProvider = Provider<GoRouter>((ref) {
+  final bootstrapComplete = ref.watch(authBootstrapProvider);
   final session = ref.watch(authSessionProvider);
 
   return GoRouter(
     initialLocation: '/splash',
     redirect: (context, state) {
-      final isAuthenticated = session != null;
       final location = state.matchedLocation;
+      final isAuthenticated = session != null;
 
-      final isPublicRoute = location == '/splash' || location == '/login';
+      if (!bootstrapComplete && location != '/splash') {
+        return '/splash';
+      }
 
-      if (!isAuthenticated && !isPublicRoute) {
+      if (!bootstrapComplete) {
+        return null;
+      }
+
+      if (location == '/splash') {
+        return isAuthenticated ? '/dashboard' : '/login';
+      }
+
+      if (!isAuthenticated && location != '/login' && location != '/register') {
         return '/login';
       }
 
-      if (isAuthenticated && location == '/login') {
+      if (isAuthenticated && (location == '/login' || location == '/register')) {
         return '/dashboard';
       }
 
@@ -43,6 +55,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/login',
         builder: (context, state) => _buildPublicRoute(const LoginPage()),
+      ),
+      GoRoute(
+        path: '/register',
+        builder: (context, state) => _buildPublicRoute(const RegisterPage()),
       ),
       ShellRoute(
         builder: (context, state, child) {

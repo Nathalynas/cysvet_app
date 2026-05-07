@@ -45,6 +45,18 @@ class AuthRepository {
     );
   }
 
+  Future<AllowedCompanyModel> updateActiveCompany({
+    required String name,
+    required String email,
+  }) async {
+    final response = await _dio.put<Object?>(
+      '/api/companies/active',
+      data: {'name': name.trim(), 'email': email.trim()},
+    );
+
+    return AllowedCompanyModelMapper.fromMap(_asMap(response.data));
+  }
+
   Map<String, dynamic> _asMap(Object? data) {
     if (data is Map<String, dynamic>) {
       return data;

@@ -16,7 +16,7 @@ import lombok.Setter;
 @Setter
 @Entity
 @Table(name = "evento_reprodutivo")
-public class EventoReprodutivo extends BaseEntity {
+public class EventoReprodutivo extends TenantAwareEntity {
 
     @Column(name = "id_externo", nullable = false, unique = true, length = 64)
     private String idExterno;

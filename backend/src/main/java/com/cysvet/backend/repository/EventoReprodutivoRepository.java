@@ -9,26 +9,19 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface EventoReprodutivoRepository extends JpaRepository<EventoReprodutivo, Long> {
 
-    List<EventoReprodutivo> findAllByUsuarioIdOrderByDataEventoDesc(Long idUsuario);
+    List<EventoReprodutivo> findAllByOrderByDataEventoDesc();
 
-    List<EventoReprodutivo> findAllByUsuarioIdAndPropriedadeIdOrderByDataEventoDesc(Long idUsuario, Long idPropriedade);
+    List<EventoReprodutivo> findAllByPropriedadeIdOrderByDataEventoDesc(Long idPropriedade);
 
-    List<EventoReprodutivo> findAllByUsuarioIdAndPropriedadeIdAndDataEventoBetweenOrderByDataEventoDesc(
-            Long idUsuario,
+    List<EventoReprodutivo> findAllByPropriedadeIdAndDataEventoBetweenOrderByDataEventoDesc(
             Long idPropriedade,
             LocalDate dataInicio,
             LocalDate dataFim
     );
 
-    List<EventoReprodutivo> findAllByUsuarioIdAndAnimalIdOrderByDataEventoDesc(Long idUsuario, Long idAnimal);
+    List<EventoReprodutivo> findAllByAnimalIdOrderByDataEventoDesc(Long idAnimal);
 
-    Optional<EventoReprodutivo> findByIdAndUsuarioId(Long id, Long idUsuario);
+    Optional<EventoReprodutivo> findByIdExterno(String idExterno);
 
-    Optional<EventoReprodutivo> findByIdExternoAndUsuarioId(String idExterno, Long idUsuario);
-
-    void deleteAllByUsuarioIdAndPropriedadeId(Long idUsuario, Long idPropriedade);
-
-    void deleteAllByUsuarioIdAndAnimalId(Long idUsuario, Long idAnimal);
-
-    List<EventoReprodutivo> findAllByUsuarioIdAndDataAtualizacaoAfterOrderByDataAtualizacaoAsc(Long idUsuario, Instant dataAtualizacao);
+    List<EventoReprodutivo> findAllByDataAtualizacaoAfterOrderByDataAtualizacaoAsc(Instant dataAtualizacao);
 }

@@ -8,17 +8,11 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface AnimalRepository extends JpaRepository<Animal, Long> {
 
-    List<Animal> findAllByUsuarioIdOrderByCodigoAsc(Long idUsuario);
+    List<Animal> findAllByOrderByCodigoAsc();
 
-    List<Animal> findAllByUsuarioIdAndPropriedadeIdOrderByCodigoAsc(Long idUsuario, Long idPropriedade);
+    List<Animal> findAllByPropriedadeIdOrderByCodigoAsc(Long idPropriedade);
 
-    Optional<Animal> findByIdAndUsuarioId(Long id, Long idUsuario);
+    Optional<Animal> findByIdExterno(String idExterno);
 
-    Optional<Animal> findByIdExternoAndUsuarioId(String idExterno, Long idUsuario);
-
-    long countByUsuarioId(Long idUsuario);
-
-    void deleteAllByUsuarioIdAndPropriedadeId(Long idUsuario, Long idPropriedade);
-
-    List<Animal> findAllByUsuarioIdAndDataAtualizacaoAfterOrderByDataAtualizacaoAsc(Long idUsuario, Instant dataAtualizacao);
+    List<Animal> findAllByDataAtualizacaoAfterOrderByDataAtualizacaoAsc(Instant dataAtualizacao);
 }

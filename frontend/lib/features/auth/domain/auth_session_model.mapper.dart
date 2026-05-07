@@ -16,6 +16,7 @@ class AuthSessionModelMapper extends ClassMapperBase<AuthSessionModel> {
     if (_instance == null) {
       MapperContainer.globals.use(_instance = AuthSessionModelMapper._());
       AuthenticatedUserModelMapper.ensureInitialized();
+      AllowedCompanyModelMapper.ensureInitialized();
     }
     return _instance!;
   }
@@ -44,12 +45,32 @@ class AuthSessionModelMapper extends ClassMapperBase<AuthSessionModel> {
     opt: true,
     def: const AuthenticatedUserModel(),
   );
+  static int _$activeCompanyId(AuthSessionModel v) => v.activeCompanyId;
+  static const Field<AuthSessionModel, int> _f$activeCompanyId = Field(
+    'activeCompanyId',
+    _$activeCompanyId,
+    key: r'empresaAtivaId',
+    opt: true,
+    def: 0,
+  );
+  static List<AllowedCompanyModel> _$companies(AuthSessionModel v) =>
+      v.companies;
+  static const Field<AuthSessionModel, List<AllowedCompanyModel>> _f$companies =
+      Field(
+        'companies',
+        _$companies,
+        key: r'empresas',
+        opt: true,
+        def: const [],
+      );
 
   @override
   final MappableFields<AuthSessionModel> fields = const {
     #accessToken: _f$accessToken,
     #refreshToken: _f$refreshToken,
     #user: _f$user,
+    #activeCompanyId: _f$activeCompanyId,
+    #companies: _f$companies,
   };
 
   static AuthSessionModel _instantiate(DecodingData data) {
@@ -57,6 +78,8 @@ class AuthSessionModelMapper extends ClassMapperBase<AuthSessionModel> {
       accessToken: data.dec(_f$accessToken),
       refreshToken: data.dec(_f$refreshToken),
       user: data.dec(_f$user),
+      activeCompanyId: data.dec(_f$activeCompanyId),
+      companies: data.dec(_f$companies),
     );
   }
 
@@ -128,10 +151,18 @@ abstract class AuthSessionModelCopyWith<$R, $In extends AuthSessionModel, $Out>
     AuthenticatedUserModel
   >
   get user;
+  ListCopyWith<
+    $R,
+    AllowedCompanyModel,
+    AllowedCompanyModelCopyWith<$R, AllowedCompanyModel, AllowedCompanyModel>
+  >
+  get companies;
   $R call({
     String? accessToken,
     String? refreshToken,
     AuthenticatedUserModel? user,
+    int? activeCompanyId,
+    List<AllowedCompanyModel>? companies,
   });
   AuthSessionModelCopyWith<$R2, $In, $Out2> $chain<$R2, $Out2>(
     Then<$Out2, $R2> t,
@@ -154,15 +185,30 @@ class _AuthSessionModelCopyWithImpl<$R, $Out>
   >
   get user => $value.user.copyWith.$chain((v) => call(user: v));
   @override
+  ListCopyWith<
+    $R,
+    AllowedCompanyModel,
+    AllowedCompanyModelCopyWith<$R, AllowedCompanyModel, AllowedCompanyModel>
+  >
+  get companies => ListCopyWith(
+    $value.companies,
+    (v, t) => v.copyWith.$chain(t),
+    (v) => call(companies: v),
+  );
+  @override
   $R call({
     String? accessToken,
     String? refreshToken,
     AuthenticatedUserModel? user,
+    int? activeCompanyId,
+    List<AllowedCompanyModel>? companies,
   }) => $apply(
     FieldCopyWithData({
       if (accessToken != null) #accessToken: accessToken,
       if (refreshToken != null) #refreshToken: refreshToken,
       if (user != null) #user: user,
+      if (activeCompanyId != null) #activeCompanyId: activeCompanyId,
+      if (companies != null) #companies: companies,
     }),
   );
   @override
@@ -170,6 +216,8 @@ class _AuthSessionModelCopyWithImpl<$R, $Out>
     accessToken: data.get(#accessToken, or: $value.accessToken),
     refreshToken: data.get(#refreshToken, or: $value.refreshToken),
     user: data.get(#user, or: $value.user),
+    activeCompanyId: data.get(#activeCompanyId, or: $value.activeCompanyId),
+    companies: data.get(#companies, or: $value.companies),
   );
 
   @override
@@ -219,7 +267,7 @@ class AuthenticatedUserModelMapper
     'perfil',
     _$perfil,
     opt: true,
-    def: 'USER',
+    def: 'VETERINARIAN',
   );
 
   @override
@@ -345,5 +393,161 @@ class _AuthenticatedUserModelCopyWithImpl<$R, $Out>
   AuthenticatedUserModelCopyWith<$R2, AuthenticatedUserModel, $Out2>
   $chain<$R2, $Out2>(Then<$Out2, $R2> t) =>
       _AuthenticatedUserModelCopyWithImpl<$R2, $Out2>($value, $cast, t);
+}
+
+class AllowedCompanyModelMapper extends ClassMapperBase<AllowedCompanyModel> {
+  AllowedCompanyModelMapper._();
+
+  static AllowedCompanyModelMapper? _instance;
+  static AllowedCompanyModelMapper ensureInitialized() {
+    if (_instance == null) {
+      MapperContainer.globals.use(_instance = AllowedCompanyModelMapper._());
+    }
+    return _instance!;
+  }
+
+  @override
+  final String id = 'AllowedCompanyModel';
+
+  static int _$id(AllowedCompanyModel v) => v.id;
+  static const Field<AllowedCompanyModel, int> _f$id = Field(
+    'id',
+    _$id,
+    opt: true,
+    def: 0,
+  );
+  static String _$name(AllowedCompanyModel v) => v.name;
+  static const Field<AllowedCompanyModel, String> _f$name = Field(
+    'name',
+    _$name,
+    opt: true,
+    def: '',
+  );
+  static String _$email(AllowedCompanyModel v) => v.email;
+  static const Field<AllowedCompanyModel, String> _f$email = Field(
+    'email',
+    _$email,
+    opt: true,
+    def: '',
+  );
+
+  @override
+  final MappableFields<AllowedCompanyModel> fields = const {
+    #id: _f$id,
+    #name: _f$name,
+    #email: _f$email,
+  };
+
+  static AllowedCompanyModel _instantiate(DecodingData data) {
+    return AllowedCompanyModel(
+      id: data.dec(_f$id),
+      name: data.dec(_f$name),
+      email: data.dec(_f$email),
+    );
+  }
+
+  @override
+  final Function instantiate = _instantiate;
+
+  static AllowedCompanyModel fromMap(Map<String, dynamic> map) {
+    return ensureInitialized().decodeMap<AllowedCompanyModel>(map);
+  }
+
+  static AllowedCompanyModel fromJson(String json) {
+    return ensureInitialized().decodeJson<AllowedCompanyModel>(json);
+  }
+}
+
+mixin AllowedCompanyModelMappable {
+  String toJson() {
+    return AllowedCompanyModelMapper.ensureInitialized()
+        .encodeJson<AllowedCompanyModel>(this as AllowedCompanyModel);
+  }
+
+  Map<String, dynamic> toMap() {
+    return AllowedCompanyModelMapper.ensureInitialized()
+        .encodeMap<AllowedCompanyModel>(this as AllowedCompanyModel);
+  }
+
+  AllowedCompanyModelCopyWith<
+    AllowedCompanyModel,
+    AllowedCompanyModel,
+    AllowedCompanyModel
+  >
+  get copyWith =>
+      _AllowedCompanyModelCopyWithImpl<
+        AllowedCompanyModel,
+        AllowedCompanyModel
+      >(this as AllowedCompanyModel, $identity, $identity);
+  @override
+  String toString() {
+    return AllowedCompanyModelMapper.ensureInitialized().stringifyValue(
+      this as AllowedCompanyModel,
+    );
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return AllowedCompanyModelMapper.ensureInitialized().equalsValue(
+      this as AllowedCompanyModel,
+      other,
+    );
+  }
+
+  @override
+  int get hashCode {
+    return AllowedCompanyModelMapper.ensureInitialized().hashValue(
+      this as AllowedCompanyModel,
+    );
+  }
+}
+
+extension AllowedCompanyModelValueCopy<$R, $Out>
+    on ObjectCopyWith<$R, AllowedCompanyModel, $Out> {
+  AllowedCompanyModelCopyWith<$R, AllowedCompanyModel, $Out>
+  get $asAllowedCompanyModel => $base.as(
+    (v, t, t2) => _AllowedCompanyModelCopyWithImpl<$R, $Out>(v, t, t2),
+  );
+}
+
+abstract class AllowedCompanyModelCopyWith<
+  $R,
+  $In extends AllowedCompanyModel,
+  $Out
+>
+    implements ClassCopyWith<$R, $In, $Out> {
+  $R call({int? id, String? name, String? email});
+  AllowedCompanyModelCopyWith<$R2, $In, $Out2> $chain<$R2, $Out2>(
+    Then<$Out2, $R2> t,
+  );
+}
+
+class _AllowedCompanyModelCopyWithImpl<$R, $Out>
+    extends ClassCopyWithBase<$R, AllowedCompanyModel, $Out>
+    implements AllowedCompanyModelCopyWith<$R, AllowedCompanyModel, $Out> {
+  _AllowedCompanyModelCopyWithImpl(super.value, super.then, super.then2);
+
+  @override
+  late final ClassMapperBase<AllowedCompanyModel> $mapper =
+      AllowedCompanyModelMapper.ensureInitialized();
+  @override
+  $R call({int? id, String? name, String? email}) => $apply(
+    FieldCopyWithData({
+      if (id != null) #id: id,
+      if (name != null) #name: name,
+      if (email != null) #email: email,
+    }),
+  );
+  @override
+  AllowedCompanyModel $make(CopyWithData data) => AllowedCompanyModel(
+    id: data.get(#id, or: $value.id),
+    name: data.get(#name, or: $value.name),
+    email: data.get(#email, or: $value.email),
+  );
+
+  @override
+  AllowedCompanyModelCopyWith<$R2, AllowedCompanyModel, $Out2>
+  $chain<$R2, $Out2>(Then<$Out2, $R2> t) =>
+      _AllowedCompanyModelCopyWithImpl<$R2, $Out2>($value, $cast, t);
 }
 

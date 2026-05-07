@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -28,11 +30,16 @@ final apiClientProvider = Provider<Dio>((ref) {
           options.headers['Authorization'] = 'Bearer $token';
         }
 
+        final companyId = session?.activeCompanyId;
+        if (companyId != null && companyId > 0) {
+          options.headers['empresaid'] = companyId.toString();
+        }
+
         handler.next(options);
       },
       onError: (error, handler) {
         if (error.response?.statusCode == 401) {
-          ref.read(authSessionProvider.notifier).clearSession();
+          unawaited(ref.read(authSessionProvider.notifier).clearSession());
         }
 
         handler.next(error);

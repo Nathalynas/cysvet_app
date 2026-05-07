@@ -36,9 +36,8 @@ public class ReportService {
 
     @Transactional(readOnly = true)
     public byte[] generatePdf(Long idPropriedade, LocalDate dataInicio, LocalDate dataFim) {
-        Long idUsuario = authenticatedUserProvider.getCurrentUser().getId();
-        Propriedade property = propriedadeService.getEntity(idPropriedade, idUsuario);
-        List<Animal> animals = animalRepository.findAllByUsuarioIdAndPropriedadeIdOrderByCodigoAsc(idUsuario, idPropriedade);
+        Propriedade property = propriedadeService.getEntity(idPropriedade);
+        List<Animal> animals = animalRepository.findAllByPropriedadeIdOrderByCodigoAsc(idPropriedade);
         List<EventoReprodutivo> events = eventoReprodutivoService.findForProperty(idPropriedade, dataInicio, dataFim);
         var dashboard = dashboardService.getMetrics(idPropriedade, dataInicio, dataFim);
 
@@ -97,9 +96,8 @@ public class ReportService {
 
     @Transactional(readOnly = true)
     public byte[] generateExcel(Long idPropriedade, LocalDate dataInicio, LocalDate dataFim) {
-        Long idUsuario = authenticatedUserProvider.getCurrentUser().getId();
-        Propriedade property = propriedadeService.getEntity(idPropriedade, idUsuario);
-        List<Animal> animals = animalRepository.findAllByUsuarioIdAndPropriedadeIdOrderByCodigoAsc(idUsuario, idPropriedade);
+        Propriedade property = propriedadeService.getEntity(idPropriedade);
+        List<Animal> animals = animalRepository.findAllByPropriedadeIdOrderByCodigoAsc(idPropriedade);
         List<EventoReprodutivo> events = eventoReprodutivoService.findForProperty(idPropriedade, dataInicio, dataFim);
         var dashboard = dashboardService.getMetrics(idPropriedade, dataInicio, dataFim);
 
@@ -150,15 +148,13 @@ public class ReportService {
 
     @Transactional(readOnly = true)
     public byte[] generateVisitPdf(Long visitId) {
-        Long idUsuario = authenticatedUserProvider.getCurrentUser().getId();
-        Visita visit = visitService.getEntity(visitId, idUsuario);
+        Visita visit = visitService.getEntity(visitId);
         return generatePdf(visit.getPropriedade().getId(), visit.getDataVisita(), visit.getDataVisita());
     }
 
     @Transactional(readOnly = true)
     public byte[] generateVisitExcel(Long visitId) {
-        Long idUsuario = authenticatedUserProvider.getCurrentUser().getId();
-        Visita visit = visitService.getEntity(visitId, idUsuario);
+        Visita visit = visitService.getEntity(visitId);
         return generateExcel(visit.getPropriedade().getId(), visit.getDataVisita(), visit.getDataVisita());
     }
 
