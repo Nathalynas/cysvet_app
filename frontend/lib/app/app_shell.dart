@@ -56,6 +56,8 @@ class AppShell extends StatefulWidget {
     ),
   ];
 
+  static const int _mobileBottomItemCount = 4;
+
   @override
   State<AppShell> createState() => _AppShellState();
 }
@@ -67,12 +69,13 @@ class _AppShellState extends State<AppShell> {
   Widget build(BuildContext context) {
     final currentIndex = _getCurrentIndex(context);
     final bool isMobile = MediaQuery.of(context).size.width < MOBILE_WIDTH;
-    final content = _ShellContent(
-      title: AppShell._items[currentIndex].title,
-      child: widget.child,
-    );
 
     if (!isMobile) {
+      final content = _ShellContent(
+        title: AppShell._items[currentIndex].title,
+        child: widget.child,
+      );
+
       return Scaffold(
         body: Row(
           children: [
@@ -105,7 +108,25 @@ class _AppShellState extends State<AppShell> {
     }
 
     return Scaffold(
-      body: content,
+      drawerEnableOpenDragGesture: false,
+      drawer: _MobileNavigationDrawer(
+        currentIndex: currentIndex,
+        onDestinationSelected: (index) {
+          _onDestinationSelected(context, index);
+        },
+      ),
+      body: Builder(
+        builder: (scaffoldContext) {
+          return _ShellContent(
+            title: AppShell._items[currentIndex].title,
+            showMenuButton: true,
+            onMenuPressed: () {
+              Scaffold.of(scaffoldContext).openDrawer();
+            },
+            child: widget.child,
+          );
+        },
+      ),
       bottomNavigationBar: _MobileNavigationBar(
         currentIndex: currentIndex,
         onDestinationSelected: (index) {
@@ -147,16 +168,27 @@ class _NavigationItem {
 }
 
 class _ShellContent extends StatelessWidget {
-  const _ShellContent({required this.title, required this.child});
+  const _ShellContent({
+    required this.title,
+    required this.child,
+    this.showMenuButton = false,
+    this.onMenuPressed,
+  });
 
   final String title;
   final Widget child;
+  final bool showMenuButton;
+  final VoidCallback? onMenuPressed;
 
   @override
   Widget build(BuildContext context) {
     return Column(
       children: [
-        _PageHeader(title: title),
+        _PageHeader(
+          title: title,
+          showMenuButton: showMenuButton,
+          onMenuPressed: onMenuPressed,
+        ),
         Expanded(
           child: MediaQuery.removePadding(
             context: context,
@@ -170,9 +202,15 @@ class _ShellContent extends StatelessWidget {
 }
 
 class _PageHeader extends StatelessWidget {
-  const _PageHeader({required this.title});
+  const _PageHeader({
+    required this.title,
+    this.showMenuButton = false,
+    this.onMenuPressed,
+  });
 
   final String title;
+  final bool showMenuButton;
+  final VoidCallback? onMenuPressed;
 
   @override
   Widget build(BuildContext context) {
@@ -185,19 +223,34 @@ class _PageHeader extends StatelessWidget {
         bottom: false,
         child: Container(
           height: 64,
-          padding: const EdgeInsets.symmetric(horizontal: 24),
+          padding: EdgeInsets.only(left: showMenuButton ? 8 : 24, right: 24),
           decoration: BoxDecoration(
             border: Border(bottom: BorderSide(color: colorScheme.outline)),
           ),
           alignment: Alignment.centerLeft,
-          child: Text(
-            title,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: titleStyle?.copyWith(
-              color: colorScheme.onSurface,
-              fontWeight: FontWeight.w700,
-            ),
+          child: Row(
+            children: [
+              if (showMenuButton) ...[
+                IconButton(
+                  tooltip: 'Abrir menu',
+                  icon: const Icon(Icons.menu),
+                  color: colorScheme.onSurface,
+                  onPressed: onMenuPressed,
+                ),
+                const SizedBox(width: 8),
+              ],
+              Expanded(
+                child: Text(
+                  title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: titleStyle?.copyWith(
+                    color: colorScheme.onSurface,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
       ),
@@ -359,7 +412,7 @@ class _MobileNavigationBar extends StatelessWidget {
               padding: const EdgeInsets.fromLTRB(6, 6, 6, 8),
               child: Row(
                 children: [
-                  for (var index = 0; index < AppShell._items.length; index++)
+                  for (var index = 0; index < AppShell._mobileBottomItemCount; index++)
                     Expanded(
                       flex: 1,
                       child: Container(
@@ -373,6 +426,62 @@ class _MobileNavigationBar extends StatelessWidget {
                           },
                         ),
                       ),
+                    ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _MobileNavigationDrawer extends StatelessWidget {
+  const _MobileNavigationDrawer({
+    required this.currentIndex,
+    required this.onDestinationSelected,
+  });
+
+  final int currentIndex;
+  final ValueChanged<int> onDestinationSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Drawer(
+      backgroundColor: colorScheme.surface,
+      child: SafeArea(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(24, 20, 24, 18),
+              child: Text(
+                'CYSVET',
+                style: TextStyle(
+                  color: colorScheme.primary,
+                  fontSize: 26,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+            Container(height: 1, color: colorScheme.outline),
+            Expanded(
+              child: ListView(
+                padding: const EdgeInsets.fromLTRB(12, 18, 12, 16),
+                children: [
+                  for (var index = 0; index < AppShell._items.length; index++)
+                    _NavigationTile(
+                      item: AppShell._items[index],
+                      isSelected: currentIndex == index,
+                      isCompact: false,
+                      isDesktop: true,
+                      onTap: () {
+                        Navigator.of(context).pop();
+                        onDestinationSelected(index);
+                      },
                     ),
                 ],
               ),

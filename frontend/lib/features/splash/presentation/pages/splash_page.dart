@@ -9,7 +9,7 @@ class SplashPage extends StatefulWidget {
   const SplashPage({
     super.key,
     this.redirectTo = '/login',
-    this.duration = const Duration(seconds: 3),
+    this.duration = const Duration(seconds: 2),
   });
 
   final String redirectTo;
