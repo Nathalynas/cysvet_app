@@ -267,7 +267,7 @@ class AuthenticatedUserModelMapper
     'perfil',
     _$perfil,
     opt: true,
-    def: 'VETERINARIAN',
+    def: 'VETERINARIO',
   );
 
   @override
