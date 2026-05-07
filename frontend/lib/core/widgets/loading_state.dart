@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
 
-import '../../app/theme.dart';
-
 class LoadingState extends StatelessWidget {
   const LoadingState({
     super.key,
@@ -23,7 +21,9 @@ class LoadingState extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             CircularProgressIndicator(
-              valueColor: AlwaysStoppedAnimation<Color>(AppTheme.primaryColor),
+              valueColor: AlwaysStoppedAnimation<Color>(
+                theme.colorScheme.primary,
+              ),
             ),
             if (message != null && message!.isNotEmpty) ...[
               const SizedBox(height: 16),

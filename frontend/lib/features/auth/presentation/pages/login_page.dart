@@ -113,7 +113,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     final verticalPadding = isMobile ? 24.0 : 40.0;
 
     return Scaffold(
-      backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
+      backgroundColor: Theme.of(context).colorScheme.surfaceBright,
       body: SafeArea(
         child: LayoutBuilder(
           builder: (context, constraints) {
@@ -142,23 +142,32 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   }
 
   Widget _buildMobileLogin(BuildContext context, bool isBusy) {
-    final theme = Theme.of(context);
+  final theme = Theme.of(context);
 
-    return ConstrainedBox(
-      constraints: const BoxConstraints(maxWidth: 420),
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          color: theme.colorScheme.surface,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: theme.colorScheme.outline),
-        ),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 32),
-          child: _buildLoginForm(context, isBusy, compact: true),
+  return ConstrainedBox(
+    constraints: const BoxConstraints(maxWidth: 420),
+    child: DecoratedBox(
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: theme.shadowColor.withValues(alpha: 0.08),
+            blurRadius: 15,
+            offset: const Offset(0, 8),
+          ),
+        ],
+        border: Border.all(
+          color: theme.colorScheme.outline.withValues(alpha: 0.5),
         ),
       ),
-    );
-  }
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 32),
+        child: _buildLoginForm(context, isBusy, compact: true),
+      ),
+    ),
+  );
+}
 
   Widget _buildDesktopLogin(BuildContext context, bool isBusy) {
     final theme = Theme.of(context);
@@ -587,3 +596,4 @@ class _OfflineFirstBadge extends StatelessWidget {
     );
   }
 }
+

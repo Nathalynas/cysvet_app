@@ -1,15 +1,18 @@
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../features/animais/presentation/pages/animals_page.dart';
+import '../features/animals/presentation/pages/animals_page.dart';
 import '../features/auth/application/auth_state.dart';
 import '../features/auth/presentation/pages/login_page.dart';
+import '../features/settings/presentation/pages/settings_page.dart';
 import '../features/dashboard/presentation/pages/dashboard_page.dart';
-import '../features/perfil/presentation/pages/profile_page.dart';
-import '../features/propriedades/presentation/pages/properties_page.dart';
+import '../features/properties/presentation/pages/properties_page.dart';
 import '../features/splash/presentation/pages/splash_page.dart';
-import '../features/visitas/presentation/pages/visits_page.dart';
+import '../features/users/presentation/pages/users_page.dart';
+import '../features/visits/presentation/pages/visits_page.dart';
 import 'app_shell.dart';
+import 'theme.dart';
 
 final appRouterProvider = Provider<GoRouter>((ref) {
   final session = ref.watch(authSessionProvider);
@@ -35,11 +38,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
     routes: [
       GoRoute(
         path: '/splash',
-        builder: (context, state) => const SplashPage(),
+        builder: (context, state) => _buildPublicRoute(const SplashPage()),
       ),
       GoRoute(
         path: '/login',
-        builder: (context, state) => const LoginPage(),
+        builder: (context, state) => _buildPublicRoute(const LoginPage()),
       ),
       ShellRoute(
         builder: (context, state, child) {
@@ -63,11 +66,23 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             builder: (context, state) => const VisitsPage(),
           ),
           GoRoute(
+            path: '/usuarios',
+            builder: (context, state) => const UsuariosPage(),
+          ),
+          GoRoute(
+            path: '/configuracoes',
+            builder: (context, state) => const ConfiguracoesPage(),
+          ),
+          GoRoute(
             path: '/perfil',
-            builder: (context, state) => const ProfilePage(),
+            redirect: (context, state) => '/configuracoes',
           ),
         ],
       ),
     ],
   );
 });
+
+Widget _buildPublicRoute(Widget child) {
+  return Theme(data: AppTheme.lightTheme, child: child);
+}

@@ -5,7 +5,6 @@ import 'package:flutter_material_design_icons/flutter_material_design_icons.dart
 import 'package:go_router/go_router.dart';
 
 import '../core/constants/app_constants.dart';
-import 'theme.dart';
 
 class AppShell extends StatefulWidget {
   const AppShell({super.key, required this.child});
@@ -42,11 +41,18 @@ class AppShell extends StatefulWidget {
       selectedIcon: Icons.assignment,
     ),
     _NavigationItem(
-      route: '/perfil',
-      label: 'Perfil',
-      title: 'Perfil',
-      icon: Icons.person_outline,
-      selectedIcon: Icons.person,
+      route: '/usuarios',
+      label: 'Usuários',
+      title: 'Usuários',
+      icon: Icons.group_outlined,
+      selectedIcon: Icons.group,
+    ),
+    _NavigationItem(
+      route: '/configuracoes',
+      label: 'Configurações',
+      title: 'Configurações',
+      icon: Icons.settings_outlined,
+      selectedIcon: Icons.settings,
     ),
   ];
 
@@ -171,16 +177,17 @@ class _PageHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final titleStyle = Theme.of(context).textTheme.titleLarge;
+    final colorScheme = Theme.of(context).colorScheme;
 
     return Material(
-      color: AppTheme.tertiaryColor,
+      color: colorScheme.surface,
       child: SafeArea(
         bottom: false,
         child: Container(
           height: 64,
           padding: const EdgeInsets.symmetric(horizontal: 24),
-          decoration: const BoxDecoration(
-            border: Border(bottom: BorderSide(color: AppTheme.borderColor)),
+          decoration: BoxDecoration(
+            border: Border(bottom: BorderSide(color: colorScheme.outline)),
           ),
           alignment: Alignment.centerLeft,
           child: Text(
@@ -188,7 +195,7 @@ class _PageHeader extends StatelessWidget {
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: titleStyle?.copyWith(
-              color: AppTheme.textColor,
+              color: colorScheme.onSurface,
               fontWeight: FontWeight.w700,
             ),
           ),
@@ -230,6 +237,8 @@ class _DesktopNavigationMenuState extends State<_DesktopNavigationMenu> {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
     return MouseRegion(
       onEnter: (_) => _updateHover(true),
       onExit: (_) => _updateHover(false),
@@ -237,7 +246,7 @@ class _DesktopNavigationMenuState extends State<_DesktopNavigationMenu> {
         duration: const Duration(milliseconds: 300),
         curve: Curves.easeInOut,
         width: _isHovering ? 280 : 80,
-        color: AppTheme.tertiaryColor,
+        color: colorScheme.surface,
         child: SafeArea(
           child: Stack(
             children: [
@@ -249,7 +258,7 @@ class _DesktopNavigationMenuState extends State<_DesktopNavigationMenu> {
                     const SizedBox(height: 47),
                     Container(
                       height: 1,
-                      color: AppTheme.borderColor,
+                      color: colorScheme.outline,
                       margin: const EdgeInsets.only(bottom: 18),
                     ),
                     for (var index = 0; index < AppShell._items.length; index++)
@@ -285,7 +294,7 @@ class _DesktopNavigationMenuState extends State<_DesktopNavigationMenu> {
                       Text(
                         'C',
                         style: TextStyle(
-                          color: AppTheme.primaryColor,
+                          color: colorScheme.primary,
                           fontSize: 26,
                           fontWeight: FontWeight.w700,
                         ),
@@ -300,7 +309,7 @@ class _DesktopNavigationMenuState extends State<_DesktopNavigationMenu> {
                           child: Text(
                             'YSVET',
                             style: TextStyle(
-                              color: AppTheme.primaryColor,
+                              color: colorScheme.primary,
                               fontSize: 26,
                               fontWeight: FontWeight.w700,
                             ),
@@ -315,7 +324,7 @@ class _DesktopNavigationMenuState extends State<_DesktopNavigationMenu> {
                 right: 0,
                 top: 0,
                 bottom: 0,
-                child: Container(width: 1, color: AppTheme.borderColor),
+                child: Container(width: 1, color: colorScheme.outline),
               ),
             ],
           ),
@@ -336,14 +345,16 @@ class _MobileNavigationBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
     return Material(
-      color: AppTheme.tertiaryColor,
+      color: colorScheme.surface,
       child: SafeArea(
         top: false,
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Container(height: 1, color: AppTheme.borderColor),
+            Container(height: 1, color: colorScheme.outline),
             Padding(
               padding: const EdgeInsets.fromLTRB(6, 6, 6, 8),
               child: Row(
@@ -398,24 +409,27 @@ class _NavigationTileState extends State<_NavigationTile> {
   @override
   Widget build(BuildContext context) {
     final labelStyle = Theme.of(context).textTheme.labelMedium;
+    final colorScheme = Theme.of(context).colorScheme;
 
     late final Color textColor;
     late final Color backgroundColor;
 
     if (widget.isSelected) {
       if (widget.isDesktop) {
-        textColor = AppTheme.primaryColor;
-        backgroundColor = AppTheme.secondaryColor;
+        textColor = colorScheme.primary;
+        backgroundColor = colorScheme.secondary;
       } else {
-        textColor = Colors.white;
-        backgroundColor = AppTheme.primaryColor;
+        textColor = colorScheme.onPrimary;
+        backgroundColor = colorScheme.primary;
       }
     } else if (_isHovering) {
-      textColor = AppTheme.textColor;
-      backgroundColor = AppTheme.neutralColor;
+      textColor = colorScheme.onSurface;
+      backgroundColor = colorScheme.surfaceContainerHighest;
     } else {
-      textColor = AppTheme.mutedTextColor;
-      backgroundColor = AppTheme.neutralColor.withOpacity(0.0);
+      textColor = colorScheme.onSurfaceVariant;
+      backgroundColor = colorScheme.surfaceContainerHighest.withValues(
+        alpha: 0,
+      );
     }
 
     final icone = Icon(

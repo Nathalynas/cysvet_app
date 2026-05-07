@@ -16,7 +16,7 @@ class StatusBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = _colorsFor(type);
+    final colors = _colorsFor(context, type);
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
@@ -47,37 +47,39 @@ class StatusBadge extends StatelessWidget {
     );
   }
 
-  _StatusBadgeColors _colorsFor(StatusBadgeType type) {
+  _StatusBadgeColors _colorsFor(BuildContext context, StatusBadgeType type) {
+    final colorScheme = Theme.of(context).colorScheme;
+
     switch (type) {
       case StatusBadgeType.success:
-        return const _StatusBadgeColors(
-          background: Color(0xFFE8F5E9),
-          border: Color(0xFFA5D6A7),
-          foreground: Color(0xFF1B5E20),
+        return _StatusBadgeColors(
+          background: colorScheme.primaryContainer,
+          border: colorScheme.onPrimaryContainer.withValues(alpha: 0.18),
+          foreground: colorScheme.onPrimaryContainer,
         );
       case StatusBadgeType.warning:
-        return const _StatusBadgeColors(
-          background: Color(0xFFFFF8E1),
-          border: Color(0xFFFFD54F),
-          foreground: Color(0xFFF57F17),
+        return _StatusBadgeColors(
+          background: colorScheme.tertiaryContainer,
+          border: colorScheme.onTertiaryContainer.withValues(alpha: 0.18),
+          foreground: colorScheme.onTertiaryContainer,
         );
       case StatusBadgeType.error:
-        return const _StatusBadgeColors(
-          background: Color(0xFFFFEBEE),
-          border: Color(0xFFEF9A9A),
-          foreground: Color(0xFFB71C1C),
+        return _StatusBadgeColors(
+          background: colorScheme.errorContainer,
+          border: colorScheme.onErrorContainer.withValues(alpha: 0.18),
+          foreground: colorScheme.onErrorContainer,
         );
       case StatusBadgeType.info:
-        return const _StatusBadgeColors(
-          background: Color(0xFFE3F2FD),
-          border: Color(0xFF90CAF9),
-          foreground: Color(0xFF0D47A1),
+        return _StatusBadgeColors(
+          background: colorScheme.secondaryContainer,
+          border: colorScheme.onSecondaryContainer.withValues(alpha: 0.18),
+          foreground: colorScheme.onSecondaryContainer,
         );
       case StatusBadgeType.neutral:
-        return const _StatusBadgeColors(
-          background: Color(0xFFF5F5F5),
-          border: Color(0xFFE0E0E0),
-          foreground: Color(0xFF424242),
+        return _StatusBadgeColors(
+          background: colorScheme.surfaceContainerHighest,
+          border: colorScheme.outline,
+          foreground: colorScheme.onSurfaceVariant,
         );
     }
   }

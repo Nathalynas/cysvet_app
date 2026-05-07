@@ -1,11 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../../app/theme.dart';
 import '../../../../core/presentation/async_value_view.dart';
 import '../../../../core/utils/formatters.dart';
-import '../../../propriedades/application/properties_provider.dart';
-import '../../../propriedades/domain/property_summary_model.dart';
+import '../../../properties/application/properties_provider.dart';
+import '../../../properties/domain/property_summary_model.dart';
 import '../../application/dashboard_provider.dart';
 import '../../domain/dashboard_metrics_model.dart';
 
@@ -21,7 +20,7 @@ class DashboardPage extends ConsumerWidget {
         properties.asData?.value ?? const <PropertySummaryModel>[];
 
     return Scaffold(
-      backgroundColor: AppTheme.backgroundColor,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: SafeArea(
         child: RefreshIndicator(
           onRefresh: () => ref.refresh(dashboardProvider.future),
@@ -63,18 +62,20 @@ class _PropertyFilterCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
+            Text(
               'Filtro do dashboard',
-              style: TextStyle(
+              style: theme.textTheme.titleSmall?.copyWith(
                 fontSize: 16,
                 fontWeight: FontWeight.w700,
-                color: AppTheme.textColor,
+                color: theme.colorScheme.onSurface,
               ),
             ),
             const SizedBox(height: 12),
@@ -197,6 +198,9 @@ class _MetricCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
     return SizedBox(
       width: width,
       child: Card(
@@ -207,15 +211,15 @@ class _MetricCard extends StatelessWidget {
             children: [
               Row(
                 children: [
-                  Icon(icon, color: AppTheme.primaryColor),
+                  Icon(icon, color: colorScheme.primary),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
                       title,
-                      style: const TextStyle(
+                      style: theme.textTheme.titleSmall?.copyWith(
                         fontSize: 15,
                         fontWeight: FontWeight.w700,
-                        color: AppTheme.textColor,
+                        color: colorScheme.onSurface,
                       ),
                     ),
                   ),
@@ -224,16 +228,18 @@ class _MetricCard extends StatelessWidget {
               const SizedBox(height: 18),
               Text(
                 value,
-                style: const TextStyle(
+                style: theme.textTheme.headlineSmall?.copyWith(
                   fontSize: 28,
                   fontWeight: FontWeight.w800,
-                  color: AppTheme.primaryColor,
+                  color: colorScheme.primary,
                 ),
               ),
               const SizedBox(height: 8),
               Text(
                 subtitle,
-                style: const TextStyle(color: AppTheme.mutedTextColor),
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: colorScheme.onSurfaceVariant,
+                ),
               ),
             ],
           ),

@@ -1,11 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../../app/theme.dart';
 import '../../../../core/presentation/async_value_view.dart';
 import '../../../../core/utils/formatters.dart';
-import '../../../propriedades/application/properties_provider.dart';
-import '../../../propriedades/domain/property_summary_model.dart';
+import '../../../properties/application/properties_provider.dart';
+import '../../../properties/domain/property_summary_model.dart';
 import '../../application/animals_provider.dart';
 import '../../domain/animal_summary_model.dart';
 
@@ -22,9 +21,10 @@ class AnimalsPage extends ConsumerWidget {
     final propertyById = {
       for (final property in propertyOptions) property.id: property,
     };
+    final theme = Theme.of(context);
 
     return Scaffold(
-      backgroundColor: AppTheme.backgroundColor,
+      backgroundColor: theme.scaffoldBackgroundColor,
       body: SafeArea(
         child: RefreshIndicator(
           onRefresh: () => ref.refresh(animalsProvider.future),
@@ -115,6 +115,9 @@ class _AnimalCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -128,10 +131,10 @@ class _AnimalCard extends StatelessWidget {
                 Expanded(
                   child: Text(
                     animal.codigo,
-                    style: const TextStyle(
+                    style: theme.textTheme.titleMedium?.copyWith(
                       fontSize: 18,
                       fontWeight: FontWeight.w700,
-                      color: AppTheme.textColor,
+                      color: colorScheme.onSurface,
                     ),
                   ),
                 ),
@@ -141,14 +144,14 @@ class _AnimalCard extends StatelessWidget {
                     vertical: 6,
                   ),
                   decoration: BoxDecoration(
-                    color: AppTheme.secondaryColor,
+                    color: colorScheme.secondaryContainer,
                     borderRadius: BorderRadius.circular(999),
                   ),
                   child: Text(
                     animal.categoria,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontWeight: FontWeight.w700,
-                      color: AppTheme.primaryColor,
+                      color: colorScheme.onSecondaryContainer,
                     ),
                   ),
                 ),
@@ -174,7 +177,9 @@ class _AnimalCard extends StatelessWidget {
               const SizedBox(height: 10),
               Text(
                 animal.historicoReprodutivo!,
-                style: const TextStyle(color: AppTheme.bodyTextColor),
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: colorScheme.onSurfaceVariant,
+                ),
               ),
             ],
           ],
@@ -192,6 +197,9 @@ class _Line extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
     return Padding(
       padding: const EdgeInsets.only(top: 6),
       child: Text.rich(
@@ -199,14 +207,14 @@ class _Line extends StatelessWidget {
           children: [
             TextSpan(
               text: '$label: ',
-              style: const TextStyle(
+              style: TextStyle(
                 fontWeight: FontWeight.w700,
-                color: AppTheme.textColor,
+                color: colorScheme.onSurface,
               ),
             ),
             TextSpan(
               text: value,
-              style: const TextStyle(color: AppTheme.bodyTextColor),
+              style: TextStyle(color: theme.textTheme.bodyMedium?.color),
             ),
           ],
         ),

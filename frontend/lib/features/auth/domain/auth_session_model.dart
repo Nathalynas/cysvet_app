@@ -21,9 +21,15 @@ class AuthenticatedUserModel with AuthenticatedUserModelMappable {
     this.id = 0,
     this.name = '',
     this.email = '',
+    this.perfil = 'USER',
   });
 
   final int id;
   final String name;
   final String email;
+  final String perfil;
+}
+
+extension AuthenticatedUserModelPermissions on AuthenticatedUserModel {
+  bool get isAdmin => perfil.toUpperCase() == 'ADMIN';
 }

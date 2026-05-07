@@ -1,11 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../../app/theme.dart';
 import '../../../../core/presentation/async_value_view.dart';
 import '../../../../core/utils/formatters.dart';
-import '../../../propriedades/application/properties_provider.dart';
-import '../../../propriedades/domain/property_summary_model.dart';
+import '../../../properties/application/properties_provider.dart';
+import '../../../properties/domain/property_summary_model.dart';
 import '../../application/visits_provider.dart';
 import '../../domain/visit_summary_model.dart';
 
@@ -22,9 +21,10 @@ class VisitsPage extends ConsumerWidget {
     final propertyById = {
       for (final property in propertyOptions) property.id: property,
     };
+    final theme = Theme.of(context);
 
     return Scaffold(
-      backgroundColor: AppTheme.backgroundColor,
+      backgroundColor: theme.scaffoldBackgroundColor,
       body: SafeArea(
         child: RefreshIndicator(
           onRefresh: () => ref.refresh(visitsProvider.future),
@@ -115,6 +115,9 @@ class _VisitCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -128,10 +131,10 @@ class _VisitCard extends StatelessWidget {
                 Expanded(
                   child: Text(
                     formatDate(visit.dataVisita),
-                    style: const TextStyle(
+                    style: theme.textTheme.titleMedium?.copyWith(
                       fontSize: 18,
                       fontWeight: FontWeight.w700,
-                      color: AppTheme.textColor,
+                      color: colorScheme.onSurface,
                     ),
                   ),
                 ),
@@ -141,16 +144,16 @@ class _VisitCard extends StatelessWidget {
             Text.rich(
               TextSpan(
                 children: [
-                  const TextSpan(
+                  TextSpan(
                     text: 'Propriedade: ',
                     style: TextStyle(
                       fontWeight: FontWeight.w700,
-                      color: AppTheme.textColor,
+                      color: colorScheme.onSurface,
                     ),
                   ),
                   TextSpan(
                     text: propertyName,
-                    style: const TextStyle(color: AppTheme.bodyTextColor),
+                    style: TextStyle(color: theme.textTheme.bodyMedium?.color),
                   ),
                 ],
               ),
@@ -159,16 +162,16 @@ class _VisitCard extends StatelessWidget {
             Text.rich(
               TextSpan(
                 children: [
-                  const TextSpan(
+                  TextSpan(
                     text: 'ID externo: ',
                     style: TextStyle(
                       fontWeight: FontWeight.w700,
-                      color: AppTheme.textColor,
+                      color: colorScheme.onSurface,
                     ),
                   ),
                   TextSpan(
                     text: visit.idExterno,
-                    style: const TextStyle(color: AppTheme.bodyTextColor),
+                    style: TextStyle(color: theme.textTheme.bodyMedium?.color),
                   ),
                 ],
               ),
@@ -177,7 +180,9 @@ class _VisitCard extends StatelessWidget {
               const SizedBox(height: 10),
               Text(
                 visit.observacoes!,
-                style: const TextStyle(color: AppTheme.bodyTextColor),
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: colorScheme.onSurfaceVariant,
+                ),
               ),
             ],
           ],

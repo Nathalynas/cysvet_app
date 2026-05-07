@@ -111,7 +111,12 @@ public class AuthService {
         return new AuthResponse(
                 accessToken,
                 refreshTokenValue,
-                new UsuarioAutenticadoResponse(managedUser.getId(), managedUser.getNome(), managedUser.getEmail())
+                new UsuarioAutenticadoResponse(
+                        managedUser.getId(),
+                        managedUser.getNome(),
+                        managedUser.getEmail(),
+                        managedUser.getPerfil()
+                )
         );
     }
 }

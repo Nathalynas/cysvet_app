@@ -214,12 +214,20 @@ class AuthenticatedUserModelMapper
     opt: true,
     def: '',
   );
+  static String _$perfil(AuthenticatedUserModel v) => v.perfil;
+  static const Field<AuthenticatedUserModel, String> _f$perfil = Field(
+    'perfil',
+    _$perfil,
+    opt: true,
+    def: 'USER',
+  );
 
   @override
   final MappableFields<AuthenticatedUserModel> fields = const {
     #id: _f$id,
     #name: _f$name,
     #email: _f$email,
+    #perfil: _f$perfil,
   };
 
   static AuthenticatedUserModel _instantiate(DecodingData data) {
@@ -227,6 +235,7 @@ class AuthenticatedUserModelMapper
       id: data.dec(_f$id),
       name: data.dec(_f$name),
       email: data.dec(_f$email),
+      perfil: data.dec(_f$perfil),
     );
   }
 
@@ -300,7 +309,7 @@ abstract class AuthenticatedUserModelCopyWith<
   $Out
 >
     implements ClassCopyWith<$R, $In, $Out> {
-  $R call({int? id, String? name, String? email});
+  $R call({int? id, String? name, String? email, String? perfil});
   AuthenticatedUserModelCopyWith<$R2, $In, $Out2> $chain<$R2, $Out2>(
     Then<$Out2, $R2> t,
   );
@@ -316,11 +325,12 @@ class _AuthenticatedUserModelCopyWithImpl<$R, $Out>
   late final ClassMapperBase<AuthenticatedUserModel> $mapper =
       AuthenticatedUserModelMapper.ensureInitialized();
   @override
-  $R call({int? id, String? name, String? email}) => $apply(
+  $R call({int? id, String? name, String? email, String? perfil}) => $apply(
     FieldCopyWithData({
       if (id != null) #id: id,
       if (name != null) #name: name,
       if (email != null) #email: email,
+      if (perfil != null) #perfil: perfil,
     }),
   );
   @override
@@ -328,6 +338,7 @@ class _AuthenticatedUserModelCopyWithImpl<$R, $Out>
     id: data.get(#id, or: $value.id),
     name: data.get(#name, or: $value.name),
     email: data.get(#email, or: $value.email),
+    perfil: data.get(#perfil, or: $value.perfil),
   );
 
   @override

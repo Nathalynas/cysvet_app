@@ -14,23 +14,26 @@ class OfflineBanner extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
     final banner = Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
-        color: const Color(0xFFFFF4E5),
-        border: Border.all(color: const Color(0xFFFFB74D)),
+        color: colorScheme.tertiaryContainer,
+        border: Border.all(
+          color: colorScheme.onTertiaryContainer.withValues(alpha: 0.18),
+        ),
         borderRadius: BorderRadius.circular(8),
       ),
       child: Row(
         children: [
-          const Icon(Icons.wifi_off, color: Color(0xFFE65100)),
+          Icon(Icons.wifi_off, color: colorScheme.onTertiaryContainer),
           const SizedBox(width: 12),
           Expanded(
             child: Text(
               message,
               style: theme.textTheme.bodyMedium?.copyWith(
-                color: const Color(0xFFE65100),
+                color: colorScheme.onTertiaryContainer,
                 fontWeight: FontWeight.w600,
               ),
             ),
