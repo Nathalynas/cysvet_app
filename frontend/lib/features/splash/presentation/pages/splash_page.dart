@@ -3,11 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../../app/theme.dart'; 
 
 class SplashPage extends StatefulWidget {
-  const SplashPage({
-    super.key,
-    this.redirectTo = '/login',
-    this.duration = const Duration(seconds: 2),
-  });
+  const SplashPage({super.key});
 
   @override
   State<SplashPage> createState() => _SplashPageState();
