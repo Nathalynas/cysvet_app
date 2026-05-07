@@ -234,7 +234,7 @@ class _PageHeader extends StatelessWidget {
                 IconButton(
                   tooltip: 'Abrir menu',
                   icon: const Icon(Icons.menu),
-                  color: colorScheme.onSurface,
+                  color: colorScheme.primary,
                   onPressed: onMenuPressed,
                 ),
                 const SizedBox(width: 8),
