@@ -9,12 +9,10 @@ import org.springframework.transaction.annotation.Transactional;
 import com.cysvet.backend.dto.propriedade.PropriedadeRequest;
 import com.cysvet.backend.dto.propriedade.PropriedadeResponse;
 import com.cysvet.backend.entity.Propriedade;
+import com.cysvet.backend.entity.StatusPropriedade;
 import com.cysvet.backend.entity.Usuario;
 import com.cysvet.backend.exception.ResourceNotFoundException;
-import com.cysvet.backend.repository.AnimalRepository;
-import com.cysvet.backend.repository.EventoReprodutivoRepository;
 import com.cysvet.backend.repository.PropriedadeRepository;
-import com.cysvet.backend.repository.VisitaRepository;
 
 import lombok.RequiredArgsConstructor;
 
@@ -24,14 +22,11 @@ public class PropriedadeService {
 
     private final PropriedadeRepository farmPropertyRepository;
     private final UsuarioAutenticadoProvider authenticatedUserProvider;
-    private final EventoReprodutivoRepository reproductiveEventRepository;
-    private final AnimalRepository animalRepository;
-    private final VisitaRepository visitRepository;
     private final RegistroExcluidoService deletedRecordService;
 
     @Transactional(readOnly = true)
-    public List<PropriedadeResponse> list() {
-        return farmPropertyRepository.findAllByOrderByNomeAsc().stream()
+    public List<PropriedadeResponse> list(String search, String status) {
+        return farmPropertyRepository.search(normalizeSearch(search), parseStatus(status)).stream()
                 .map(this::toResponse)
                 .toList();
     }
@@ -79,27 +74,15 @@ public class PropriedadeService {
     public void delete(Long id) {
         Usuario user = authenticatedUserProvider.getCurrentUser();
         Propriedade property = getEntity(id);
+        updateStatus(property, StatusPropriedade.INATIVO, user);
+    }
 
-        visitRepository.findAllByPropriedadeIdOrderByDataVisitaDesc(property.getId())
-                .forEach(visit -> {
-                    visitRepository.delete(visit);
-                    deletedRecordService.registerDeletion("visit", visit.getIdExterno(), user.getId());
-                });
-
-        reproductiveEventRepository.findAllByPropriedadeIdOrderByDataEventoDesc(property.getId())
-                .forEach(event -> {
-                    reproductiveEventRepository.delete(event);
-                    deletedRecordService.registerDeletion("event", event.getIdExterno(), user.getId());
-                });
-
-        animalRepository.findAllByPropriedadeIdOrderByCodigoAsc(property.getId())
-                .forEach(animal -> {
-                    animalRepository.delete(animal);
-                    deletedRecordService.registerDeletion("animal", animal.getIdExterno(), user.getId());
-                });
-
-        farmPropertyRepository.delete(property);
-        deletedRecordService.registerDeletion("property", property.getIdExterno(), user.getId());
+    @Transactional
+    public PropriedadeResponse updateStatus(Long id, StatusPropriedade status) {
+        Usuario user = authenticatedUserProvider.getCurrentUser();
+        Propriedade property = getEntity(id);
+        Propriedade saved = updateStatus(property, status, user);
+        return toResponse(saved);
     }
 
     @Transactional
@@ -120,37 +103,44 @@ public class PropriedadeService {
     @Transactional
     public void deleteByExternalId(String idExterno, Usuario user) {
         Propriedade property = getByExternalId(idExterno);
-
-        visitRepository.findAllByPropriedadeIdOrderByDataVisitaDesc(property.getId())
-                .forEach(visit -> {
-                    visitRepository.delete(visit);
-                    deletedRecordService.registerDeletion("visit", visit.getIdExterno(), user.getId());
-                });
-
-        reproductiveEventRepository.findAllByPropriedadeIdOrderByDataEventoDesc(property.getId())
-                .forEach(event -> {
-                    reproductiveEventRepository.delete(event);
-                    deletedRecordService.registerDeletion("event", event.getIdExterno(), user.getId());
-                });
-
-        animalRepository.findAllByPropriedadeIdOrderByCodigoAsc(property.getId())
-                .forEach(animal -> {
-                    animalRepository.delete(animal);
-                    deletedRecordService.registerDeletion("animal", animal.getIdExterno(), user.getId());
-                });
-
-        farmPropertyRepository.delete(property);
-        deletedRecordService.registerDeletion("property", property.getIdExterno(), user.getId());
+        updateStatus(property, StatusPropriedade.INATIVO, user);
     }
 
     private void apply(Propriedade property, PropriedadeRequest request, Usuario user) {
         property.setIdExterno(request.idExterno());
         property.setNome(request.nome());
         property.setNomeProprietario(request.nomeProprietario());
+        property.setContato(request.contato());
         property.setCidade(request.cidade());
         property.setEstado(request.estado());
         property.setObservacoes(request.observacoes());
+        if (request.status() != null) {
+            property.setStatus(request.status());
+        } else if (property.getStatus() == null) {
+            property.setStatus(StatusPropriedade.ATIVO);
+        }
         property.setUsuario(user);
+    }
+
+    private Propriedade updateStatus(Propriedade property, StatusPropriedade status, Usuario user) {
+        property.setStatus(status);
+        Propriedade saved = farmPropertyRepository.save(property);
+        deletedRecordService.clearDeletionMarker("property", saved.getIdExterno(), user.getId());
+        return saved;
+    }
+
+    private StatusPropriedade parseStatus(String status) {
+        if (status == null || status.isBlank()) {
+            return null;
+        }
+        return StatusPropriedade.fromValue(status);
+    }
+
+    private String normalizeSearch(String search) {
+        if (search == null || search.isBlank()) {
+            return null;
+        }
+        return search.trim();
     }
 
     public PropriedadeResponse toResponse(Propriedade property) {
@@ -159,9 +149,11 @@ public class PropriedadeService {
                 property.getIdExterno(),
                 property.getNome(),
                 property.getNomeProprietario(),
+                property.getContato(),
                 property.getCidade(),
                 property.getEstado(),
                 property.getObservacoes(),
+                property.getStatus(),
                 property.getDataCriacao(),
                 property.getDataAtualizacao(),
                 property.getVersao()

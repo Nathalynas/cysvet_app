@@ -35,3 +35,9 @@ app:
     secret: ${JWT_SECRET:cysvet-super-secret-key-for-development-only-change-me}
     expiration-ms: ${JWT_EXPIRATION_MS:3600000}
     refresh-expiration-ms: ${JWT_REFRESH_EXPIRATION_MS:604800000}
+
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html

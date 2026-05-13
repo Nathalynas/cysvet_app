@@ -12,10 +12,10 @@ import com.cysvet.backend.dto.animal.AnimalRequest;
 import com.cysvet.backend.dto.animal.AnimalResponse;
 import com.cysvet.backend.entity.Animal;
 import com.cysvet.backend.entity.Propriedade;
+import com.cysvet.backend.entity.StatusAnimal;
 import com.cysvet.backend.entity.Usuario;
 import com.cysvet.backend.exception.ResourceNotFoundException;
 import com.cysvet.backend.repository.AnimalRepository;
-import com.cysvet.backend.repository.EventoReprodutivoRepository;
 
 import lombok.RequiredArgsConstructor;
 
@@ -24,16 +24,13 @@ import lombok.RequiredArgsConstructor;
 public class AnimalService {
 
     private final AnimalRepository animalRepository;
-    private final EventoReprodutivoRepository reproductiveEventRepository;
     private final PropriedadeService propriedadeService;
     private final UsuarioAutenticadoProvider authenticatedUserProvider;
     private final RegistroExcluidoService deletedRecordService;
 
     @Transactional(readOnly = true)
-    public List<AnimalResponse> list(Long idPropriedade) {
-        List<Animal> animals = idPropriedade == null
-                ? animalRepository.findAllByOrderByCodigoAsc()
-                : animalRepository.findAllByPropriedadeIdOrderByCodigoAsc(idPropriedade);
+    public List<AnimalResponse> list(Long idPropriedade, String search, String status) {
+        List<Animal> animals = animalRepository.search(idPropriedade, normalizeSearch(search), parseStatus(status));
         return animals.stream().map(this::toResponse).toList();
     }
 
@@ -80,13 +77,15 @@ public class AnimalService {
     public void delete(Long id) {
         Usuario user = authenticatedUserProvider.getCurrentUser();
         Animal animal = getEntity(id);
-        reproductiveEventRepository.findAllByAnimalIdOrderByDataEventoDesc(animal.getId())
-                .forEach(event -> {
-                    reproductiveEventRepository.delete(event);
-                    deletedRecordService.registerDeletion("event", event.getIdExterno(), user.getId());
-                });
-        animalRepository.delete(animal);
-        deletedRecordService.registerDeletion("animal", animal.getIdExterno(), user.getId());
+        updateStatus(animal, StatusAnimal.INATIVO, user);
+    }
+
+    @Transactional
+    public AnimalResponse updateStatus(Long id, StatusAnimal status) {
+        Usuario user = authenticatedUserProvider.getCurrentUser();
+        Animal animal = getEntity(id);
+        Animal saved = updateStatus(animal, status, user);
+        return toResponse(saved);
     }
 
     @Transactional
@@ -107,13 +106,7 @@ public class AnimalService {
     @Transactional
     public void deleteByExternalId(String idExterno, Usuario user) {
         Animal animal = getByExternalId(idExterno);
-        reproductiveEventRepository.findAllByAnimalIdOrderByDataEventoDesc(animal.getId())
-                .forEach(event -> {
-                    reproductiveEventRepository.delete(event);
-                    deletedRecordService.registerDeletion("event", event.getIdExterno(), user.getId());
-                });
-        animalRepository.delete(animal);
-        deletedRecordService.registerDeletion("animal", animal.getIdExterno(), user.getId());
+        updateStatus(animal, StatusAnimal.INATIVO, user);
     }
 
     private void apply(Animal animal, AnimalRequest request, Usuario user) {
@@ -126,10 +119,37 @@ public class AnimalService {
         animal.setUsuario(user);
         animal.setCodigo(request.codigo());
         animal.setCategoria(request.categoria());
+        animal.setSexo(request.sexo());
         animal.setDataNascimento(request.dataNascimento());
         animal.setNumeroLactacao(request.numeroLactacao());
         animal.setDataUltimoParto(request.dataUltimoParto());
         animal.setHistoricoReprodutivo(request.historicoReprodutivo());
+        if (request.status() != null) {
+            animal.setStatus(request.status());
+        } else if (animal.getStatus() == null) {
+            animal.setStatus(StatusAnimal.ATIVO);
+        }
+    }
+
+    private Animal updateStatus(Animal animal, StatusAnimal status, Usuario user) {
+        animal.setStatus(status);
+        Animal saved = animalRepository.save(animal);
+        deletedRecordService.clearDeletionMarker("animal", saved.getIdExterno(), user.getId());
+        return saved;
+    }
+
+    private StatusAnimal parseStatus(String status) {
+        if (status == null || status.isBlank()) {
+            return null;
+        }
+        return StatusAnimal.fromValue(status);
+    }
+
+    private String normalizeSearch(String search) {
+        if (search == null || search.isBlank()) {
+            return null;
+        }
+        return search.trim();
     }
 
     public AnimalResponse toResponse(Animal animal) {
@@ -144,11 +164,13 @@ public class AnimalService {
                 animal.getPropriedade().getIdExterno(),
                 animal.getCodigo(),
                 animal.getCategoria(),
+                animal.getSexo(),
                 animal.getDataNascimento(),
                 animal.getNumeroLactacao(),
                 animal.getDataUltimoParto(),
                 diasEmLactacao,
                 animal.getHistoricoReprodutivo(),
+                animal.getStatus(),
                 animal.getDataCriacao(),
                 animal.getDataAtualizacao(),
                 animal.getVersao()

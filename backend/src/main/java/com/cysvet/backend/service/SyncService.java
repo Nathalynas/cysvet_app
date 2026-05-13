@@ -138,13 +138,13 @@ public class SyncService {
 
     private SyncItemResponse deleteProperty(SyncItemRequest item, Usuario user) {
         DeleteRequest request = objectMapper.convertValue(item.payload(), DeleteRequest.class);
-        return deleteEntity(item, user, request.idExterno(), "property", () -> propriedadeService.deleteByExternalId(request.idExterno(), user),
+        return deleteEntity(item, user, request.idExterno(), null, () -> propriedadeService.deleteByExternalId(request.idExterno(), user),
                 () -> propriedadeService.getByExternalId(request.idExterno()).getId());
     }
 
     private SyncItemResponse deleteAnimal(SyncItemRequest item, Usuario user) {
         DeleteRequest request = objectMapper.convertValue(item.payload(), DeleteRequest.class);
-        return deleteEntity(item, user, request.idExterno(), "animal", () -> animalService.deleteByExternalId(request.idExterno(), user),
+        return deleteEntity(item, user, request.idExterno(), null, () -> animalService.deleteByExternalId(request.idExterno(), user),
                 () -> animalService.getByExternalId(request.idExterno()).getId());
     }
 
@@ -173,7 +173,9 @@ public class SyncService {
             idEntidade = entityIdSupplier.get();
             deleteAction.run();
         } catch (ResourceNotFoundException exception) {
-            deletedRecordService.registerDeletion(nomeEntidade, idExterno, user.getId());
+            if (nomeEntidade != null) {
+                deletedRecordService.registerDeletion(nomeEntidade, idExterno, user.getId());
+            }
         }
 
         idempotencyService.register(item.chaveMutacao(), item.entity(), user.getId(), idEntidade);

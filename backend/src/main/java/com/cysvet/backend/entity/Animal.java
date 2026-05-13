@@ -2,6 +2,8 @@ package com.cysvet.backend.entity;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
@@ -25,6 +27,9 @@ public class Animal extends TenantAwareEntity {
     @Column(name = "categoria", nullable = false)
     private String categoria;
 
+    @Column(name = "sexo")
+    private String sexo;
+
     @Column(name = "data_nascimento")
     private LocalDate dataNascimento;
 
@@ -36,6 +41,10 @@ public class Animal extends TenantAwareEntity {
 
     @Column(name = "historico_reprodutivo", length = 2000)
     private String historicoReprodutivo;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status", nullable = false, length = 32)
+    private StatusAnimal status = StatusAnimal.ATIVO;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "id_propriedade", nullable = false)
