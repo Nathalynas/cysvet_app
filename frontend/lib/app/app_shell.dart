@@ -234,7 +234,7 @@ class _PageHeader extends StatelessWidget {
                 IconButton(
                   tooltip: 'Abrir menu',
                   icon: const Icon(Icons.menu),
-                  color: colorScheme.onSurface,
+                  color: colorScheme.primary,
                   onPressed: onMenuPressed,
                 ),
                 const SizedBox(width: 8),
@@ -298,7 +298,7 @@ class _DesktopNavigationMenuState extends State<_DesktopNavigationMenu> {
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 300),
         curve: Curves.easeInOut,
-        width: _isHovering ? 280 : 80,
+        width: _isHovering ? 224 : 80,
         color: colorScheme.surface,
         child: SafeArea(
           child: Stack(
@@ -412,7 +412,11 @@ class _MobileNavigationBar extends StatelessWidget {
               padding: const EdgeInsets.fromLTRB(6, 6, 6, 8),
               child: Row(
                 children: [
-                  for (var index = 0; index < AppShell._mobileBottomItemCount; index++)
+                  for (
+                    var index = 0;
+                    index < AppShell._mobileBottomItemCount;
+                    index++
+                  )
                     Expanded(
                       flex: 1,
                       child: Container(

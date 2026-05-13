@@ -1,3 +1,4 @@
+import 'package:cysvet_app/core/widgets/property_filter_card.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -27,7 +28,7 @@ class DashboardPage extends ConsumerWidget {
           child: ListView(
             padding: const EdgeInsets.all(16),
             children: [
-              _PropertyFilterCard(
+              PropertyFilterCard(
                 properties: propertyOptions,
                 selectedPropertyId: selectedPropertyId,
                 onChanged: (value) {
@@ -43,60 +44,6 @@ class DashboardPage extends ConsumerWidget {
               ),
             ],
           ),
-        ),
-      ),
-    );
-  }
-}
-
-class _PropertyFilterCard extends StatelessWidget {
-  const _PropertyFilterCard({
-    required this.properties,
-    required this.selectedPropertyId,
-    required this.onChanged,
-  });
-
-  final List<PropertySummaryModel> properties;
-  final int? selectedPropertyId;
-  final ValueChanged<int?> onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Filtro do dashboard',
-              style: theme.textTheme.titleSmall?.copyWith(
-                fontSize: 16,
-                fontWeight: FontWeight.w700,
-                color: theme.colorScheme.onSurface,
-              ),
-            ),
-            const SizedBox(height: 12),
-            DropdownButtonFormField<int?>(
-              initialValue: selectedPropertyId,
-              decoration: const InputDecoration(labelText: 'Propriedade'),
-              items: [
-                const DropdownMenuItem<int?>(
-                  value: null,
-                  child: Text('Todas as propriedades'),
-                ),
-                ...properties.map(
-                  (property) => DropdownMenuItem<int?>(
-                    value: property.id,
-                    child: Text(property.nome),
-                  ),
-                ),
-              ],
-              onChanged: onChanged,
-            ),
-          ],
         ),
       ),
     );

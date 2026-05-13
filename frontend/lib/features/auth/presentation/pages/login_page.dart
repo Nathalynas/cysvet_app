@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/network/api_error.dart';
+import '../../../../core/presentation/app_scaffold_messenger.dart';
 import '../../../../core/widgets/app_button.dart';
 import '../../../../core/widgets/app_dialog.dart';
 import '../../../../core/widgets/app_text_field.dart';
@@ -89,8 +90,9 @@ class _LoginPageState extends ConsumerState<LoginPage> {
           }
 
           final email = emailController.text.trim();
-          Navigator.of(context).maybePop();
-          ScaffoldMessenger.of(context).showSnackBar(
+          final navigator = Navigator.of(context);
+          navigator.maybePop();
+          showAppSnackBar(
             SnackBar(
               content: Text(
                 'Recuperação preparada para $email. Integração de envio pendente.',

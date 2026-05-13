@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'app_text_field.dart';
+
 class SearchCard extends StatefulWidget {
   const SearchCard({
     super.key,
@@ -45,32 +47,15 @@ class _SearchCardState extends State<SearchCard> {
     super.dispose();
   }
 
-  void _clear() {
-    _controller.clear();
-    widget.onChanged('');
-  }
-
   @override
   Widget build(BuildContext context) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: TextField(
-          controller: _controller,
-          onChanged: widget.onChanged,
-          decoration: InputDecoration(
-            labelText: widget.labelText,
-            hintText: widget.hintText,
-            prefixIcon: const Icon(Icons.search_outlined),
-            suffixIcon: widget.value.isEmpty
-                ? null
-                : IconButton(
-                    onPressed: _clear,
-                    icon: const Icon(Icons.close),
-                  ),
-          ),
-        ),
-      ),
+    return AppTextField(
+      controller: _controller,
+      onChanged: widget.onChanged,
+      label: widget.labelText,
+      hint: widget.hintText,
+      clearable: true,
+      prefixIcon: const Icon(Icons.search_outlined),
     );
   }
 }

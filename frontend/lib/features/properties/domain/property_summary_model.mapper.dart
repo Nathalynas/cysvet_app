@@ -51,6 +51,12 @@ class PropertySummaryModelMapper extends ClassMapperBase<PropertySummaryModel> {
     opt: true,
     def: '',
   );
+  static String? _$contato(PropertySummaryModel v) => v.contato;
+  static const Field<PropertySummaryModel, String> _f$contato = Field(
+    'contato',
+    _$contato,
+    opt: true,
+  );
   static String? _$cidade(PropertySummaryModel v) => v.cidade;
   static const Field<PropertySummaryModel, String> _f$cidade = Field(
     'cidade',
@@ -69,6 +75,14 @@ class PropertySummaryModelMapper extends ClassMapperBase<PropertySummaryModel> {
     _$observacoes,
     opt: true,
   );
+  static PropertyStatus _$status(PropertySummaryModel v) => v.status;
+  static const Field<PropertySummaryModel, PropertyStatus> _f$status = Field(
+    'status',
+    _$status,
+    opt: true,
+    def: PropertyStatus.active,
+    hook: _PropertyStatusHook(),
+  );
 
   @override
   final MappableFields<PropertySummaryModel> fields = const {
@@ -76,9 +90,11 @@ class PropertySummaryModelMapper extends ClassMapperBase<PropertySummaryModel> {
     #idExterno: _f$idExterno,
     #nome: _f$nome,
     #nomeProprietario: _f$nomeProprietario,
+    #contato: _f$contato,
     #cidade: _f$cidade,
     #estado: _f$estado,
     #observacoes: _f$observacoes,
+    #status: _f$status,
   };
 
   static PropertySummaryModel _instantiate(DecodingData data) {
@@ -87,9 +103,11 @@ class PropertySummaryModelMapper extends ClassMapperBase<PropertySummaryModel> {
       idExterno: data.dec(_f$idExterno),
       nome: data.dec(_f$nome),
       nomeProprietario: data.dec(_f$nomeProprietario),
+      contato: data.dec(_f$contato),
       cidade: data.dec(_f$cidade),
       estado: data.dec(_f$estado),
       observacoes: data.dec(_f$observacoes),
+      status: data.dec(_f$status),
     );
   }
 
@@ -168,9 +186,11 @@ abstract class PropertySummaryModelCopyWith<
     String? idExterno,
     String? nome,
     String? nomeProprietario,
+    String? contato,
     String? cidade,
     String? estado,
     String? observacoes,
+    PropertyStatus? status,
   });
   PropertySummaryModelCopyWith<$R2, $In, $Out2> $chain<$R2, $Out2>(
     Then<$Out2, $R2> t,
@@ -191,18 +211,22 @@ class _PropertySummaryModelCopyWithImpl<$R, $Out>
     String? idExterno,
     String? nome,
     String? nomeProprietario,
+    Object? contato = $none,
     Object? cidade = $none,
     Object? estado = $none,
     Object? observacoes = $none,
+    PropertyStatus? status,
   }) => $apply(
     FieldCopyWithData({
       if (id != null) #id: id,
       if (idExterno != null) #idExterno: idExterno,
       if (nome != null) #nome: nome,
       if (nomeProprietario != null) #nomeProprietario: nomeProprietario,
+      if (contato != $none) #contato: contato,
       if (cidade != $none) #cidade: cidade,
       if (estado != $none) #estado: estado,
       if (observacoes != $none) #observacoes: observacoes,
+      if (status != null) #status: status,
     }),
   );
   @override
@@ -211,9 +235,11 @@ class _PropertySummaryModelCopyWithImpl<$R, $Out>
     idExterno: data.get(#idExterno, or: $value.idExterno),
     nome: data.get(#nome, or: $value.nome),
     nomeProprietario: data.get(#nomeProprietario, or: $value.nomeProprietario),
+    contato: data.get(#contato, or: $value.contato),
     cidade: data.get(#cidade, or: $value.cidade),
     estado: data.get(#estado, or: $value.estado),
     observacoes: data.get(#observacoes, or: $value.observacoes),
+    status: data.get(#status, or: $value.status),
   );
 
   @override

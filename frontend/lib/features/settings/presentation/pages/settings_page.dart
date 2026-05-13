@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../../app/theme.dart';
 import '../../../../core/network/api_error.dart';
 import '../../../../core/widgets/app_button.dart';
+import '../../../../core/widgets/app_dropdown.dart';
 import '../../../../core/widgets/app_form.dart';
 import '../../../../core/widgets/app_text_field.dart';
 import '../../../auth/application/auth_state.dart';
@@ -456,13 +457,13 @@ class _AppearanceCard extends ConsumerWidget {
 
     return _SettingsCard(
       title: 'Aparência do Sistema',
-      child: DropdownButtonFormField<ThemeMode>(
+      child: AppDropdown<ThemeMode>(
         key: ValueKey(selectedMode),
-        initialValue: selectedMode,
-        decoration: const InputDecoration(labelText: 'Tema'),
-        items: const [
-          DropdownMenuItem(value: ThemeMode.light, child: Text('Claro')),
-          DropdownMenuItem(value: ThemeMode.dark, child: Text('Escuro')),
+        value: selectedMode,
+        labelText: 'Tema',
+        options: const [
+          AppDropdownOption(label: 'Claro', value: ThemeMode.light),
+          AppDropdownOption(label: 'Escuro', value: ThemeMode.dark),
         ],
         onChanged: (mode) {
           if (mode == null) {

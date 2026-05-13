@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../core/presentation/app_scaffold_messenger.dart';
 import 'router.dart';
 import 'theme.dart';
 
@@ -15,6 +16,7 @@ class CysvetApp extends ConsumerWidget {
     return MaterialApp.router(
       title: 'CYSVET',
       debugShowCheckedModeBanner: false,
+      scaffoldMessengerKey: appScaffoldMessengerKey,
       theme: AppTheme.lightTheme,
       darkTheme: AppTheme.darkTheme,
       themeMode: themeMode,

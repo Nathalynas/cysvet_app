@@ -61,6 +61,12 @@ class AnimalSummaryModelMapper extends ClassMapperBase<AnimalSummaryModel> {
     opt: true,
     def: '',
   );
+  static String? _$sexo(AnimalSummaryModel v) => v.sexo;
+  static const Field<AnimalSummaryModel, String> _f$sexo = Field(
+    'sexo',
+    _$sexo,
+    opt: true,
+  );
   static DateTime? _$dataNascimento(AnimalSummaryModel v) => v.dataNascimento;
   static const Field<AnimalSummaryModel, DateTime> _f$dataNascimento = Field(
     'dataNascimento',
@@ -92,6 +98,14 @@ class AnimalSummaryModelMapper extends ClassMapperBase<AnimalSummaryModel> {
       v.historicoReprodutivo;
   static const Field<AnimalSummaryModel, String> _f$historicoReprodutivo =
       Field('historicoReprodutivo', _$historicoReprodutivo, opt: true);
+  static AnimalStatus _$status(AnimalSummaryModel v) => v.status;
+  static const Field<AnimalSummaryModel, AnimalStatus> _f$status = Field(
+    'status',
+    _$status,
+    opt: true,
+    def: AnimalStatus.active,
+    hook: _AnimalStatusHook(),
+  );
 
   @override
   final MappableFields<AnimalSummaryModel> fields = const {
@@ -101,11 +115,13 @@ class AnimalSummaryModelMapper extends ClassMapperBase<AnimalSummaryModel> {
     #idExternoPropriedade: _f$idExternoPropriedade,
     #codigo: _f$codigo,
     #categoria: _f$categoria,
+    #sexo: _f$sexo,
     #dataNascimento: _f$dataNascimento,
     #numeroLactacao: _f$numeroLactacao,
     #dataUltimoParto: _f$dataUltimoParto,
     #diasEmLactacao: _f$diasEmLactacao,
     #historicoReprodutivo: _f$historicoReprodutivo,
+    #status: _f$status,
   };
 
   static AnimalSummaryModel _instantiate(DecodingData data) {
@@ -116,11 +132,13 @@ class AnimalSummaryModelMapper extends ClassMapperBase<AnimalSummaryModel> {
       idExternoPropriedade: data.dec(_f$idExternoPropriedade),
       codigo: data.dec(_f$codigo),
       categoria: data.dec(_f$categoria),
+      sexo: data.dec(_f$sexo),
       dataNascimento: data.dec(_f$dataNascimento),
       numeroLactacao: data.dec(_f$numeroLactacao),
       dataUltimoParto: data.dec(_f$dataUltimoParto),
       diasEmLactacao: data.dec(_f$diasEmLactacao),
       historicoReprodutivo: data.dec(_f$historicoReprodutivo),
+      status: data.dec(_f$status),
     );
   }
 
@@ -202,11 +220,13 @@ abstract class AnimalSummaryModelCopyWith<
     String? idExternoPropriedade,
     String? codigo,
     String? categoria,
+    String? sexo,
     DateTime? dataNascimento,
     int? numeroLactacao,
     DateTime? dataUltimoParto,
     int? diasEmLactacao,
     String? historicoReprodutivo,
+    AnimalStatus? status,
   });
   AnimalSummaryModelCopyWith<$R2, $In, $Out2> $chain<$R2, $Out2>(
     Then<$Out2, $R2> t,
@@ -229,11 +249,13 @@ class _AnimalSummaryModelCopyWithImpl<$R, $Out>
     String? idExternoPropriedade,
     String? codigo,
     String? categoria,
+    Object? sexo = $none,
     Object? dataNascimento = $none,
     int? numeroLactacao,
     Object? dataUltimoParto = $none,
     Object? diasEmLactacao = $none,
     Object? historicoReprodutivo = $none,
+    AnimalStatus? status,
   }) => $apply(
     FieldCopyWithData({
       if (id != null) #id: id,
@@ -243,12 +265,14 @@ class _AnimalSummaryModelCopyWithImpl<$R, $Out>
         #idExternoPropriedade: idExternoPropriedade,
       if (codigo != null) #codigo: codigo,
       if (categoria != null) #categoria: categoria,
+      if (sexo != $none) #sexo: sexo,
       if (dataNascimento != $none) #dataNascimento: dataNascimento,
       if (numeroLactacao != null) #numeroLactacao: numeroLactacao,
       if (dataUltimoParto != $none) #dataUltimoParto: dataUltimoParto,
       if (diasEmLactacao != $none) #diasEmLactacao: diasEmLactacao,
       if (historicoReprodutivo != $none)
         #historicoReprodutivo: historicoReprodutivo,
+      if (status != null) #status: status,
     }),
   );
   @override
@@ -262,6 +286,7 @@ class _AnimalSummaryModelCopyWithImpl<$R, $Out>
     ),
     codigo: data.get(#codigo, or: $value.codigo),
     categoria: data.get(#categoria, or: $value.categoria),
+    sexo: data.get(#sexo, or: $value.sexo),
     dataNascimento: data.get(#dataNascimento, or: $value.dataNascimento),
     numeroLactacao: data.get(#numeroLactacao, or: $value.numeroLactacao),
     dataUltimoParto: data.get(#dataUltimoParto, or: $value.dataUltimoParto),
@@ -270,6 +295,7 @@ class _AnimalSummaryModelCopyWithImpl<$R, $Out>
       #historicoReprodutivo,
       or: $value.historicoReprodutivo,
     ),
+    status: data.get(#status, or: $value.status),
   );
 
   @override
