@@ -7,12 +7,16 @@
 #include "generated_plugin_registrant.h"
 
 #include <brazilian_locations/brazilian_locations_plugin.h>
+#include <flutter_secure_storage_linux/flutter_secure_storage_linux_plugin.h>
 #include <printing/printing_plugin.h>
 
 void fl_register_plugins(FlPluginRegistry* registry) {
   g_autoptr(FlPluginRegistrar) brazilian_locations_registrar =
       fl_plugin_registry_get_registrar_for_plugin(registry, "BrazilianLocationsPlugin");
   brazilian_locations_plugin_register_with_registrar(brazilian_locations_registrar);
+  g_autoptr(FlPluginRegistrar) flutter_secure_storage_linux_registrar =
+      fl_plugin_registry_get_registrar_for_plugin(registry, "FlutterSecureStorageLinuxPlugin");
+  flutter_secure_storage_linux_plugin_register_with_registrar(flutter_secure_storage_linux_registrar);
   g_autoptr(FlPluginRegistrar) printing_registrar =
       fl_plugin_registry_get_registrar_for_plugin(registry, "PrintingPlugin");
   printing_plugin_register_with_registrar(printing_registrar);

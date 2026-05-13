@@ -4,6 +4,7 @@
 
 list(APPEND FLUTTER_PLUGIN_LIST
   brazilian_locations
+  flutter_secure_storage_linux
   printing
 )
 

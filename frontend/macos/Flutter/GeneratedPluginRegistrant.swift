@@ -7,12 +7,14 @@ import Foundation
 
 import brazilian_locations
 import connectivity_plus
+import flutter_secure_storage_macos
 import printing
 import sqflite_darwin
 
 func RegisterGeneratedPlugins(registry: FlutterPluginRegistry) {
   BrazilianLocationsPlugin.register(with: registry.registrar(forPlugin: "BrazilianLocationsPlugin"))
   ConnectivityPlusPlugin.register(with: registry.registrar(forPlugin: "ConnectivityPlusPlugin"))
+  FlutterSecureStoragePlugin.register(with: registry.registrar(forPlugin: "FlutterSecureStoragePlugin"))
   PrintingPlugin.register(with: registry.registrar(forPlugin: "PrintingPlugin"))
   SqflitePlugin.register(with: registry.registrar(forPlugin: "SqflitePlugin"))
 }

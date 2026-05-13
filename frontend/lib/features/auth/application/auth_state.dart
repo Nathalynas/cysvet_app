@@ -1,7 +1,16 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../data/auth_repository.dart';
+import '../data/auth_session_storage.dart';
 import '../domain/auth_session_model.dart';
+
+final authInitialSessionProvider = Provider<AuthSessionModel?>((ref) => null);
+
+final authSessionStorageProvider = Provider<AuthSessionStorage>((ref) {
+  return const AuthSessionStorage();
+});
 
 final authSessionProvider =
     NotifierProvider<AuthSessionNotifier, AuthSessionModel?>(
@@ -67,14 +76,20 @@ class AuthController {
 
 class AuthSessionNotifier extends Notifier<AuthSessionModel?> {
   @override
-  AuthSessionModel? build() => null;
+  AuthSessionModel? build() => ref.watch(authInitialSessionProvider);
 
   void setSession(AuthSessionModel? session) {
     state = session;
+    final storage = ref.read(authSessionStorageProvider);
+    if (session == null || session.accessToken.isEmpty) {
+      unawaited(storage.clear());
+    } else {
+      unawaited(storage.save(session));
+    }
   }
 
   void clearSession() {
-    state = null;
+    setSession(null);
   }
 }
 
