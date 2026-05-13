@@ -1,5 +1,7 @@
 import 'package:dart_mappable/dart_mappable.dart';
 
+import '../../../core/enums/animal_status.dart';
+
 part 'animal_summary_model.mapper.dart';
 
 @MappableClass()
@@ -11,11 +13,13 @@ class AnimalSummaryModel with AnimalSummaryModelMappable {
     this.idExternoPropriedade = '',
     this.codigo = '',
     this.categoria = '',
+    this.sexo,
     this.dataNascimento,
     this.numeroLactacao = 0,
     this.dataUltimoParto,
     this.diasEmLactacao,
     this.historicoReprodutivo,
+    this.status = AnimalStatus.active,
   });
 
   final int id;
@@ -24,6 +28,8 @@ class AnimalSummaryModel with AnimalSummaryModelMappable {
   final String idExternoPropriedade;
   final String codigo;
   final String categoria;
+  // Frontend-only nesta etapa. Depende de campo equivalente no backend futuro.
+  final String? sexo;
   @MappableField(hook: _NullableDateTimeHook())
   final DateTime? dataNascimento;
   final int numeroLactacao;
@@ -31,6 +37,9 @@ class AnimalSummaryModel with AnimalSummaryModelMappable {
   final DateTime? dataUltimoParto;
   final int? diasEmLactacao;
   final String? historicoReprodutivo;
+  // Frontend-only nesta etapa. A API atual nao persiste status de animal.
+  @MappableField(hook: _AnimalStatusHook())
+  final AnimalStatus status;
 }
 
 class _NullableDateTimeHook extends MappingHook {
@@ -47,5 +56,19 @@ class _NullableDateTimeHook extends MappingHook {
     }
 
     return value;
+  }
+}
+
+class _AnimalStatusHook extends MappingHook {
+  const _AnimalStatusHook();
+
+  @override
+  Object? beforeDecode(Object? value) {
+    return AnimalStatus.fromApi(value?.toString());
+  }
+
+  @override
+  Object? beforeEncode(Object? value) {
+    return value is AnimalStatus ? value.apiValue : value;
   }
 }

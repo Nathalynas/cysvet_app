@@ -3,6 +3,7 @@
 #
 
 list(APPEND FLUTTER_PLUGIN_LIST
+  brazilian_locations
   connectivity_plus
   printing
 )

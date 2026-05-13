@@ -1,5 +1,7 @@
 import 'package:dart_mappable/dart_mappable.dart';
 
+import '../../../core/enums/property_status.dart';
+
 part 'property_summary_model.mapper.dart';
 
 @MappableClass()
@@ -9,18 +11,25 @@ class PropertySummaryModel with PropertySummaryModelMappable {
     this.idExterno = '',
     this.nome = '',
     this.nomeProprietario = '',
+    this.contato,
     this.cidade,
     this.estado,
     this.observacoes,
+    this.status = PropertyStatus.active,
   });
 
   final int id;
   final String idExterno;
   final String nome;
   final String nomeProprietario;
+  // Frontend-only nesta etapa. Depende de campo equivalente no backend futuro.
+  final String? contato;
   final String? cidade;
   final String? estado;
   final String? observacoes;
+  // Frontend-only nesta etapa. A API atual nao persiste status de propriedade.
+  @MappableField(hook: _PropertyStatusHook())
+  final PropertyStatus status;
 
   String get localizacao {
     final parts = [
@@ -33,5 +42,19 @@ class PropertySummaryModel with PropertySummaryModelMappable {
     }
 
     return parts.join(' - ');
+  }
+}
+
+class _PropertyStatusHook extends MappingHook {
+  const _PropertyStatusHook();
+
+  @override
+  Object? beforeDecode(Object? value) {
+    return PropertyStatus.fromApi(value?.toString());
+  }
+
+  @override
+  Object? beforeEncode(Object? value) {
+    return value is PropertyStatus ? value.apiValue : value;
   }
 }
