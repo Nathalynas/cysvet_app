@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../constants/app_constants.dart';
 import 'app_button.dart';
 
 class AppDialog extends StatelessWidget {
@@ -14,6 +15,10 @@ class AppDialog extends StatelessWidget {
     this.height,
     this.padding = const EdgeInsets.all(24),
     this.fullscreen = false,
+    this.isFullscreen = false,
+    this.fullscreenOnMobile = false,
+    this.headerIndent = 0,
+    this.fullscreenBodyPadding = const EdgeInsets.all(24),
     this.useInternalScroll = false,
     this.showCloseButton = true,
     this.showDefaultActions = false,
@@ -33,6 +38,10 @@ class AppDialog extends StatelessWidget {
   final double? height;
   final EdgeInsetsGeometry padding;
   final bool fullscreen;
+  final bool isFullscreen;
+  final bool fullscreenOnMobile;
+  final double headerIndent;
+  final EdgeInsetsGeometry fullscreenBodyPadding;
   final bool useInternalScroll;
   final bool showCloseButton;
   final bool showDefaultActions;
@@ -53,6 +62,11 @@ class AppDialog extends StatelessWidget {
     bool useInternalScroll = false,
     double width = 420,
     double? height,
+    EdgeInsetsGeometry padding = const EdgeInsets.all(24),
+    bool isFullscreen = false,
+    bool fullscreenOnMobile = false,
+    double headerIndent = 0,
+    EdgeInsetsGeometry fullscreenBodyPadding = const EdgeInsets.all(24),
     bool showCloseButton = true,
     bool showDefaultActions = false,
     String? confirmText,
@@ -72,9 +86,14 @@ class AppDialog extends StatelessWidget {
           actions: actions,
           persistent: persistent,
           fullscreen: fullscreen,
+          isFullscreen: isFullscreen,
+          fullscreenOnMobile: fullscreenOnMobile,
+          headerIndent: headerIndent,
+          fullscreenBodyPadding: fullscreenBodyPadding,
           useInternalScroll: useInternalScroll,
           width: width,
           height: height,
+          padding: padding,
           showCloseButton: showCloseButton,
           showDefaultActions: showDefaultActions,
           confirmText: confirmText,
@@ -91,30 +110,60 @@ class AppDialog extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final size = MediaQuery.sizeOf(context);
-    final maxHeight = fullscreen ? size.height : size.height * 0.9;
+    final effectiveFullscreen =
+        fullscreen ||
+        isFullscreen ||
+        (fullscreenOnMobile && size.width < MOBILE_WIDTH);
+    final maxHeight = effectiveFullscreen ? size.height : size.height * 0.9;
     final dialogActions = _buildActions(context);
+    final body = _DialogBody(
+      useInternalScroll: useInternalScroll,
+      expanded: effectiveFullscreen || height != null,
+      child: content,
+    );
+    final bodyAndActions = Padding(
+      padding: effectiveFullscreen ? fullscreenBodyPadding : EdgeInsets.zero,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        mainAxisSize: effectiveFullscreen || height != null
+            ? MainAxisSize.max
+            : MainAxisSize.min,
+        children: [
+          body,
+          if (dialogActions.isNotEmpty) ...[
+            const SizedBox(height: 20),
+            Wrap(
+              spacing: 12,
+              runSpacing: 12,
+              alignment: WrapAlignment.end,
+              children: dialogActions,
+            ),
+          ],
+        ],
+      ),
+    );
 
     return Dialog(
-      insetPadding: fullscreen
+      insetPadding: effectiveFullscreen
           ? EdgeInsets.zero
           : const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
       backgroundColor: theme.colorScheme.surface,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(fullscreen ? 0 : 12),
+        borderRadius: BorderRadius.circular(effectiveFullscreen ? 0 : 12),
       ),
       child: ConstrainedBox(
         constraints: BoxConstraints(
-          maxWidth: fullscreen ? size.width : width,
+          maxWidth: effectiveFullscreen ? size.width : width,
           maxHeight: maxHeight,
         ),
         child: SizedBox(
-          width: fullscreen ? size.width : width,
-          height: fullscreen ? size.height : height,
+          width: effectiveFullscreen ? size.width : width,
+          height: effectiveFullscreen ? size.height : height,
           child: Padding(
-            padding: padding,
+            padding: effectiveFullscreen ? EdgeInsets.zero : padding,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
-              mainAxisSize: fullscreen || height != null
+              mainAxisSize: effectiveFullscreen || height != null
                   ? MainAxisSize.max
                   : MainAxisSize.min,
               children: [
@@ -123,23 +172,15 @@ class AppDialog extends StatelessWidget {
                     title: title,
                     subtitle: subtitle,
                     showCloseButton: showCloseButton,
+                    fullscreen: effectiveFullscreen,
+                    indent: headerIndent,
                   ),
-                  const SizedBox(height: 16),
+                  if (!effectiveFullscreen) const SizedBox(height: 10),
                 ],
-                _DialogBody(
-                  useInternalScroll: useInternalScroll,
-                  expanded: fullscreen || height != null,
-                  child: content,
-                ),
-                if (dialogActions.isNotEmpty) ...[
-                  const SizedBox(height: 20),
-                  Wrap(
-                    spacing: 12,
-                    runSpacing: 12,
-                    alignment: WrapAlignment.end,
-                    children: dialogActions,
-                  ),
-                ],
+                if (effectiveFullscreen)
+                  Expanded(child: bodyAndActions)
+                else
+                  Flexible(fit: FlexFit.loose, child: bodyAndActions),
               ],
             ),
           ),
@@ -198,11 +239,15 @@ class _DialogHeader extends StatelessWidget {
     this.title,
     this.subtitle,
     required this.showCloseButton,
+    required this.fullscreen,
+    required this.indent,
   });
 
   final String? title;
   final String? subtitle;
   final bool showCloseButton;
+  final bool fullscreen;
+  final double indent;
 
   @override
   Widget build(BuildContext context) {
@@ -211,7 +256,9 @@ class _DialogHeader extends StatelessWidget {
     final hasTitle = title != null && title!.isNotEmpty;
     final hasSubtitle = subtitle != null && subtitle!.isNotEmpty;
     final titleStyle = theme.textTheme.titleMedium?.copyWith(
-      color: colorScheme.primary,
+      color: theme.brightness == Brightness.dark
+          ? colorScheme.onSurface
+          : colorScheme.primary,
       fontSize: 20,
       height: 1.2,
       fontWeight: FontWeight.w700,
@@ -220,10 +267,51 @@ class _DialogHeader extends StatelessWidget {
       color: colorScheme.onSurfaceVariant,
     );
 
+    if (fullscreen) {
+      return Material(
+        color: colorScheme.primary,
+        child: SafeArea(
+          bottom: false,
+          child: SizedBox(
+            height: 64,
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                const SizedBox(width: 8),
+                if (showCloseButton) ...[
+                  IconButton(
+                    tooltip: 'Voltar',
+                    color: colorScheme.onPrimary,
+                    icon: const Icon(Icons.arrow_back),
+                    onPressed: () => Navigator.of(context).maybePop(),
+                  ),
+                ] else
+                  const SizedBox(width: 56),
+                if (indent > 0) SizedBox(width: indent),
+                Expanded(
+                  child: Text(
+                    hasTitle ? title! : '',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.titleLarge?.copyWith(
+                      color: colorScheme.onPrimary,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 16),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
     if (!hasTitle) {
       return Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
+          if (indent > 0) SizedBox(width: indent),
           Expanded(
             child: hasSubtitle
                 ? Text(subtitle!, style: subtitleStyle)
@@ -243,6 +331,7 @@ class _DialogHeader extends StatelessWidget {
         Row(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
+            if (indent > 0) SizedBox(width: indent),
             Expanded(child: Text(title!, style: titleStyle)),
             if (showCloseButton) ...[
               const SizedBox(width: 12),

@@ -214,19 +214,17 @@ class _PageHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final titleStyle = Theme.of(context).textTheme.titleLarge;
-    final colorScheme = Theme.of(context).colorScheme;
+    final theme = Theme.of(context);
+    final titleStyle = theme.textTheme.titleLarge;
+    final colorScheme = theme.colorScheme;
 
     return Material(
-      color: colorScheme.surface,
+      color: colorScheme.primary,
       child: SafeArea(
         bottom: false,
         child: Container(
           height: 64,
           padding: EdgeInsets.only(left: showMenuButton ? 8 : 24, right: 24),
-          decoration: BoxDecoration(
-            border: Border(bottom: BorderSide(color: colorScheme.outline)),
-          ),
           alignment: Alignment.centerLeft,
           child: Row(
             children: [
@@ -234,7 +232,7 @@ class _PageHeader extends StatelessWidget {
                 IconButton(
                   tooltip: 'Abrir menu',
                   icon: const Icon(Icons.menu),
-                  color: colorScheme.primary,
+                  color: colorScheme.onPrimary,
                   onPressed: onMenuPressed,
                 ),
                 const SizedBox(width: 8),
@@ -245,7 +243,7 @@ class _PageHeader extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: titleStyle?.copyWith(
-                    color: colorScheme.onSurface,
+                    color: colorScheme.onPrimary,
                     fontWeight: FontWeight.w700,
                   ),
                 ),
@@ -529,7 +527,9 @@ class _NavigationTileState extends State<_NavigationTile> {
 
     if (widget.isSelected) {
       if (widget.isDesktop) {
-        textColor = colorScheme.primary;
+        textColor = Theme.of(context).brightness == Brightness.dark
+            ? colorScheme.onPrimary
+            : colorScheme.primary;
         backgroundColor = colorScheme.secondary;
       } else {
         textColor = colorScheme.onPrimary;

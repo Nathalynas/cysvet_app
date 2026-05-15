@@ -28,7 +28,11 @@ class AnimalDialog extends StatelessWidget {
       context: context,
       title: animal == null ? 'Novo animal' : 'Editar animal',
       width: 760,
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 14),
+      fullscreenBodyPadding: const EdgeInsets.fromLTRB(16, 20, 16, 12),
+      headerIndent: 16,
       useInternalScroll: true,
+      fullscreenOnMobile: true,
       content: AnimalDialog(animal: animal, properties: properties),
     );
   }
@@ -92,6 +96,12 @@ class _AnimalFormState extends ConsumerState<_AnimalForm> {
     return AppForm(
       internalScroll: true,
       isLoading: isBusy,
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+      fieldsSpacing: 14,
+      actionsSpacing: 10,
+      actionButtonHeight: 38,
+      actionButtonFontSize: 14,
+      actionButtonPadding: const EdgeInsets.symmetric(horizontal: 14),
       submitText: 'Salvar',
       onCancel: () => Navigator.of(context).maybePop(),
       onSubmit: () async {

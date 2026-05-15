@@ -54,8 +54,8 @@ class AppTheme {
   static ThemeData get darkTheme => _buildTheme(
     palette: const _AppPalette(
       brightness: Brightness.dark,
-      primary: Color(0xFF95D5B2),
-      onPrimary: Color(0xFF00391F),
+      primary: primaryColor,
+      onPrimary: Colors.white,
       secondary: Color(0xFF1B4332),
       onSecondary: Color(0xFFE5F6EA),
       tertiary: Color(0xFF18211C),

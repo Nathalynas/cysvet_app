@@ -10,8 +10,9 @@ final authSessionProvider =
     NotifierProvider<AuthSessionNotifier, AuthSessionModel?>(
       AuthSessionNotifier.new,
     );
-final authBootstrapProvider =
-    NotifierProvider<AuthBootstrapNotifier, bool>(AuthBootstrapNotifier.new);
+final authBootstrapProvider = NotifierProvider<AuthBootstrapNotifier, bool>(
+  AuthBootstrapNotifier.new,
+);
 final authBusyProvider = NotifierProvider<BusyNotifier, bool>(BusyNotifier.new);
 
 final authControllerProvider = Provider<AuthController>((ref) {
@@ -99,7 +100,9 @@ class AuthSessionNotifier extends Notifier<AuthSessionModel?> {
       return;
     }
 
-    final companyExists = session.companies.any((company) => company.id == companyId);
+    final companyExists = session.companies.any(
+      (company) => company.id == companyId,
+    );
     if (!companyExists) {
       return;
     }

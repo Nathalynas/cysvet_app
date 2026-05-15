@@ -19,6 +19,9 @@ class AppForm extends StatefulWidget {
     this.padding = const EdgeInsets.all(16),
     this.fieldsSpacing = 16,
     this.actionsSpacing = 12,
+    this.actionButtonHeight = 48,
+    this.actionButtonFontSize = 15,
+    this.actionButtonPadding,
     this.minDualColumnWidth = 720,
     this.internalScroll = false,
   });
@@ -37,6 +40,9 @@ class AppForm extends StatefulWidget {
   final EdgeInsetsGeometry padding;
   final double fieldsSpacing;
   final double actionsSpacing;
+  final double actionButtonHeight;
+  final double actionButtonFontSize;
+  final EdgeInsetsGeometry? actionButtonPadding;
   final double minDualColumnWidth;
   final bool internalScroll;
 
@@ -163,11 +169,17 @@ class _AppFormState extends State<AppForm> {
         AppButton(
           text: widget.cancelText,
           outlined: true,
+          height: widget.actionButtonHeight,
+          fontSize: widget.actionButtonFontSize,
+          padding: widget.actionButtonPadding,
           onPressed: widget.isLoading ? null : widget.onCancel,
         ),
         AppButton(
           text: widget.submitText,
           loading: widget.isLoading,
+          height: widget.actionButtonHeight,
+          fontSize: widget.actionButtonFontSize,
+          padding: widget.actionButtonPadding,
           onPressed: _handleSubmit,
         ),
       ]);

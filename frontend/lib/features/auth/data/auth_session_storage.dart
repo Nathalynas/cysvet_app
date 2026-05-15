@@ -6,11 +6,11 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../domain/auth_session_model.dart';
 
 final authSessionStorageProvider = Provider<AuthSessionStorage>((ref) {
-  return AuthSessionStorage(const FlutterSecureStorage());
+  return const AuthSessionStorage(FlutterSecureStorage());
 });
 
 class AuthSessionStorage {
-  AuthSessionStorage(this._storage);
+  const AuthSessionStorage(this._storage);
 
   static const _sessionKey = 'cysvet.auth.session';
 
@@ -22,19 +22,28 @@ class AuthSessionStorage {
       return null;
     }
 
-    final decoded = jsonDecode(rawValue);
-    if (decoded is! Map<String, dynamic>) {
+    try {
+      final decoded = jsonDecode(rawValue);
+      if (decoded is! Map<String, dynamic>) {
+        await clear();
+        return null;
+      }
+
+      final session = AuthSessionModelMapper.fromMap(decoded);
+      if (session.accessToken.isEmpty) {
+        await clear();
+        return null;
+      }
+
+      return session;
+    } catch (_) {
+      await clear();
       return null;
     }
-
-    return AuthSessionModelMapper.fromMap(decoded);
   }
 
   Future<void> write(AuthSessionModel session) {
-    return _storage.write(
-      key: _sessionKey,
-      value: jsonEncode(session.toMap()),
-    );
+    return _storage.write(key: _sessionKey, value: jsonEncode(session.toMap()));
   }
 
   Future<void> clear() {
