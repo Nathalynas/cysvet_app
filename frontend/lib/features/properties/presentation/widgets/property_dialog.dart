@@ -9,8 +9,10 @@ import '../../../../core/widgets/app_dialog.dart';
 import '../../../../core/widgets/app_dropdown.dart';
 import '../../../../core/widgets/app_form.dart';
 import '../../../../core/widgets/app_text_field.dart';
-import '../../application/brazilian_locations_provider.dart';
+import '../../application/ibge_provider.dart';
 import '../../application/properties_provider.dart';
+import '../../domain/ibge_municipio_model.dart';
+import '../../domain/ibge_uf_model.dart';
 import '../../domain/property_summary_model.dart';
 
 class PropertyDialog extends StatelessWidget {
@@ -128,7 +130,7 @@ class _PropertyFormState extends ConsumerState<_PropertyForm> {
           keyboardType: TextInputType.phone,
           inputFormatters: const [PhoneInputFormatter()],
         ),
-        _BrazilianLocationFields(
+        _IbgeLocationFields(
           estado: _estado,
           cidade: _cidade,
           onEstadoChanged: (value) {
@@ -160,8 +162,8 @@ class _PropertyFormState extends ConsumerState<_PropertyForm> {
   }
 }
 
-class _BrazilianLocationFields extends ConsumerWidget {
-  const _BrazilianLocationFields({
+class _IbgeLocationFields extends ConsumerWidget {
+  const _IbgeLocationFields({
     required this.estado,
     required this.cidade,
     required this.onEstadoChanged,
@@ -179,7 +181,7 @@ class _BrazilianLocationFields extends ConsumerWidget {
     final colorScheme = theme.colorScheme;
     final hasEstado = estado != null && estado!.isNotEmpty;
     final hasCidade = cidade != null && cidade!.isNotEmpty;
-    final locations = ref.watch(brazilianLocationsProvider);
+    final ufs = ref.watch(ibgeUfsProvider);
 
     return FormField<bool>(
       initialValue: hasEstado && hasCidade,
@@ -191,55 +193,40 @@ class _BrazilianLocationFields extends ConsumerWidget {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            locations.when(
+            ufs.when(
               data: (data) {
-                final cities = data.citiesFor(estado);
+                final selectedUf = _selectedUf(data, estado);
 
                 return Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     AppDropdown<String>(
-                      value: estado,
+                      value: selectedUf?.sigla,
                       labelText: 'Estado',
                       nullLabel: 'Selecione o estado',
                       searchable: true,
                       required: true,
                       onChanged: (value) {
                         onEstadoChanged(value);
-                        field.didChange(
-                          value != null && value.isNotEmpty && hasCidade,
-                        );
+                        field.didChange(false);
                       },
-                      options: data.states
+                      options: data
                           .map(
-                            (state) =>
-                                AppDropdownOption(label: state, value: state),
+                            (uf) => AppDropdownOption(
+                              label: uf.label,
+                              value: uf.sigla,
+                            ),
                           )
                           .toList(growable: false),
                     ),
                     const SizedBox(height: 16),
-                    AppDropdown<String>(
-                      value: cities.contains(cidade) ? cidade : null,
-                      labelText: 'Cidade',
-                      nullLabel: hasEstado
-                          ? 'Selecione a cidade'
-                          : 'Selecione o estado primeiro',
-                      searchable: true,
-                      required: true,
-                      onChanged: hasEstado
-                          ? (value) {
-                              onCidadeChanged(value);
-                              field.didChange(
-                                hasEstado && value != null && value.isNotEmpty,
-                              );
-                            }
-                          : (_) {},
-                      options: cities
-                          .map(
-                            (city) =>
-                                AppDropdownOption(label: city, value: city),
-                          )
-                          .toList(growable: false),
+                    _MunicipioDropdown(
+                      uf: selectedUf,
+                      cidade: cidade,
+                      onCidadeChanged: (value) {
+                        onCidadeChanged(value);
+                        field.didChange(value != null && value.isNotEmpty);
+                      },
                     ),
                   ],
                 );
@@ -272,5 +259,92 @@ class _BrazilianLocationFields extends ConsumerWidget {
         );
       },
     );
+  }
+
+  IbgeUfModel? _selectedUf(List<IbgeUfModel> ufs, String? value) {
+    for (final uf in ufs) {
+      if (uf.matches(value)) return uf;
+    }
+
+    return null;
+  }
+}
+
+class _MunicipioDropdown extends ConsumerWidget {
+  const _MunicipioDropdown({
+    required this.uf,
+    required this.cidade,
+    required this.onCidadeChanged,
+  });
+
+  final IbgeUfModel? uf;
+  final String? cidade;
+  final ValueChanged<String?> onCidadeChanged;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final selectedUf = uf;
+    if (selectedUf == null) {
+      return AppDropdown<String>(
+        value: null,
+        labelText: 'Cidade',
+        nullLabel: 'Selecione o estado primeiro',
+        searchable: true,
+        required: true,
+        onChanged: (_) {},
+        options: const [],
+      );
+    }
+
+    final municipios = ref.watch(ibgeMunicipiosProvider(selectedUf.sigla));
+
+    return municipios.when(
+      data: (data) {
+        final selectedMunicipio = _selectedMunicipio(data, cidade);
+
+        return AppDropdown<String>(
+          value: selectedMunicipio?.nome,
+          labelText: 'Cidade',
+          nullLabel: 'Selecione a cidade',
+          searchable: true,
+          required: true,
+          onChanged: onCidadeChanged,
+          options: data
+              .map(
+                (municipio) => AppDropdownOption(
+                  label: municipio.nome,
+                  value: municipio.nome,
+                ),
+              )
+              .toList(growable: false),
+        );
+      },
+      loading: () => AppDropdown<String>(
+        value: null,
+        labelText: 'Cidade',
+        nullLabel: 'Carregando cidades...',
+        searchable: true,
+        required: true,
+        onChanged: (_) {},
+        options: const [],
+      ),
+      error: (_, _) => Text(
+        'Nao foi possivel carregar cidades.',
+        style: theme.textTheme.bodySmall?.copyWith(color: colorScheme.error),
+      ),
+    );
+  }
+
+  IbgeMunicipioModel? _selectedMunicipio(
+    List<IbgeMunicipioModel> municipios,
+    String? value,
+  ) {
+    for (final municipio in municipios) {
+      if (municipio.matches(value)) return municipio;
+    }
+
+    return null;
   }
 }

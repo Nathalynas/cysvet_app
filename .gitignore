@@ -11,3 +11,4 @@ backend/data/*.trace.db
 *.log
 .metadata/
 backend/.settings/
+.vscode/
