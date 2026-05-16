@@ -54,13 +54,15 @@ class _AnimalForm extends ConsumerStatefulWidget {
 }
 
 class _AnimalFormState extends ConsumerState<_AnimalForm> {
+  static const _sexoOptions = ['Masculino', 'Feminino'];
+
   final _codigo = TextEditingController();
   final _especie = TextEditingController();
-  final _sexo = TextEditingController();
   final _nascimento = TextEditingController();
   final _lactacao = TextEditingController();
   final _historico = TextEditingController();
   late AnimalStatus _status;
+  String? _sexo;
   int? _propertyId;
 
   @override
@@ -69,7 +71,7 @@ class _AnimalFormState extends ConsumerState<_AnimalForm> {
     final animal = widget.animal;
     _codigo.text = animal?.codigo ?? '';
     _especie.text = animal?.categoria ?? '';
-    _sexo.text = animal?.sexo ?? '';
+    _sexo = _normalizeSexo(animal?.sexo);
     _nascimento.text = formatDateInput(animal?.dataNascimento);
     _lactacao.text = (animal?.numeroLactacao ?? 0).toString();
     _historico.text = animal?.historicoReprodutivo ?? '';
@@ -81,7 +83,6 @@ class _AnimalFormState extends ConsumerState<_AnimalForm> {
   void dispose() {
     _codigo.dispose();
     _especie.dispose();
-    _sexo.dispose();
     _nascimento.dispose();
     _lactacao.dispose();
     _historico.dispose();
@@ -116,7 +117,7 @@ class _AnimalFormState extends ConsumerState<_AnimalForm> {
                 property?.idExterno ?? animal?.idExternoPropriedade ?? '',
             codigo: _codigo.text.trim(),
             categoria: _especie.text.trim(),
-            sexo: _sexo.text.trim(),
+            sexo: _sexo,
             dataNascimento: parseDateInput(_nascimento.text),
             numeroLactacao: int.tryParse(_lactacao.text.trim()) ?? 0,
             historicoReprodutivo: _historico.text.trim(),
@@ -133,8 +134,16 @@ class _AnimalFormState extends ConsumerState<_AnimalForm> {
       },
       fields: [
         AppTextField(label: 'Brinco/ID', controller: _codigo, required: true),
-        AppTextField(label: 'Espécie', controller: _especie, required: true),
-        AppTextField(label: 'Sexo', controller: _sexo, required: true),
+        AppTextField(label: 'Especie', controller: _especie, required: true),
+        AppDropdown<String>(
+          value: _sexo,
+          labelText: 'Sexo',
+          required: true,
+          onChanged: (value) => setState(() => _sexo = value),
+          options: _sexoOptions
+              .map((item) => AppDropdownOption(label: item, value: item))
+              .toList(growable: false),
+        ),
         AppTextField(
           label: 'Data de nascimento',
           hint: 'DD/MM/AAAA',
@@ -144,7 +153,7 @@ class _AnimalFormState extends ConsumerState<_AnimalForm> {
           inputFormatters: const [DateInputFormatter()],
           validator: (value) {
             if (parseDateInput(value ?? '') == null) {
-              return 'Informe uma data válida';
+              return 'Informe uma data valida';
             }
             return null;
           },
@@ -173,21 +182,38 @@ class _AnimalFormState extends ConsumerState<_AnimalForm> {
               .toList(growable: false),
         ),
         AppTextField(
-          label: 'Número de lactação',
+          label: 'Numero de lactacao',
           controller: _lactacao,
           required: true,
           keyboardType: TextInputType.number,
         ),
-        AppTextField(label: 'Histórico', controller: _historico, maxLines: 3),
+        AppTextField(label: 'Historico', controller: _historico, maxLines: 3),
       ],
     );
   }
 
   PropertySummaryModel? _selectedProperty() {
     for (final property in widget.properties) {
-      if (property.id == _propertyId) return property;
+      if (property.id == _propertyId) {
+        return property;
+      }
     }
 
     return null;
+  }
+
+  String? _normalizeSexo(String? value) {
+    final normalized = (value ?? '').trim().toLowerCase();
+    switch (normalized) {
+      case 'masculino':
+      case 'macho':
+        return 'Masculino';
+      case 'feminino':
+      case 'femea':
+      case 'fêmea':
+        return 'Feminino';
+      default:
+        return null;
+    }
   }
 }

@@ -77,10 +77,12 @@ class AnimalsRepository {
           : animal.idExternoPropriedade,
       'codigo': animal.codigo,
       'categoria': animal.categoria,
+      'sexo': animal.sexo,
       'dataNascimento': _toDate(animal.dataNascimento),
       'numeroLactacao': animal.numeroLactacao,
       'dataUltimoParto': _toDate(animal.dataUltimoParto),
       'historicoReprodutivo': animal.historicoReprodutivo,
+      'status': animal.status.apiValue,
       'dataAtualizacaoCliente': DateTime.now().toUtc().toIso8601String(),
     };
   }

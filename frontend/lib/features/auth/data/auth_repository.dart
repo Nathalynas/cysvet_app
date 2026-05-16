@@ -38,6 +38,15 @@ class AuthRepository {
     return AuthSessionModelMapper.fromMap(_asMap(response.data));
   }
 
+  Future<AuthSessionModel> refresh({required String refreshToken}) async {
+    final response = await _dio.post<Object?>(
+      '/api/auth/refresh',
+      data: {'refreshToken': refreshToken},
+    );
+
+    return AuthSessionModelMapper.fromMap(_asMap(response.data));
+  }
+
   Future<void> logout(String refreshToken) async {
     await _dio.post<void>(
       '/api/auth/logout',

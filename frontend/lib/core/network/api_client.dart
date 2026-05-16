@@ -4,6 +4,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../features/auth/application/auth_state.dart';
+import '../../features/auth/domain/auth_session_model.dart';
 import '../config/api_config.dart';
 
 final apiClientProvider = Provider<Dio>((ref) {
@@ -30,7 +31,8 @@ final apiClientProvider = Provider<Dio>((ref) {
           options.headers['Authorization'] = 'Bearer $token';
         }
 
-        final companyId = session?.activeCompanyId;
+        final companyId =
+            session?.activeCompany?.id ?? session?.activeCompanyId;
         if (companyId != null && companyId > 0) {
           options.headers['empresaid'] = companyId.toString();
         }
