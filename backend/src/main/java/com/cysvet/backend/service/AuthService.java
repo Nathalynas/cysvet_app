@@ -25,6 +25,7 @@ import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -113,7 +114,7 @@ public class AuthService {
 
         List<UsuarioEmpresa> memberships = tenantAccessService.findActiveMemberships(managedUser.getId());
         if (memberships.isEmpty()) {
-            throw new IllegalStateException("Usuario autenticado sem empresa vinculada");
+            throw new AccessDeniedException("Usuario sem empresa vinculada ativa");
         }
 
         String accessToken = jwtService.generateToken(

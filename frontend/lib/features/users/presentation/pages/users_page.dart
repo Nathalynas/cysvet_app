@@ -225,6 +225,7 @@ class _UserCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
+    final canManageMembership = !user.isAdmin;
 
     return Card(
       child: Padding(
@@ -266,6 +267,7 @@ class _UserCard extends StatelessWidget {
                       ? 'Ativar'
                       : 'Inativar',
                   outlined: true,
+                  disabled: !canManageMembership,
                   height: 40,
                   icon: Icon(
                     user.status == UserStatus.inactive
@@ -281,7 +283,7 @@ class _UserCard extends StatelessWidget {
                   tooltip: 'Excluir',
                   color: colorScheme.error,
                   icon: const Icon(Icons.delete_outline),
-                  onPressed: onDelete,
+                  onPressed: canManageMembership ? onDelete : null,
                 ),
               ],
             ),
@@ -402,7 +404,7 @@ Future<void> _confirmDelete(
   return AppDialog.show<void>(
     context: context,
     title: 'Excluir usuário',
-    content: Text('Deseja excluir ${user.name} desta sessão?'),
+    content: Text('Deseja remover ${user.name} da empresa ativa?'),
     confirmText: 'Excluir',
     cancelText: 'Cancelar',
     onConfirm: () async {

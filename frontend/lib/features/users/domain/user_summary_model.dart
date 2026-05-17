@@ -17,6 +17,8 @@ class UserSummaryModel {
   final String? companyName;
   final UserStatus status;
 
+  bool get isAdmin => perfil.toUpperCase() == 'ADMIN';
+
   String get displayRole {
     switch (perfil.toUpperCase()) {
       case 'ADMIN':

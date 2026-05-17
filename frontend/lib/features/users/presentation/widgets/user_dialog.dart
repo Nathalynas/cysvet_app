@@ -81,10 +81,12 @@ class _UserFormState extends ConsumerState<_UserForm> {
             companyName: activeCompany?.name,
             status: UserStatus.active,
           );
-          await ref.read(usersControllerProvider).save(payload);
+          await ref
+              .read(usersControllerProvider)
+              .save(payload, password: _password.text.trim());
           if (mounted) {
             await navigator.maybePop();
-            showAppSuccess('Usuário salvo localmente.');
+            showAppSuccess('Usuário criado com sucesso.');
           }
         } catch (error) {
           showAppError(error);
