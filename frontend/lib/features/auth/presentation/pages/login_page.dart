@@ -144,10 +144,38 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   }
 
   Widget _buildMobileLogin(BuildContext context, bool isBusy) {
+    final theme = Theme.of(context);
+
+    return ConstrainedBox(
+      constraints: const BoxConstraints(maxWidth: 420),
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: theme.colorScheme.surface,
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            BoxShadow(
+              color: theme.shadowColor.withValues(alpha: 0.08),
+              blurRadius: 15,
+              offset: const Offset(0, 8),
+            ),
+          ],
+          border: Border.all(
+            color: theme.colorScheme.outline.withValues(alpha: 0.5),
+          ),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 32),
+          child: _buildLoginForm(context, isBusy, compact: true),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDesktopLogin(BuildContext context, bool isBusy) {
   final theme = Theme.of(context);
 
   return ConstrainedBox(
-    constraints: const BoxConstraints(maxWidth: 420),
+    constraints: const BoxConstraints(maxWidth: 840),
     child: DecoratedBox(
       decoration: BoxDecoration(
         color: theme.colorScheme.surface,
@@ -163,59 +191,41 @@ class _LoginPageState extends ConsumerState<LoginPage> {
           color: theme.colorScheme.outline.withValues(alpha: 0.5),
         ),
       ),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 32),
-        child: _buildLoginForm(context, isBusy, compact: true),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(20),
+        child: IntrinsicHeight(
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              SizedBox(
+                width: 420,
+                child: ColoredBox(
+                  color: theme.colorScheme.surface,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 28,
+                      vertical: 32,
+                    ),
+                    child: _buildLoginForm(
+                      context,
+                      isBusy,
+                      compact: true,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(
+                width: 420,
+                child: _LoginInfoPanel(),
+              ),
+            ],
+          ),
+        ),
       ),
     ),
   );
 }
-
-  Widget _buildDesktopLogin(BuildContext context, bool isBusy) {
-    final theme = Theme.of(context);
-
-    return ConstrainedBox(
-      constraints: const BoxConstraints(maxWidth: 900),
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          color: theme.colorScheme.surface,
-          borderRadius: BorderRadius.circular(14),
-          boxShadow: [
-            BoxShadow(
-              color: theme.shadowColor.withValues(alpha: 0.14),
-              blurRadius: 28,
-              offset: const Offset(0, 16),
-            ),
-          ],
-          border: Border.all(
-            color: theme.colorScheme.outline.withValues(alpha: 0.55),
-          ),
-        ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(14),
-          child: SizedBox(
-            height: 520,
-            child: Row(
-              children: [
-                Expanded(
-                  child: ColoredBox(
-                    color: theme.colorScheme.surface,
-                    child: Center(
-                      child: ConstrainedBox(
-                        constraints: const BoxConstraints(maxWidth: 320),
-                        child: _buildLoginForm(context, isBusy),
-                      ),
-                    ),
-                  ),
-                ),
-                const Expanded(child: _LoginInfoPanel()),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
 
   Widget _buildLoginForm(
     BuildContext context,
@@ -472,8 +482,9 @@ class _LoginInfoPanel extends StatelessWidget {
     return ColoredBox(
       color: theme.colorScheme.primary,
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 34, vertical: 58),
+        padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 32),
         child: Column(
+          mainAxisSize: MainAxisSize.min,
           mainAxisAlignment: MainAxisAlignment.center,
           children: const [
             _LoginInfoCard(
@@ -608,4 +619,3 @@ class _OfflineFirstBadge extends StatelessWidget {
     );
   }
 }
-
