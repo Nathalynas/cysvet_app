@@ -1,0 +1,133 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import '../../../../core/enums/user_status.dart';
+import '../../../../core/presentation/app_scaffold_messenger.dart';
+import '../../../../core/widgets/app_dialog.dart';
+import '../../../../core/widgets/app_form.dart';
+import '../../../../core/widgets/app_text_field.dart';
+import '../../../auth/application/auth_state.dart';
+import '../../../auth/domain/auth_session_model.dart';
+import '../../application/users_provider.dart';
+import '../../domain/user_summary_model.dart';
+
+class UserDialog extends StatelessWidget {
+  const UserDialog({super.key});
+
+  static Future<void> show(BuildContext context) {
+    return AppDialog.show<void>(
+      context: context,
+      title: 'Novo usuário',
+      width: 560,
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 14),
+      fullscreenBodyPadding: const EdgeInsets.fromLTRB(16, 20, 16, 12),
+      headerIndent: 16,
+      useInternalScroll: true,
+      fullscreenOnMobile: true,
+      content: const UserDialog(),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return const _UserForm();
+  }
+}
+
+class _UserForm extends ConsumerStatefulWidget {
+  const _UserForm();
+
+  @override
+  ConsumerState<_UserForm> createState() => _UserFormState();
+}
+
+class _UserFormState extends ConsumerState<_UserForm> {
+  final _name = TextEditingController();
+  final _email = TextEditingController();
+  final _password = TextEditingController();
+
+  @override
+  void dispose() {
+    _name.dispose();
+    _email.dispose();
+    _password.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isBusy = ref.watch(usersBusyProvider);
+    final session = ref.watch(authSessionProvider);
+
+    return AppForm(
+      internalScroll: true,
+      isLoading: isBusy,
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+      fieldsSpacing: 14,
+      actionsSpacing: 10,
+      actionButtonHeight: 38,
+      actionButtonFontSize: 14,
+      actionButtonPadding: const EdgeInsets.symmetric(horizontal: 14),
+      submitText: 'Salvar',
+      onCancel: () => Navigator.of(context).maybePop(),
+      onSubmit: () async {
+        final activeCompany = session?.activeCompany;
+        final navigator = Navigator.of(context);
+        try {
+          final payload = UserSummaryModel(
+            name: _name.text.trim(),
+            email: _email.text.trim(),
+            perfil: 'VETERINARIO',
+            companyName: activeCompany?.name,
+            status: UserStatus.active,
+          );
+          await ref.read(usersControllerProvider).save(payload);
+          if (mounted) {
+            await navigator.maybePop();
+            showAppSuccess('Usuário salvo localmente.');
+          }
+        } catch (error) {
+          showAppError(error);
+        }
+      },
+      fields: [
+        AppTextField(
+          label: 'Nome',
+          controller: _name,
+          required: true,
+          textInputAction: TextInputAction.next,
+        ),
+        AppTextField(
+          label: 'E-mail',
+          controller: _email,
+          required: true,
+          keyboardType: TextInputType.emailAddress,
+          textInputAction: TextInputAction.next,
+          validator: _validateEmail,
+        ),
+        AppTextField(
+          label: 'Senha',
+          controller: _password,
+          required: true,
+          obscureText: true,
+          minChars: 6,
+          textInputAction: TextInputAction.done,
+        ),
+      ],
+    );
+  }
+
+  String? _validateEmail(String? value) {
+    final email = value?.trim() ?? '';
+
+    if (email.isEmpty) {
+      return 'Campo obrigatório';
+    }
+
+    if (!email.contains('@')) {
+      return 'Informe um e-mail válido';
+    }
+
+    return null;
+  }
+}

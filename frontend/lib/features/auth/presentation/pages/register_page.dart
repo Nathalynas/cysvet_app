@@ -311,7 +311,7 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
                               ),
                               const SizedBox(height: 16),
                               Text(
-                                'O cadastro cria o primeiro usuario como administrador da empresa.',
+                                'O cadastro cria o primeiro usuário como administrador da empresa.',
                                 textAlign: TextAlign.center,
                                 style: theme.textTheme.labelSmall?.copyWith(
                                   color: colorScheme.onSurfaceVariant,
@@ -345,7 +345,7 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
       return 'Informe o e-mail.';
     }
     if (!value.contains('@')) {
-      return 'Informe um e-mail valido.';
+      return 'Informe um e-mail válido.';
     }
     return null;
   }
@@ -365,7 +365,7 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
       return 'Confirme a senha.';
     }
     if (value != _passwordController.text) {
-      return 'As senhas nao conferem.';
+      return 'As senhas não conferem.';
     }
     return null;
   }
