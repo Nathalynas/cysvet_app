@@ -86,29 +86,28 @@ class _ConfiguracoesPageState extends ConsumerState<ConfiguracoesPage> {
               onSubmit: _saveUserData,
               fields: [
                 ..._buildUserFields(isEditing: _isEditingUser),
-                const SizedBox(height: 12),
                 _InfoRow(label: 'Perfil', value: session.user.displayRole),
               ],
             ),
 
             const SizedBox(height: 16),
-
+            
             _SettingsCard(
               title: 'Empresa Ativa',
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  DropdownButtonFormField<int>(
-                    initialValue: activeCompany?.id,
-                    decoration: const InputDecoration(labelText: 'Empresa'),
-                    items: session.companies
+                  AppDropdown<int>(
+                    value: activeCompany?.id,
+                    labelText: 'Empresa',
+                    options: session.companies
                         .map(
-                          (company) => DropdownMenuItem(
+                          (company) => AppDropdownOption<int>(
+                            label: company.name,
                             value: company.id,
-                            child: Text(company.name),
                           ),
                         )
-                        .toList(),
+                        .toList(growable: false),
                     onChanged: (companyId) async {
                       if (companyId == null ||
                           companyId == session.activeCompanyId) {
@@ -134,7 +133,10 @@ class _ConfiguracoesPageState extends ConsumerState<ConfiguracoesPage> {
                   ),
                   if (activeCompany != null) ...[
                     const SizedBox(height: 16),
-                    _InfoRow(label: 'Tenant ID', value: activeCompany.id.toString()),
+                    _InfoRow(
+                      label: 'Tenant ID',
+                      value: activeCompany.id.toString(),
+                    ),
                   ],
                 ],
               ),
@@ -555,10 +557,7 @@ class _SettingsCard extends StatelessWidget {
                     ),
                   ),
                 ),
-                if (trailing != null) ...[
-                  const SizedBox(width: 12),
-                  trailing!,
-                ],
+                if (trailing != null) ...[const SizedBox(width: 12), trailing!],
               ],
             ),
             const SizedBox(height: 16),
