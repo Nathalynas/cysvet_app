@@ -256,6 +256,14 @@ class _PageHeader extends StatelessWidget {
   }
 }
 
+class _AppShellSizes {
+  static const double desktopMenuCollapsedWidth = 80;
+  static const double menuExpandedWidth = 224;
+
+  static const EdgeInsets menuPadding = EdgeInsets.fromLTRB(12, 16, 12, 16);
+  static const EdgeInsets logoPadding = EdgeInsets.only(left: 16, right: 12);
+}
+
 class _DesktopNavigationMenu extends StatefulWidget {
   const _DesktopNavigationMenu({
     required this.currentIndex,
@@ -296,13 +304,15 @@ class _DesktopNavigationMenuState extends State<_DesktopNavigationMenu> {
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 300),
         curve: Curves.easeInOut,
-        width: _isHovering ? 224 : 80,
+        width: _isHovering
+            ? _AppShellSizes.menuExpandedWidth
+            : _AppShellSizes.desktopMenuCollapsedWidth,
         color: colorScheme.surface,
         child: SafeArea(
           child: Stack(
             children: [
               Padding(
-                padding: EdgeInsets.fromLTRB(_isHovering ? 12 : 12, 16, 12, 16),
+                padding: _AppShellSizes.menuPadding,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -342,27 +352,24 @@ class _DesktopNavigationMenuState extends State<_DesktopNavigationMenu> {
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Text(
-                        'C',
-                        style: TextStyle(
-                          color: colorScheme.primary,
-                          fontSize: 26,
-                          fontWeight: FontWeight.w700,
-                        ),
+                      Image.asset(
+                        'assets/images/icon.png',
+                        width: 32,
+                        height: 32,
+                        fit: BoxFit.contain,
                       ),
                       AnimatedContainer(
                         duration: const Duration(milliseconds: 300),
                         curve: Curves.easeInOut,
-                        width: _isHovering ? 90 : 0,
-                        child: SingleChildScrollView(
-                          scrollDirection: Axis.horizontal,
-                          physics: const NeverScrollableScrollPhysics(),
-                          child: Text(
-                            'YSVET',
-                            style: TextStyle(
-                              color: colorScheme.primary,
-                              fontSize: 26,
-                              fontWeight: FontWeight.w700,
+                        width: _isHovering ? 130 : 0,
+                        child: ClipRect(
+                          child: Align(
+                            alignment: Alignment.centerLeft,
+                            widthFactor: 1,
+                            child: Image.asset(
+                              'assets/images/letreiro.png',
+                              height: 32,
+                              fit: BoxFit.contain,
                             ),
                           ),
                         ),
@@ -453,27 +460,28 @@ class _MobileNavigationDrawer extends StatelessWidget {
     final colorScheme = Theme.of(context).colorScheme;
 
     return Drawer(
+      width: _AppShellSizes.menuExpandedWidth,
       backgroundColor: colorScheme.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.only(
+          topRight: Radius.circular(24),
+          bottomRight: Radius.circular(24),
+        ),
+      ),
       child: SafeArea(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        child: Stack(
           children: [
             Padding(
-              padding: const EdgeInsets.fromLTRB(24, 20, 24, 18),
-              child: Text(
-                'CYSVET',
-                style: TextStyle(
-                  color: colorScheme.primary,
-                  fontSize: 26,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ),
-            Container(height: 1, color: colorScheme.outline),
-            Expanded(
-              child: ListView(
-                padding: const EdgeInsets.fromLTRB(12, 18, 12, 16),
+              padding: _AppShellSizes.menuPadding,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  const SizedBox(height: 47),
+                  Container(
+                    height: 1,
+                    color: colorScheme.outline,
+                    margin: const EdgeInsets.only(bottom: 18),
+                  ),
                   for (var index = 0; index < AppShell._items.length; index++)
                     _NavigationTile(
                       item: AppShell._items[index],
@@ -486,6 +494,36 @@ class _MobileNavigationDrawer extends StatelessWidget {
                       },
                     ),
                 ],
+              ),
+            ),
+
+            Positioned(
+              top: 20,
+              left: 0,
+              right: 0,
+              child: Padding(
+                padding: _AppShellSizes.logoPadding,
+                child: Row(
+                  children: [
+                    Image.asset(
+                      'assets/images/icon.png',
+                      width: 32,
+                      height: 32,
+                      fit: BoxFit.contain,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Align(
+                        alignment: Alignment.centerLeft,
+                        child: Image.asset(
+                          'assets/images/letreiro.png',
+                          height: 32,
+                          fit: BoxFit.contain,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ],
