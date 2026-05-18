@@ -1,3 +1,4 @@
+import 'package:cysvet_app/core/constants/app_constants.dart';
 import 'package:flutter/material.dart';
 
 class AppDropdownOption<T> {
@@ -60,11 +61,11 @@ class _AppDropdownState<T> extends State<AppDropdown<T>> {
   }
 
   List<AppDropdownOption<T>> get _filteredOptions {
-    final filter = _normalize(_searchFilter.trim());
+    final filter = _searchFilter.trim().normalize();
     if (filter.isEmpty) return widget.options;
     final words = filter.split(' ').where((word) => word.isNotEmpty).toList();
     return widget.options.where((option) {
-      final label = _normalize(option.label);
+      final label = option.label.trim().normalize();
       return words.every(label.contains);
     }).toList();
   }
@@ -283,17 +284,6 @@ class _AppDropdownState<T> extends State<AppDropdown<T>> {
       return;
     }
     if (mounted) setState(() => _isOpen = false);
-  }
-
-  String _normalize(String value) {
-    return value
-        .toLowerCase()
-        .replaceAll(RegExp('[áàâãä]'), 'a')
-        .replaceAll(RegExp('[éèêë]'), 'e')
-        .replaceAll(RegExp('[íìîï]'), 'i')
-        .replaceAll(RegExp('[óòôõö]'), 'o')
-        .replaceAll(RegExp('[úùûü]'), 'u')
-        .replaceAll('ç', 'c');
   }
 }
 

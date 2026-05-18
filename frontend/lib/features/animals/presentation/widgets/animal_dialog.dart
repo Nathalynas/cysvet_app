@@ -61,22 +61,26 @@ class _AnimalFormState extends ConsumerState<_AnimalForm> {
   final _nascimento = TextEditingController();
   final _lactacao = TextEditingController();
   final _historico = TextEditingController();
-  late AnimalStatus _status;
+
   String? _sexo;
   int? _propertyId;
+  AnimalReproductiveStatus _reproductiveStatus =
+      AnimalReproductiveStatus.pending;
 
   @override
   void initState() {
     super.initState();
+
     final animal = widget.animal;
+
     _codigo.text = animal?.codigo ?? '';
     _especie.text = animal?.categoria ?? '';
     _sexo = _normalizeSexo(animal?.sexo);
     _nascimento.text = formatDateInput(animal?.dataNascimento);
     _lactacao.text = (animal?.numeroLactacao ?? 0).toString();
     _historico.text = animal?.historicoReprodutivo ?? '';
-    _status = animal?.status ?? AnimalStatus.active;
     _propertyId = animal?.idPropriedade;
+    _reproductiveStatus = AnimalReproductiveStatus.pending;
   }
 
   @override
@@ -107,8 +111,10 @@ class _AnimalFormState extends ConsumerState<_AnimalForm> {
       onCancel: () => Navigator.of(context).maybePop(),
       onSubmit: () async {
         final navigator = Navigator.of(context);
+
         try {
           final property = _selectedProperty();
+
           final payload = AnimalSummaryModel(
             id: animal?.id ?? 0,
             idExterno: animal?.idExterno ?? const Uuid().v4(),
@@ -121,9 +127,11 @@ class _AnimalFormState extends ConsumerState<_AnimalForm> {
             dataNascimento: parseDateInput(_nascimento.text),
             numeroLactacao: int.tryParse(_lactacao.text.trim()) ?? 0,
             historicoReprodutivo: _historico.text.trim(),
-            status: _status,
+            status: animal?.status ?? AnimalStatus.active,
           );
+
           await ref.read(animalsControllerProvider).save(payload);
+
           if (mounted) {
             await navigator.maybePop();
             showAppSuccess('Animal salvo com sucesso.');
@@ -134,7 +142,7 @@ class _AnimalFormState extends ConsumerState<_AnimalForm> {
       },
       fields: [
         AppTextField(label: 'Brinco/ID', controller: _codigo, required: true),
-        AppTextField(label: 'Especie', controller: _especie, required: true),
+        AppTextField(label: 'Espécie', controller: _especie, required: true),
         AppDropdown<String>(
           value: _sexo,
           labelText: 'Sexo',
@@ -172,22 +180,28 @@ class _AnimalFormState extends ConsumerState<_AnimalForm> {
               )
               .toList(growable: false),
         ),
-        AppDropdown<AnimalStatus>(
-          value: _status,
-          labelText: 'Status',
+        AppDropdown<AnimalReproductiveStatus>(
+          value: _reproductiveStatus,
+          labelText: 'Status reprodutivo',
           required: true,
-          onChanged: (value) => setState(() => _status = value ?? _status),
-          options: AnimalStatus.values
+          onChanged: (value) {
+            if (value == null) return;
+
+            setState(() {
+              _reproductiveStatus = value;
+            });
+          },
+          options: AnimalReproductiveStatus.values
               .map((item) => AppDropdownOption(label: item.label, value: item))
               .toList(growable: false),
         ),
         AppTextField(
-          label: 'Numero de lactacao',
+          label: 'Número de lactação',
           controller: _lactacao,
           required: true,
           keyboardType: TextInputType.number,
         ),
-        AppTextField(label: 'Historico', controller: _historico, maxLines: 3),
+        AppTextField(label: 'Histórico', controller: _historico, maxLines: 3),
       ],
     );
   }
@@ -204,6 +218,7 @@ class _AnimalFormState extends ConsumerState<_AnimalForm> {
 
   String? _normalizeSexo(String? value) {
     final normalized = (value ?? '').trim().toLowerCase();
+
     switch (normalized) {
       case 'masculino':
       case 'macho':

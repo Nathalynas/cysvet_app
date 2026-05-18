@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/enums/animal_status.dart';
 import '../../../core/network/api_client.dart';
 import '../domain/animal_summary_model.dart';
 
@@ -38,6 +39,18 @@ class AnimalsRepository {
     final response = await _dio.put<Object?>(
       '/api/animals/${animal.id}',
       data: _toRequest(animal),
+    );
+
+    return AnimalSummaryModelMapper.fromMap(_asMap(response.data));
+  }
+
+  Future<AnimalSummaryModel> updateStatus({
+    required int id,
+    required AnimalStatus status,
+  }) async {
+    final response = await _dio.patch<Object?>(
+      '/api/animals/$id/status',
+      data: {'status': status.apiValue},
     );
 
     return AnimalSummaryModelMapper.fromMap(_asMap(response.data));

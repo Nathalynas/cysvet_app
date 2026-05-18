@@ -1,3 +1,4 @@
+import 'package:cysvet_app/core/constants/app_constants.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../../core/enums/animal_status.dart';
@@ -38,7 +39,7 @@ class AnimalsCsvImporter {
       );
     }
 
-    final headers = rows.first.map(_normalizeHeader).toList(growable: false);
+    final headers = rows.first.map((v) => v.trim().normalize()).toList(growable: false);
     final columnIndex = _buildColumnIndex(headers);
     final missingColumns = _requiredColumns.where((column) {
       return columnIndex[column] == null;
@@ -196,7 +197,7 @@ class AnimalsCsvImporter {
   }
 
   AnimalStatus? _parseStatus(String value) {
-    final normalized = _normalizeHeader(value);
+    final normalized = value.trim().normalize();
     if (normalized.isEmpty) return AnimalStatus.active;
 
     return switch (normalized) {
@@ -212,31 +213,18 @@ class AnimalsCsvImporter {
     List<PropertySummaryModel> properties,
     String value,
   ) {
-    final normalized = _normalizeHeader(value);
+    final normalized = value.trim().normalize();
     if (normalized.isEmpty) return null;
 
     for (final property in properties) {
-      if (_normalizeHeader(property.nome) == normalized ||
-          _normalizeHeader(property.idExterno) == normalized ||
+      if (property.nome.trim().normalize() == normalized ||
+          property.idExterno.trim().normalize() == normalized ||
           property.id.toString() == value.trim()) {
         return property;
       }
     }
 
     return null;
-  }
-
-  String _normalizeHeader(String value) {
-    return value
-        .trim()
-        .toLowerCase()
-        .replaceAll(RegExp('[áàâãä]'), 'a')
-        .replaceAll(RegExp('[éèêë]'), 'e')
-        .replaceAll(RegExp('[íìîï]'), 'i')
-        .replaceAll(RegExp('[óòôõö]'), 'o')
-        .replaceAll(RegExp('[úùûü]'), 'u')
-        .replaceAll('ç', 'c')
-        .replaceAll(RegExp(r'[^a-z0-9]'), '');
   }
 
   static const _requiredColumns = {

@@ -1,3 +1,4 @@
+import 'package:cysvet_app/core/constants/app_constants.dart';
 import 'package:cysvet_app/core/enums/property_status.dart';
 import 'package:cysvet_app/core/widgets/app_button.dart';
 import 'package:cysvet_app/core/widgets/app_dialog.dart';
@@ -181,7 +182,7 @@ List<PropertySummaryModel> _filterProperties(
   String query,
   PropertyStatusFilter statusFilter,
 ) {
-  final normalizedQuery = _normalize(query.trim());
+  final normalizedQuery = query.trim().normalize();
 
   return items.where((property) {
     final matchesStatus = switch (statusFilter) {
@@ -190,7 +191,7 @@ List<PropertySummaryModel> _filterProperties(
       PropertyStatusFilter.inactive =>
         property.status == PropertyStatus.inactive,
     };
-    final searchableText = _normalize(
+    final searchableText = 
       [
         property.nome,
         property.nomeProprietario,
@@ -198,22 +199,10 @@ List<PropertySummaryModel> _filterProperties(
         property.localizacao,
         property.idExterno,
         property.observacoes ?? '',
-      ].join(' '),
-    );
+      ].join(' ').normalize();
     return matchesStatus &&
         (normalizedQuery.isEmpty || searchableText.contains(normalizedQuery));
   }).toList();
-}
-
-String _normalize(String value) {
-  return value
-      .toLowerCase()
-      .replaceAll(RegExp('[áàâãä]'), 'a')
-      .replaceAll(RegExp('[éèêë]'), 'e')
-      .replaceAll(RegExp('[íìîï]'), 'i')
-      .replaceAll(RegExp('[óòôõö]'), 'o')
-      .replaceAll(RegExp('[úùûü]'), 'u')
-      .replaceAll('ç', 'c');
 }
 
 class _PropertyCard extends StatelessWidget {

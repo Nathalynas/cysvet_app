@@ -1,3 +1,4 @@
+import 'package:cysvet_app/core/constants/app_constants.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
@@ -176,7 +177,7 @@ List<UserSummaryModel> _filterUsers(
   String query,
   UserStatusFilter statusFilter,
 ) {
-  final normalizedQuery = _normalize(query.trim());
+  final normalizedQuery = query.trim().normalize();
 
   return items.where((user) {
     final matchesStatus = switch (statusFilter) {
@@ -184,28 +185,15 @@ List<UserSummaryModel> _filterUsers(
       UserStatusFilter.active => user.status == UserStatus.active,
       UserStatusFilter.inactive => user.status == UserStatus.inactive,
     };
-    final searchableText = _normalize(
-      [
-        user.name,
-        user.email,
-        user.displayRole,
-        user.companyName ?? '',
-      ].join(' '),
-    );
+    final searchableText = [
+      user.name,
+      user.email,
+      user.displayRole,
+      user.companyName ?? '',
+    ].join(' ').normalize();
     return matchesStatus &&
         (normalizedQuery.isEmpty || searchableText.contains(normalizedQuery));
   }).toList();
-}
-
-String _normalize(String value) {
-  return value
-      .toLowerCase()
-      .replaceAll(RegExp('[áàâãä]'), 'a')
-      .replaceAll(RegExp('[éèêë]'), 'e')
-      .replaceAll(RegExp('[íìîï]'), 'i')
-      .replaceAll(RegExp('[óòôõö]'), 'o')
-      .replaceAll(RegExp('[úùûü]'), 'u')
-      .replaceAll('ç', 'c');
 }
 
 class _UserCard extends StatelessWidget {

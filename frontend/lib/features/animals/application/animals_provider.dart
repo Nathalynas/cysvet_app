@@ -96,7 +96,15 @@ class AnimalsController {
   Future<void> inactivate(int id) async {
     _ref.read(animalsBusyProvider.notifier).setBusy(true);
     try {
-      _ref.read(localAnimalsProvider.notifier).inactivate(id);
+      if (id > 0) {
+        final updated = await _ref
+            .read(animalsRepositoryProvider)
+            .updateStatus(id: id, status: AnimalStatus.inactive);
+        _ref.invalidate(animalsProvider);
+        _ref.read(localAnimalsProvider.notifier).save(updated);
+      } else {
+        _ref.read(localAnimalsProvider.notifier).inactivate(id);
+      }
     } finally {
       _ref.read(animalsBusyProvider.notifier).setBusy(false);
     }
@@ -105,7 +113,15 @@ class AnimalsController {
   Future<void> activate(int id) async {
     _ref.read(animalsBusyProvider.notifier).setBusy(true);
     try {
-      _ref.read(localAnimalsProvider.notifier).activate(id);
+      if (id > 0) {
+        final updated = await _ref
+            .read(animalsRepositoryProvider)
+            .updateStatus(id: id, status: AnimalStatus.active);
+        _ref.invalidate(animalsProvider);
+        _ref.read(localAnimalsProvider.notifier).save(updated);
+      } else {
+        _ref.read(localAnimalsProvider.notifier).activate(id);
+      }
     } finally {
       _ref.read(animalsBusyProvider.notifier).setBusy(false);
     }
