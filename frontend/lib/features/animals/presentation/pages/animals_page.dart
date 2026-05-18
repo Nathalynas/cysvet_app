@@ -1099,31 +1099,19 @@ class _HerdIndicators extends StatelessWidget {
     }
 
     return IntrinsicHeight(
-  child: Row(
-    crossAxisAlignment: CrossAxisAlignment.stretch,
-    children: [
-      Expanded(
-        flex: 2,
-        child: pregnancyCard,
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Expanded(flex: 2, child: pregnancyCard),
+          const SizedBox(width: 12),
+          Expanded(flex: 2, child: birthIntervalCard),
+          const SizedBox(width: 12),
+          Expanded(flex: 2, child: pendingCard),
+          const SizedBox(width: 12),
+          Expanded(flex: 3, child: statusCard),
+        ],
       ),
-      const SizedBox(width: 12),
-      Expanded(
-        flex: 2,
-        child: birthIntervalCard,
-      ),
-      const SizedBox(width: 12),
-      Expanded(
-        flex: 2,
-        child: pendingCard,
-      ),
-      const SizedBox(width: 12),
-      Expanded(
-        flex: 3,
-        child: statusCard,
-      ),
-    ],
-  ),
-);
+    );
   }
 }
 
