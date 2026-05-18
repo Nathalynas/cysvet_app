@@ -168,7 +168,7 @@ class AnimalsPage extends ConsumerWidget {
   }
 }
 
-class _AnimalsToolbar extends StatelessWidget {
+class _AnimalsToolbar extends StatefulWidget {
   const _AnimalsToolbar({
     required this.properties,
     required this.searchQuery,
@@ -196,37 +196,45 @@ class _AnimalsToolbar extends StatelessWidget {
   final VoidCallback onCreate;
 
   @override
+  State<_AnimalsToolbar> createState() => _AnimalsToolbarState();
+}
+
+class _AnimalsToolbarState extends State<_AnimalsToolbar> {
+  bool _filtersOpen = false;
+
+  @override
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
+        final mobile = constraints.maxWidth < 700;
         final stacked = constraints.maxWidth < 1120;
 
         final search = SearchCard(
-          value: searchQuery,
+          value: widget.searchQuery,
           labelText: 'Pesquisar por brinco/ID',
-          onChanged: onSearchChanged,
+          onChanged: widget.onSearchChanged,
         );
 
         final propertyFilter = PropertyFilterCard(
-          properties: properties,
-          selectedPropertyId: selectedPropertyId,
-          onChanged: onPropertyChanged,
+          properties: widget.properties,
+          selectedPropertyId: widget.selectedPropertyId,
+          onChanged: widget.onPropertyChanged,
         );
 
         final status = AppDropdown<AnimalStatusFilter>(
-          value: statusFilter,
+          value: widget.statusFilter,
           labelText: 'Status',
-          onChanged: onStatusChanged,
+          onChanged: widget.onStatusChanged,
           options: AnimalStatusFilter.values
               .map((item) => AppDropdownOption(label: item.label, value: item))
               .toList(growable: false),
         );
 
         final reproductiveStatus = AppDropdown<AnimalReproductiveStatus>(
-          value: reproductiveStatusFilter,
+          value: widget.reproductiveStatusFilter,
           labelText: 'Status reprodutivo',
           nullLabel: 'Todos',
-          onChanged: onReproductiveStatusChanged,
+          onChanged: widget.onReproductiveStatusChanged,
           options: [
             const AppDropdownOption<AnimalReproductiveStatus>(
               label: 'Todos',
@@ -247,7 +255,7 @@ class _AnimalsToolbar extends StatelessWidget {
           child: AppButton(
             outlined: true,
             width: 48,
-            onPressed: onImport,
+            onPressed: widget.onImport,
             child: const Icon(Icons.upload_file_outlined),
           ),
         );
@@ -255,8 +263,55 @@ class _AnimalsToolbar extends StatelessWidget {
         final createButton = AppButton(
           text: 'Novo animal',
           icon: const Icon(Icons.add),
-          onPressed: onCreate,
+          onPressed: widget.onCreate,
         );
+
+        final filterButton = Tooltip(
+          message: _filtersOpen ? 'Ocultar filtros' : 'Mostrar filtros',
+          child: AppButton(
+            outlined: !_filtersOpen,
+            width: 48,
+            onPressed: () {
+              setState(() => _filtersOpen = !_filtersOpen);
+            },
+            child: Icon(
+              _filtersOpen
+                  ? Icons.filter_alt_off_outlined
+                  : Icons.filter_alt_outlined,
+            ),
+          ),
+        );
+
+        if (mobile) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
+                children: [
+                  Expanded(child: search),
+                  const SizedBox(width: 10),
+                  filterButton,
+                ],
+              ),
+              if (_filtersOpen) ...[
+                const SizedBox(height: 10),
+                propertyFilter,
+                const SizedBox(height: 10),
+                status,
+                const SizedBox(height: 10),
+                reproductiveStatus,
+              ],
+              const SizedBox(height: 10),
+              Row(
+                children: [
+                  importButton,
+                  const SizedBox(width: 10),
+                  Expanded(child: createButton),
+                ],
+              ),
+            ],
+          );
+        }
 
         if (stacked) {
           return Column(
@@ -398,48 +453,33 @@ class _AnimalsMainContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final isWide = constraints.maxWidth >= 1080;
-        final isMobile = constraints.maxWidth < 700;
-        final indicatorsWidth = constraints.maxWidth >= 1300 ? 260.0 : 220.0;
+    final isMobile = MediaQuery.sizeOf(context).width < MOBILE_WIDTH;
 
-        final animalsContent = isMobile
-            ? _AnimalsMobileList(
-                animals: animals,
-                propertyNameFor: propertyNameFor,
-                onEdit: onEdit,
-                onInactivate: onInactivate,
-                onActivate: onActivate,
-                onDelete: onDelete,
-              )
-            : _AnimalsTable(
-                animals: animals,
-                propertyNameFor: propertyNameFor,
-                onEdit: onEdit,
-                onInactivate: onInactivate,
-                onActivate: onActivate,
-                onDelete: onDelete,
-              );
-
-        final indicators = _HerdIndicators(animals: animals);
-
-        if (!isWide) {
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [indicators, const SizedBox(height: 16), animalsContent],
+    final animalsContent = isMobile
+        ? _AnimalsMobileList(
+            animals: animals,
+            propertyNameFor: propertyNameFor,
+            onEdit: onEdit,
+            onInactivate: onInactivate,
+            onActivate: onActivate,
+            onDelete: onDelete,
+          )
+        : _AnimalsTable(
+            animals: animals,
+            propertyNameFor: propertyNameFor,
+            onEdit: onEdit,
+            onInactivate: onInactivate,
+            onActivate: onActivate,
+            onDelete: onDelete,
           );
-        }
 
-        return Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(flex: 8, child: animalsContent),
-            const SizedBox(width: 18),
-            SizedBox(width: indicatorsWidth, child: indicators),
-          ],
-        );
-      },
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _HerdIndicators(animals: animals),
+        const SizedBox(height: 16),
+        animalsContent,
+      ],
     );
   }
 }
@@ -1058,18 +1098,32 @@ class _HerdIndicators extends StatelessWidget {
       );
     }
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        pregnancyCard,
-        const SizedBox(height: 12),
-        birthIntervalCard,
-        const SizedBox(height: 12),
-        pendingCard,
-        const SizedBox(height: 12),
-        statusCard,
-      ],
-    );
+    return IntrinsicHeight(
+  child: Row(
+    crossAxisAlignment: CrossAxisAlignment.stretch,
+    children: [
+      Expanded(
+        flex: 2,
+        child: pregnancyCard,
+      ),
+      const SizedBox(width: 12),
+      Expanded(
+        flex: 2,
+        child: birthIntervalCard,
+      ),
+      const SizedBox(width: 12),
+      Expanded(
+        flex: 2,
+        child: pendingCard,
+      ),
+      const SizedBox(width: 12),
+      Expanded(
+        flex: 3,
+        child: statusCard,
+      ),
+    ],
+  ),
+);
   }
 }
 
@@ -1104,20 +1158,20 @@ class _HerdMetricCard extends StatelessWidget {
 
     return AppCard(
       borderRadius: 16,
-      padding: EdgeInsets.all(compact ? 12 : 16),
+      padding: EdgeInsets.all(compact ? 10 : 12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
-            width: compact ? 28 : 34,
-            height: compact ? 28 : 34,
+            width: compact ? 26 : 30,
+            height: compact ? 26 : 30,
             decoration: BoxDecoration(
               color: statusColors.background,
               borderRadius: BorderRadius.circular(9),
             ),
-            child: Icon(icon, color: foreground, size: compact ? 16 : 19),
+            child: Icon(icon, color: foreground, size: compact ? 15 : 17),
           ),
-          SizedBox(height: compact ? 8 : 14),
+          SizedBox(height: compact ? 6 : 8),
           Text(
             title.toUpperCase(),
             maxLines: compact ? 2 : 2,
@@ -1129,7 +1183,7 @@ class _HerdMetricCard extends StatelessWidget {
               height: 1.05,
             ),
           ),
-          SizedBox(height: compact ? 5 : 8),
+          SizedBox(height: compact ? 4 : 5),
           Text.rich(
             TextSpan(
               children: [
@@ -1140,7 +1194,7 @@ class _HerdMetricCard extends StatelessWidget {
                           color: foreground,
                           fontWeight: FontWeight.w900,
                         )
-                      : theme.textTheme.headlineSmall?.copyWith(
+                      : theme.textTheme.titleLarge?.copyWith(
                           color: foreground,
                           fontWeight: FontWeight.w900,
                         ),
@@ -1158,7 +1212,7 @@ class _HerdMetricCard extends StatelessWidget {
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
           ),
-          SizedBox(height: compact ? 3 : 6),
+          SizedBox(height: compact ? 2 : 3),
           Text(
             subtitle,
             maxLines: compact ? 1 : 2,
@@ -1188,7 +1242,7 @@ class _HerdStatusCard extends StatelessWidget {
 
     return AppCard(
       borderRadius: 16,
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -1199,7 +1253,7 @@ class _HerdStatusCard extends StatelessWidget {
               fontWeight: FontWeight.w800,
             ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 10),
           if (total == 0)
             Text(
               'Sem registros no filtro atual.',
@@ -1209,8 +1263,8 @@ class _HerdStatusCard extends StatelessWidget {
             )
           else
             Wrap(
-              spacing: 12,
-              runSpacing: 14,
+              spacing: 8,
+              runSpacing: 8,
               children: [
                 for (final status in AnimalReproductiveStatus.values)
                   _StatusCountTile(
@@ -1241,7 +1295,7 @@ class _StatusCountTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colors = _reproductiveStatusColors(context, status);
-    final width = MediaQuery.sizeOf(context).width < 420 ? 88.0 : 82.0;
+    final width = MediaQuery.sizeOf(context).width < 420 ? 78.0 : 70.0;
     final ratio = total == 0 ? 0.0 : count / total;
 
     return SizedBox(
