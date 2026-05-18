@@ -19,6 +19,7 @@ class AnimalSummaryModel with AnimalSummaryModelMappable {
     this.dataUltimoParto,
     this.diasEmLactacao,
     this.historicoReprodutivo,
+    this.statusReprodutivo,
     this.status = AnimalStatus.active,
   });
 
@@ -36,6 +37,8 @@ class AnimalSummaryModel with AnimalSummaryModelMappable {
   final DateTime? dataUltimoParto;
   final int? diasEmLactacao;
   final String? historicoReprodutivo;
+  @MappableField(hook: _AnimalReproductiveStatusHook())
+  final AnimalReproductiveStatus? statusReprodutivo;
   @MappableField(hook: _AnimalStatusHook())
   final AnimalStatus status;
 }
@@ -68,5 +71,23 @@ class _AnimalStatusHook extends MappingHook {
   @override
   Object? beforeEncode(Object? value) {
     return value is AnimalStatus ? value.apiValue : value;
+  }
+}
+
+class _AnimalReproductiveStatusHook extends MappingHook {
+  const _AnimalReproductiveStatusHook();
+
+  @override
+  Object? beforeDecode(Object? value) {
+    final raw = value?.toString();
+    if (raw == null || raw.isEmpty) {
+      return null;
+    }
+    return AnimalReproductiveStatus.fromApiValue(raw);
+  }
+
+  @override
+  Object? beforeEncode(Object? value) {
+    return value is AnimalReproductiveStatus ? value.apiValue : value;
   }
 }

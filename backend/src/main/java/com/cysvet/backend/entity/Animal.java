@@ -43,6 +43,10 @@ public class Animal extends TenantAwareEntity {
     private String historicoReprodutivo;
 
     @Enumerated(EnumType.STRING)
+    @Column(name = "status_reprodutivo", length = 32)
+    private StatusReprodutivoAnimal statusReprodutivo;
+
+    @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false, length = 32)
     private StatusAnimal status = StatusAnimal.ATIVO;
 

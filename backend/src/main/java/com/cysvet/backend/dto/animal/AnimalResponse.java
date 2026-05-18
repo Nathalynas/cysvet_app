@@ -1,6 +1,7 @@
 package com.cysvet.backend.dto.animal;
 
 import com.cysvet.backend.entity.StatusAnimal;
+import com.cysvet.backend.entity.StatusReprodutivoAnimal;
 import io.swagger.v3.oas.annotations.media.Schema;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -31,6 +32,8 @@ public record AnimalResponse(
         Long diasEmLactacao,
         @Schema(description = "Historico reprodutivo resumido.")
         String historicoReprodutivo,
+        @Schema(description = "Status reprodutivo atual.")
+        StatusReprodutivoAnimal statusReprodutivo,
         @Schema(description = "Status atual do animal.")
         StatusAnimal status,
         @Schema(description = "Data de criacao do registro.", example = "2026-05-01T12:00:00Z")

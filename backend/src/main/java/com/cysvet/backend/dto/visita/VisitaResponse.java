@@ -3,6 +3,7 @@ package com.cysvet.backend.dto.visita;
 import io.swagger.v3.oas.annotations.media.Schema;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.List;
 
 @Schema(description = "Dados retornados para uma visita tecnica.")
 public record VisitaResponse(
@@ -18,6 +19,8 @@ public record VisitaResponse(
         LocalDate dataVisita,
         @Schema(description = "Observacoes da visita.")
         String observacoes,
+        @Schema(description = "Lista de animais avaliados na visita.")
+        List<VisitaAnimalItemDto> animais,
         @Schema(description = "Data de criacao do registro.", example = "2026-05-01T12:00:00Z")
         Instant dataCriacao,
         @Schema(description = "Data da ultima atualizacao.", example = "2026-05-12T18:30:00Z")

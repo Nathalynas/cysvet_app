@@ -87,7 +87,32 @@ class VisitsRepository {
           : visit.idExternoPropriedade,
       'dataVisita': _toDate(visit.dataVisita),
       'observacoes': visit.observacoes,
+      'animais': visit.animais
+          .map((item) => _toAnimalItemRequest(item))
+          .toList(growable: false),
       'dataAtualizacaoCliente': DateTime.now().toUtc().toIso8601String(),
+    };
+  }
+
+  Map<String, dynamic> _toAnimalItemRequest(VisitAnimalEntryModel item) {
+    return {
+      'animalId': item.animalId == 0 ? null : item.animalId,
+      'animalIdExterno': item.animalIdExterno.isEmpty ? null : item.animalIdExterno,
+      'animalCodigo': item.animalCodigo,
+      'animalCategoria': item.animalCategoria,
+      'idadeMeses': item.idadeMeses,
+      'situacaoProdutiva': item.situacaoProdutiva,
+      'situacaoReprodutiva': item.situacaoReprodutiva,
+      'decisao': item.decisao,
+      'dataUltimaIa': _toDate(item.dataUltimaIa),
+      'numeroIaRecebida': item.numeroIaRecebida,
+      'diasPrenhez': item.diasPrenhez,
+      'diagnostico': item.diagnostico,
+      'del': item.del,
+      'diasParaSecar': item.diasParaSecar,
+      'previsaoSecagem': _toDate(item.previsaoSecagem),
+      'dataPreParto': _toDate(item.dataPreParto),
+      'previsaoParto': _toDate(item.previsaoParto),
     };
   }
 

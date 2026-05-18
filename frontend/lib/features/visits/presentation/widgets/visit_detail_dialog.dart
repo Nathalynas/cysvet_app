@@ -64,10 +64,24 @@ class VisitDetailDialog extends ConsumerWidget {
               _InfoLine(label: 'Data', value: formatDate(visit.dataVisita)),
               _InfoLine(label: 'Propriedade', value: propertyName),
               _InfoLine(label: 'ID externo', value: visit.idExterno),
+              _InfoLine(
+                label: 'Animais com coleta',
+                value: visit.animais.length.toString(),
+              ),
               if (visit.observacoes != null && visit.observacoes!.isNotEmpty)
                 _InfoLine(label: 'Observacoes', value: visit.observacoes!),
             ],
           ),
+          if (visit.animais.isNotEmpty) ...[
+            const SizedBox(height: 16),
+            _Section(
+              title: 'Coleta por animal',
+              children: [
+                for (final item in visit.animais)
+                  _VisitAnimalItemTile(item: item),
+              ],
+            ),
+          ],
           const SizedBox(height: 16),
           _ReportPreview(
             visit: visit,
@@ -141,6 +155,106 @@ class VisitDetailDialog extends ConsumerWidget {
     final month = date.month.toString().padLeft(2, '0');
     final day = date.day.toString().padLeft(2, '0');
     return 'relatorio-visita-$year$month$day-${visit.id}.pdf';
+  }
+}
+
+class _VisitAnimalItemTile extends StatelessWidget {
+  const _VisitAnimalItemTile({required this.item});
+
+  final VisitAnimalEntryModel item;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
+    return Container(
+      margin: const EdgeInsets.only(top: 10),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: colorScheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: colorScheme.outline),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            item.animalCodigo.isEmpty ? 'Animal sem codigo' : item.animalCodigo,
+            style: theme.textTheme.titleSmall?.copyWith(
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Wrap(
+            spacing: 14,
+            runSpacing: 6,
+            children: [
+              _ItemFact(label: 'Categoria', value: item.animalCategoria),
+              if (item.idadeMeses != null)
+                _ItemFact(label: 'Idade', value: '${item.idadeMeses} meses'),
+              if (item.situacaoProdutiva?.isNotEmpty == true)
+                _ItemFact(label: 'Sit. produtiva', value: item.situacaoProdutiva!),
+              if (item.situacaoReprodutiva?.isNotEmpty == true)
+                _ItemFact(label: 'Sit. reprodutiva', value: item.situacaoReprodutiva!),
+              if (item.decisao?.isNotEmpty == true)
+                _ItemFact(label: 'Decisao', value: item.decisao!),
+              if (item.diagnostico?.isNotEmpty == true)
+                _ItemFact(label: 'Diagnostico', value: item.diagnostico!),
+              if (item.dataUltimaIa != null)
+                _ItemFact(label: 'Ultima IA', value: formatDate(item.dataUltimaIa)),
+              if (item.numeroIaRecebida != null)
+                _ItemFact(label: 'Nº IA', value: item.numeroIaRecebida.toString()),
+              if (item.diasPrenhez != null)
+                _ItemFact(label: 'Dias prenhez', value: item.diasPrenhez.toString()),
+              if (item.del != null)
+                _ItemFact(label: 'DEL', value: item.del.toString()),
+              if (item.diasParaSecar != null)
+                _ItemFact(label: 'Dias p/ secar', value: item.diasParaSecar.toString()),
+              if (item.previsaoSecagem != null)
+                _ItemFact(label: 'Prev. secagem', value: formatDate(item.previsaoSecagem)),
+              if (item.dataPreParto != null)
+                _ItemFact(label: 'Data pre-parto', value: formatDate(item.dataPreParto)),
+              if (item.previsaoParto != null)
+                _ItemFact(label: 'Prev. parto', value: formatDate(item.previsaoParto)),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ItemFact extends StatelessWidget {
+  const _ItemFact({required this.label, required this.value});
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
+    return Text.rich(
+      TextSpan(
+        children: [
+          TextSpan(
+            text: '$label: ',
+            style: theme.textTheme.bodySmall?.copyWith(
+              fontWeight: FontWeight.w700,
+              color: colorScheme.onSurface,
+            ),
+          ),
+          TextSpan(
+            text: value,
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: colorScheme.onSurfaceVariant,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
 

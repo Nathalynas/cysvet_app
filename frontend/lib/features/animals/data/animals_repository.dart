@@ -95,6 +95,7 @@ class AnimalsRepository {
       'numeroLactacao': animal.numeroLactacao,
       'dataUltimoParto': _toDate(animal.dataUltimoParto),
       'historicoReprodutivo': animal.historicoReprodutivo,
+      'statusReprodutivo': animal.statusReprodutivo?.apiValue,
       'status': animal.status.apiValue,
       'dataAtualizacaoCliente': DateTime.now().toUtc().toIso8601String(),
     };

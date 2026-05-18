@@ -1,6 +1,7 @@
 import 'package:cysvet_app/core/widgets/property_filter_card.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../../core/presentation/async_value_view.dart';
 import '../../../../core/presentation/app_scaffold_messenger.dart';
@@ -11,7 +12,6 @@ import '../../../properties/domain/property_summary_model.dart';
 import '../../application/visits_provider.dart';
 import '../../domain/visit_summary_model.dart';
 import '../widgets/visit_detail_dialog.dart';
-import '../widgets/visit_dialog.dart';
 
 class VisitsPage extends ConsumerWidget {
   const VisitsPage({super.key});
@@ -63,11 +63,10 @@ class VisitsPage extends ConsumerWidget {
                     return;
                   }
 
-                  VisitDialog.show(
-                    context,
-                    properties: propertyOptions,
-                    initialPropertyId: selectedPropertyId,
-                  );
+                  final query = selectedPropertyId == null
+                      ? ''
+                      : '?propriedade=$selectedPropertyId';
+                  context.go('/visitas/nova$query');
                 },
               ),
               const SizedBox(height: 16),
@@ -255,6 +254,14 @@ class _VisitCard extends StatelessWidget {
                   ),
                 ),
               ],
+              const SizedBox(height: 10),
+              Text(
+                '${visit.animais.length} animal(is) com coleta registrada',
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: colorScheme.primary,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
             ],
           ),
         ),

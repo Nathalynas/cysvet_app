@@ -2,10 +2,12 @@ package com.cysvet.backend.dto.visita;
 
 import com.fasterxml.jackson.annotation.JsonAlias;
 import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.List;
 
 @Schema(description = "Payload para cadastro ou atualizacao de uma visita tecnica.")
 public record VisitaRequest(
@@ -23,6 +25,8 @@ public record VisitaRequest(
         @NotNull LocalDate dataVisita,
         @Schema(description = "Observacoes da visita.")
         String observacoes,
+        @Schema(description = "Lista de animais avaliados na visita.")
+        @Valid List<VisitaAnimalItemDto> animais,
         @Schema(description = "Data da ultima atualizacao enviada pelo cliente.", example = "2026-05-12T18:30:00Z")
         @JsonAlias("data_atualizacao_cliente")
         Instant dataAtualizacaoCliente

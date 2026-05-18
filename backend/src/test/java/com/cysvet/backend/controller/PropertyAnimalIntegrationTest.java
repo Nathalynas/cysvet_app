@@ -1,5 +1,6 @@
 package com.cysvet.backend.controller;
 
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
@@ -22,6 +23,7 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.MvcResult;
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -149,6 +151,7 @@ class PropertyAnimalIntegrationTest {
                   "sexo": "Femea",
                   "numeroLactacao": 2,
                   "historicoReprodutivo": "Sem intercorrencias",
+                  "statusReprodutivo": "pregnant",
                   "status": "ATIVO"
                 }
                 """.formatted(propertyId));
@@ -163,6 +166,7 @@ class PropertyAnimalIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].id").value(animalId))
                 .andExpect(jsonPath("$[0].sexo").value("Femea"))
+                .andExpect(jsonPath("$[0].statusReprodutivo").value("pregnant"))
                 .andExpect(jsonPath("$[0].status").value("ATIVO"));
 
         mockMvc.perform(patch("/api/animals/{id}/status", animalId)
@@ -237,6 +241,90 @@ class PropertyAnimalIntegrationTest {
                 .andExpect(jsonPath("$.animals[0].id").value(animalId))
                 .andExpect(jsonPath("$.animals[0].status").value("INATIVO"))
                 .andExpect(jsonPath("$.deletedRecords").isEmpty());
+    }
+
+    @Test
+    void visitEndpointsShouldPersistAnimalCollection() throws Exception {
+        AuthContext auth = registerAndAuthenticate("visit.animals@example.com");
+        JsonNode property = createProperty(auth, """
+                {
+                  "idExterno": "prop-visit-1",
+                  "nome": "Fazenda Visita",
+                  "nomeProprietario": "Diego"
+                }
+                """);
+
+        long propertyId = property.path("id").asLong();
+
+        JsonNode animal = createAnimal(auth, """
+                {
+                  "idExterno": "animal-visit-1",
+                  "idPropriedade": %d,
+                  "codigo": "46344",
+                  "categoria": "VACA",
+                  "sexo": "Femea",
+                  "numeroLactacao": 3,
+                  "status": "ATIVO"
+                }
+                """.formatted(propertyId));
+
+        long animalId = animal.path("id").asLong();
+
+        MvcResult createdVisit = mockMvc.perform(post("/api/visits")
+                        .header("Authorization", auth.authorization())
+                        .header("empresaid", auth.tenantId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "idExterno": "visit-001",
+                                  "idPropriedade": %d,
+                                  "dataVisita": "2026-05-18",
+                                  "observacoes": "Coleta por animal",
+                                  "animais": [
+                                    {
+                                      "animalId": %d,
+                                      "animalIdExterno": "animal-visit-1",
+                                      "animalCodigo": "46344",
+                                      "animalCategoria": "VACA",
+                                      "idadeMeses": 83,
+                                      "situacaoProdutiva": "lactante",
+                                      "situacaoReprodutiva": "inseminada",
+                                      "decisao": "ST cef+pg",
+                                      "dataUltimaIa": "2025-11-10",
+                                      "numeroIaRecebida": 1,
+                                      "diasPrenhez": 22,
+                                      "diagnostico": "pg",
+                                      "del": 76
+                                    }
+                                  ]
+                                }
+                                """.formatted(propertyId, animalId)))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.animais[0].animalId").value(animalId))
+                .andExpect(jsonPath("$.animais[0].animalCodigo").value("46344"))
+                .andExpect(jsonPath("$.animais[0].situacaoReprodutiva").value("inseminada"))
+                .andExpect(jsonPath("$.animais[0].numeroIaRecebida").value(1))
+                .andReturn();
+
+        long visitId = objectMapper.readTree(createdVisit.getResponse().getContentAsString()).path("id").asLong();
+
+        mockMvc.perform(get("/api/visits")
+                        .header("Authorization", auth.authorization())
+                        .header("empresaid", auth.tenantId())
+                        .queryParam("idPropriedade", Long.toString(propertyId)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].idExterno").value("visit-001"))
+                .andExpect(jsonPath("$[0].animais[0].animalCodigo").value("46344"))
+                .andExpect(jsonPath("$[0].animais[0].decisao").value("ST cef+pg"));
+
+        MvcResult report = mockMvc.perform(get("/api/reports/visit/{visitId}/pdf", visitId)
+                        .header("Authorization", auth.authorization())
+                        .header("empresaid", auth.tenantId()))
+                .andExpect(status().isOk())
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content().contentType(MediaType.APPLICATION_PDF))
+                .andReturn();
+
+        assertTrue(report.getResponse().getContentAsByteArray().length > 1000);
     }
 
     private JsonNode createProperty(AuthContext auth, String payload) throws Exception {

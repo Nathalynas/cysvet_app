@@ -1,11 +1,6 @@
 package com.cysvet.backend.service;
 
-import java.time.Instant;
-import java.util.List;
-
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
+import com.cysvet.backend.dto.visita.VisitaAnimalItemDto;
 import com.cysvet.backend.dto.visita.VisitaRequest;
 import com.cysvet.backend.dto.visita.VisitaResponse;
 import com.cysvet.backend.entity.Propriedade;
@@ -13,7 +8,13 @@ import com.cysvet.backend.entity.Usuario;
 import com.cysvet.backend.entity.Visita;
 import com.cysvet.backend.exception.ResourceNotFoundException;
 import com.cysvet.backend.repository.VisitaRepository;
-
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import java.time.Instant;
+import java.util.List;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 
 @Service
@@ -24,6 +25,7 @@ public class VisitaService {
     private final PropriedadeService propriedadeService;
     private final UsuarioAutenticadoProvider authenticatedUserProvider;
     private final RegistroExcluidoService deletedRecordService;
+    private final ObjectMapper objectMapper;
 
     @Transactional(readOnly = true)
     public List<VisitaResponse> list(Long idPropriedade) {
@@ -110,6 +112,7 @@ public class VisitaService {
                 visit.getPropriedade().getIdExterno(),
                 visit.getDataVisita(),
                 visit.getObservacoes(),
+                readAnimalItems(visit),
                 visit.getDataCriacao(),
                 visit.getDataAtualizacao(),
                 visit.getVersao()
@@ -126,5 +129,31 @@ public class VisitaService {
         visit.setUsuario(user);
         visit.setDataVisita(request.dataVisita());
         visit.setObservacoes(request.observacoes());
+        visit.setAnimaisJson(writeAnimalItems(request.animais()));
+    }
+
+    private List<VisitaAnimalItemDto> readAnimalItems(Visita visit) {
+        if (visit.getAnimaisJson() == null || visit.getAnimaisJson().isBlank()) {
+            return List.of();
+        }
+
+        try {
+            return objectMapper.readValue(visit.getAnimaisJson(), new TypeReference<List<VisitaAnimalItemDto>>() {
+            });
+        } catch (JsonProcessingException exception) {
+            throw new IllegalStateException("Falha ao ler animais da visita: " + exception.getMessage(), exception);
+        }
+    }
+
+    private String writeAnimalItems(List<VisitaAnimalItemDto> items) {
+        if (items == null || items.isEmpty()) {
+            return null;
+        }
+
+        try {
+            return objectMapper.writeValueAsString(items);
+        } catch (JsonProcessingException exception) {
+            throw new IllegalStateException("Falha ao salvar animais da visita: " + exception.getMessage(), exception);
+        }
     }
 }

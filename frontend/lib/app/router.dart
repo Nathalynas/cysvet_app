@@ -11,6 +11,7 @@ import '../features/dashboard/presentation/pages/dashboard_page.dart';
 import '../features/properties/presentation/pages/properties_page.dart';
 import '../features/splash/presentation/pages/splash_page.dart';
 import '../features/users/presentation/pages/users_page.dart';
+import '../features/visits/presentation/pages/visit_form_page.dart';
 import '../features/visits/presentation/pages/visits_page.dart';
 import 'app_shell.dart';
 import 'theme.dart';
@@ -76,6 +77,14 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: '/animais',
             builder: (context, state) => const AnimalsPage(),
+          ),
+          GoRoute(
+            path: '/visitas/nova',
+            builder: (context, state) => VisitFormPage(
+              initialPropertyId: int.tryParse(
+                state.uri.queryParameters['propriedade'] ?? '',
+              ),
+            ),
           ),
           GoRoute(
             path: '/visitas',

@@ -65,6 +65,7 @@ CREATE TABLE animal (
     numero_lactacao INT NOT NULL,
     data_ultimo_parto DATE NULL,
     historico_reprodutivo VARCHAR(2000) NULL,
+    status_reprodutivo VARCHAR(32) NULL,
     id_propriedade BIGINT NOT NULL,
     id_usuario BIGINT NOT NULL,
     PRIMARY KEY (id),
@@ -72,6 +73,7 @@ CREATE TABLE animal (
     KEY idx_animal_id_propriedade (id_propriedade),
     KEY idx_animal_id_usuario (id_usuario),
     KEY idx_animal_id_usuario_data_atualizacao (id_usuario, data_atualizacao),
+    KEY idx_animal_status_reprodutivo (status_reprodutivo),
     CONSTRAINT fk_animal_propriedade
         FOREIGN KEY (id_propriedade) REFERENCES propriedade (id),
     CONSTRAINT fk_animal_usuario
@@ -88,6 +90,7 @@ CREATE TABLE visita (
     id_usuario BIGINT NOT NULL,
     data_visita DATE NOT NULL,
     observacoes VARCHAR(2000) NULL,
+    animais_json TEXT NULL,
     PRIMARY KEY (id),
     UNIQUE KEY uk_visita_id_externo (id_externo),
     KEY idx_visita_id_propriedade (id_propriedade),

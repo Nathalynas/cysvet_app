@@ -1352,6 +1352,11 @@ String _animalCodeLabel(String code) {
 }
 
 AnimalReproductiveStatus reproductiveStatusFor(AnimalSummaryModel animal) {
+  final savedStatus = animal.statusReprodutivo;
+  if (savedStatus != null) {
+    return savedStatus;
+  }
+
   final history = (animal.historicoReprodutivo ?? '').normalize();
 
   if (history.contains('pren') || history.contains('confirm')) {

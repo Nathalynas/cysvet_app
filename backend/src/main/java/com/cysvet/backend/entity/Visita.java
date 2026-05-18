@@ -32,4 +32,7 @@ public class Visita extends TenantAwareEntity {
 
     @Column(name = "observacoes", length = 2000)
     private String observacoes;
+
+    @Column(name = "animais_json", length = 65535)
+    private String animaisJson;
 }

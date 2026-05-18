@@ -15,6 +15,7 @@ class VisitSummaryModelMapper extends ClassMapperBase<VisitSummaryModel> {
   static VisitSummaryModelMapper ensureInitialized() {
     if (_instance == null) {
       MapperContainer.globals.use(_instance = VisitSummaryModelMapper._());
+      VisitAnimalEntryModelMapper.ensureInitialized();
     }
     return _instance!;
   }
@@ -64,6 +65,10 @@ class VisitSummaryModelMapper extends ClassMapperBase<VisitSummaryModel> {
     _$observacoes,
     opt: true,
   );
+  static List<VisitAnimalEntryModel> _$animais(VisitSummaryModel v) =>
+      v.animais;
+  static const Field<VisitSummaryModel, List<VisitAnimalEntryModel>>
+  _f$animais = Field('animais', _$animais, opt: true, def: const []);
 
   @override
   final MappableFields<VisitSummaryModel> fields = const {
@@ -73,6 +78,7 @@ class VisitSummaryModelMapper extends ClassMapperBase<VisitSummaryModel> {
     #idExternoPropriedade: _f$idExternoPropriedade,
     #dataVisita: _f$dataVisita,
     #observacoes: _f$observacoes,
+    #animais: _f$animais,
   };
 
   static VisitSummaryModel _instantiate(DecodingData data) {
@@ -83,6 +89,7 @@ class VisitSummaryModelMapper extends ClassMapperBase<VisitSummaryModel> {
       idExternoPropriedade: data.dec(_f$idExternoPropriedade),
       dataVisita: data.dec(_f$dataVisita),
       observacoes: data.dec(_f$observacoes),
+      animais: data.dec(_f$animais),
     );
   }
 
@@ -157,6 +164,16 @@ abstract class VisitSummaryModelCopyWith<
   $Out
 >
     implements ClassCopyWith<$R, $In, $Out> {
+  ListCopyWith<
+    $R,
+    VisitAnimalEntryModel,
+    VisitAnimalEntryModelCopyWith<
+      $R,
+      VisitAnimalEntryModel,
+      VisitAnimalEntryModel
+    >
+  >
+  get animais;
   $R call({
     int? id,
     String? idExterno,
@@ -164,6 +181,7 @@ abstract class VisitSummaryModelCopyWith<
     String? idExternoPropriedade,
     DateTime? dataVisita,
     String? observacoes,
+    List<VisitAnimalEntryModel>? animais,
   });
   VisitSummaryModelCopyWith<$R2, $In, $Out2> $chain<$R2, $Out2>(
     Then<$Out2, $R2> t,
@@ -179,6 +197,21 @@ class _VisitSummaryModelCopyWithImpl<$R, $Out>
   late final ClassMapperBase<VisitSummaryModel> $mapper =
       VisitSummaryModelMapper.ensureInitialized();
   @override
+  ListCopyWith<
+    $R,
+    VisitAnimalEntryModel,
+    VisitAnimalEntryModelCopyWith<
+      $R,
+      VisitAnimalEntryModel,
+      VisitAnimalEntryModel
+    >
+  >
+  get animais => ListCopyWith(
+    $value.animais,
+    (v, t) => v.copyWith.$chain(t),
+    (v) => call(animais: v),
+  );
+  @override
   $R call({
     int? id,
     String? idExterno,
@@ -186,6 +219,7 @@ class _VisitSummaryModelCopyWithImpl<$R, $Out>
     String? idExternoPropriedade,
     Object? dataVisita = $none,
     Object? observacoes = $none,
+    List<VisitAnimalEntryModel>? animais,
   }) => $apply(
     FieldCopyWithData({
       if (id != null) #id: id,
@@ -195,6 +229,7 @@ class _VisitSummaryModelCopyWithImpl<$R, $Out>
         #idExternoPropriedade: idExternoPropriedade,
       if (dataVisita != $none) #dataVisita: dataVisita,
       if (observacoes != $none) #observacoes: observacoes,
+      if (animais != null) #animais: animais,
     }),
   );
   @override
@@ -208,11 +243,355 @@ class _VisitSummaryModelCopyWithImpl<$R, $Out>
     ),
     dataVisita: data.get(#dataVisita, or: $value.dataVisita),
     observacoes: data.get(#observacoes, or: $value.observacoes),
+    animais: data.get(#animais, or: $value.animais),
   );
 
   @override
   VisitSummaryModelCopyWith<$R2, VisitSummaryModel, $Out2> $chain<$R2, $Out2>(
     Then<$Out2, $R2> t,
   ) => _VisitSummaryModelCopyWithImpl<$R2, $Out2>($value, $cast, t);
+}
+
+class VisitAnimalEntryModelMapper
+    extends ClassMapperBase<VisitAnimalEntryModel> {
+  VisitAnimalEntryModelMapper._();
+
+  static VisitAnimalEntryModelMapper? _instance;
+  static VisitAnimalEntryModelMapper ensureInitialized() {
+    if (_instance == null) {
+      MapperContainer.globals.use(_instance = VisitAnimalEntryModelMapper._());
+    }
+    return _instance!;
+  }
+
+  @override
+  final String id = 'VisitAnimalEntryModel';
+
+  static int _$animalId(VisitAnimalEntryModel v) => v.animalId;
+  static const Field<VisitAnimalEntryModel, int> _f$animalId = Field(
+    'animalId',
+    _$animalId,
+    opt: true,
+    def: 0,
+  );
+  static String _$animalIdExterno(VisitAnimalEntryModel v) => v.animalIdExterno;
+  static const Field<VisitAnimalEntryModel, String> _f$animalIdExterno = Field(
+    'animalIdExterno',
+    _$animalIdExterno,
+    opt: true,
+    def: '',
+  );
+  static String _$animalCodigo(VisitAnimalEntryModel v) => v.animalCodigo;
+  static const Field<VisitAnimalEntryModel, String> _f$animalCodigo = Field(
+    'animalCodigo',
+    _$animalCodigo,
+    opt: true,
+    def: '',
+  );
+  static String _$animalCategoria(VisitAnimalEntryModel v) => v.animalCategoria;
+  static const Field<VisitAnimalEntryModel, String> _f$animalCategoria = Field(
+    'animalCategoria',
+    _$animalCategoria,
+    opt: true,
+    def: '',
+  );
+  static int? _$idadeMeses(VisitAnimalEntryModel v) => v.idadeMeses;
+  static const Field<VisitAnimalEntryModel, int> _f$idadeMeses = Field(
+    'idadeMeses',
+    _$idadeMeses,
+    opt: true,
+  );
+  static String? _$situacaoProdutiva(VisitAnimalEntryModel v) =>
+      v.situacaoProdutiva;
+  static const Field<VisitAnimalEntryModel, String> _f$situacaoProdutiva =
+      Field('situacaoProdutiva', _$situacaoProdutiva, opt: true);
+  static String? _$situacaoReprodutiva(VisitAnimalEntryModel v) =>
+      v.situacaoReprodutiva;
+  static const Field<VisitAnimalEntryModel, String> _f$situacaoReprodutiva =
+      Field('situacaoReprodutiva', _$situacaoReprodutiva, opt: true);
+  static String? _$decisao(VisitAnimalEntryModel v) => v.decisao;
+  static const Field<VisitAnimalEntryModel, String> _f$decisao = Field(
+    'decisao',
+    _$decisao,
+    opt: true,
+  );
+  static DateTime? _$dataUltimaIa(VisitAnimalEntryModel v) => v.dataUltimaIa;
+  static const Field<VisitAnimalEntryModel, DateTime> _f$dataUltimaIa = Field(
+    'dataUltimaIa',
+    _$dataUltimaIa,
+    opt: true,
+    hook: _NullableDateTimeHook(),
+  );
+  static int? _$numeroIaRecebida(VisitAnimalEntryModel v) => v.numeroIaRecebida;
+  static const Field<VisitAnimalEntryModel, int> _f$numeroIaRecebida = Field(
+    'numeroIaRecebida',
+    _$numeroIaRecebida,
+    opt: true,
+  );
+  static int? _$diasPrenhez(VisitAnimalEntryModel v) => v.diasPrenhez;
+  static const Field<VisitAnimalEntryModel, int> _f$diasPrenhez = Field(
+    'diasPrenhez',
+    _$diasPrenhez,
+    opt: true,
+  );
+  static String? _$diagnostico(VisitAnimalEntryModel v) => v.diagnostico;
+  static const Field<VisitAnimalEntryModel, String> _f$diagnostico = Field(
+    'diagnostico',
+    _$diagnostico,
+    opt: true,
+  );
+  static int? _$del(VisitAnimalEntryModel v) => v.del;
+  static const Field<VisitAnimalEntryModel, int> _f$del = Field(
+    'del',
+    _$del,
+    opt: true,
+  );
+  static int? _$diasParaSecar(VisitAnimalEntryModel v) => v.diasParaSecar;
+  static const Field<VisitAnimalEntryModel, int> _f$diasParaSecar = Field(
+    'diasParaSecar',
+    _$diasParaSecar,
+    opt: true,
+  );
+  static DateTime? _$previsaoSecagem(VisitAnimalEntryModel v) =>
+      v.previsaoSecagem;
+  static const Field<VisitAnimalEntryModel, DateTime> _f$previsaoSecagem =
+      Field(
+        'previsaoSecagem',
+        _$previsaoSecagem,
+        opt: true,
+        hook: _NullableDateTimeHook(),
+      );
+  static DateTime? _$dataPreParto(VisitAnimalEntryModel v) => v.dataPreParto;
+  static const Field<VisitAnimalEntryModel, DateTime> _f$dataPreParto = Field(
+    'dataPreParto',
+    _$dataPreParto,
+    opt: true,
+    hook: _NullableDateTimeHook(),
+  );
+  static DateTime? _$previsaoParto(VisitAnimalEntryModel v) => v.previsaoParto;
+  static const Field<VisitAnimalEntryModel, DateTime> _f$previsaoParto = Field(
+    'previsaoParto',
+    _$previsaoParto,
+    opt: true,
+    hook: _NullableDateTimeHook(),
+  );
+
+  @override
+  final MappableFields<VisitAnimalEntryModel> fields = const {
+    #animalId: _f$animalId,
+    #animalIdExterno: _f$animalIdExterno,
+    #animalCodigo: _f$animalCodigo,
+    #animalCategoria: _f$animalCategoria,
+    #idadeMeses: _f$idadeMeses,
+    #situacaoProdutiva: _f$situacaoProdutiva,
+    #situacaoReprodutiva: _f$situacaoReprodutiva,
+    #decisao: _f$decisao,
+    #dataUltimaIa: _f$dataUltimaIa,
+    #numeroIaRecebida: _f$numeroIaRecebida,
+    #diasPrenhez: _f$diasPrenhez,
+    #diagnostico: _f$diagnostico,
+    #del: _f$del,
+    #diasParaSecar: _f$diasParaSecar,
+    #previsaoSecagem: _f$previsaoSecagem,
+    #dataPreParto: _f$dataPreParto,
+    #previsaoParto: _f$previsaoParto,
+  };
+
+  static VisitAnimalEntryModel _instantiate(DecodingData data) {
+    return VisitAnimalEntryModel(
+      animalId: data.dec(_f$animalId),
+      animalIdExterno: data.dec(_f$animalIdExterno),
+      animalCodigo: data.dec(_f$animalCodigo),
+      animalCategoria: data.dec(_f$animalCategoria),
+      idadeMeses: data.dec(_f$idadeMeses),
+      situacaoProdutiva: data.dec(_f$situacaoProdutiva),
+      situacaoReprodutiva: data.dec(_f$situacaoReprodutiva),
+      decisao: data.dec(_f$decisao),
+      dataUltimaIa: data.dec(_f$dataUltimaIa),
+      numeroIaRecebida: data.dec(_f$numeroIaRecebida),
+      diasPrenhez: data.dec(_f$diasPrenhez),
+      diagnostico: data.dec(_f$diagnostico),
+      del: data.dec(_f$del),
+      diasParaSecar: data.dec(_f$diasParaSecar),
+      previsaoSecagem: data.dec(_f$previsaoSecagem),
+      dataPreParto: data.dec(_f$dataPreParto),
+      previsaoParto: data.dec(_f$previsaoParto),
+    );
+  }
+
+  @override
+  final Function instantiate = _instantiate;
+
+  static VisitAnimalEntryModel fromMap(Map<String, dynamic> map) {
+    return ensureInitialized().decodeMap<VisitAnimalEntryModel>(map);
+  }
+
+  static VisitAnimalEntryModel fromJson(String json) {
+    return ensureInitialized().decodeJson<VisitAnimalEntryModel>(json);
+  }
+}
+
+mixin VisitAnimalEntryModelMappable {
+  String toJson() {
+    return VisitAnimalEntryModelMapper.ensureInitialized()
+        .encodeJson<VisitAnimalEntryModel>(this as VisitAnimalEntryModel);
+  }
+
+  Map<String, dynamic> toMap() {
+    return VisitAnimalEntryModelMapper.ensureInitialized()
+        .encodeMap<VisitAnimalEntryModel>(this as VisitAnimalEntryModel);
+  }
+
+  VisitAnimalEntryModelCopyWith<
+    VisitAnimalEntryModel,
+    VisitAnimalEntryModel,
+    VisitAnimalEntryModel
+  >
+  get copyWith =>
+      _VisitAnimalEntryModelCopyWithImpl<
+        VisitAnimalEntryModel,
+        VisitAnimalEntryModel
+      >(this as VisitAnimalEntryModel, $identity, $identity);
+  @override
+  String toString() {
+    return VisitAnimalEntryModelMapper.ensureInitialized().stringifyValue(
+      this as VisitAnimalEntryModel,
+    );
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return VisitAnimalEntryModelMapper.ensureInitialized().equalsValue(
+      this as VisitAnimalEntryModel,
+      other,
+    );
+  }
+
+  @override
+  int get hashCode {
+    return VisitAnimalEntryModelMapper.ensureInitialized().hashValue(
+      this as VisitAnimalEntryModel,
+    );
+  }
+}
+
+extension VisitAnimalEntryModelValueCopy<$R, $Out>
+    on ObjectCopyWith<$R, VisitAnimalEntryModel, $Out> {
+  VisitAnimalEntryModelCopyWith<$R, VisitAnimalEntryModel, $Out>
+  get $asVisitAnimalEntryModel => $base.as(
+    (v, t, t2) => _VisitAnimalEntryModelCopyWithImpl<$R, $Out>(v, t, t2),
+  );
+}
+
+abstract class VisitAnimalEntryModelCopyWith<
+  $R,
+  $In extends VisitAnimalEntryModel,
+  $Out
+>
+    implements ClassCopyWith<$R, $In, $Out> {
+  $R call({
+    int? animalId,
+    String? animalIdExterno,
+    String? animalCodigo,
+    String? animalCategoria,
+    int? idadeMeses,
+    String? situacaoProdutiva,
+    String? situacaoReprodutiva,
+    String? decisao,
+    DateTime? dataUltimaIa,
+    int? numeroIaRecebida,
+    int? diasPrenhez,
+    String? diagnostico,
+    int? del,
+    int? diasParaSecar,
+    DateTime? previsaoSecagem,
+    DateTime? dataPreParto,
+    DateTime? previsaoParto,
+  });
+  VisitAnimalEntryModelCopyWith<$R2, $In, $Out2> $chain<$R2, $Out2>(
+    Then<$Out2, $R2> t,
+  );
+}
+
+class _VisitAnimalEntryModelCopyWithImpl<$R, $Out>
+    extends ClassCopyWithBase<$R, VisitAnimalEntryModel, $Out>
+    implements VisitAnimalEntryModelCopyWith<$R, VisitAnimalEntryModel, $Out> {
+  _VisitAnimalEntryModelCopyWithImpl(super.value, super.then, super.then2);
+
+  @override
+  late final ClassMapperBase<VisitAnimalEntryModel> $mapper =
+      VisitAnimalEntryModelMapper.ensureInitialized();
+  @override
+  $R call({
+    int? animalId,
+    String? animalIdExterno,
+    String? animalCodigo,
+    String? animalCategoria,
+    Object? idadeMeses = $none,
+    Object? situacaoProdutiva = $none,
+    Object? situacaoReprodutiva = $none,
+    Object? decisao = $none,
+    Object? dataUltimaIa = $none,
+    Object? numeroIaRecebida = $none,
+    Object? diasPrenhez = $none,
+    Object? diagnostico = $none,
+    Object? del = $none,
+    Object? diasParaSecar = $none,
+    Object? previsaoSecagem = $none,
+    Object? dataPreParto = $none,
+    Object? previsaoParto = $none,
+  }) => $apply(
+    FieldCopyWithData({
+      if (animalId != null) #animalId: animalId,
+      if (animalIdExterno != null) #animalIdExterno: animalIdExterno,
+      if (animalCodigo != null) #animalCodigo: animalCodigo,
+      if (animalCategoria != null) #animalCategoria: animalCategoria,
+      if (idadeMeses != $none) #idadeMeses: idadeMeses,
+      if (situacaoProdutiva != $none) #situacaoProdutiva: situacaoProdutiva,
+      if (situacaoReprodutiva != $none)
+        #situacaoReprodutiva: situacaoReprodutiva,
+      if (decisao != $none) #decisao: decisao,
+      if (dataUltimaIa != $none) #dataUltimaIa: dataUltimaIa,
+      if (numeroIaRecebida != $none) #numeroIaRecebida: numeroIaRecebida,
+      if (diasPrenhez != $none) #diasPrenhez: diasPrenhez,
+      if (diagnostico != $none) #diagnostico: diagnostico,
+      if (del != $none) #del: del,
+      if (diasParaSecar != $none) #diasParaSecar: diasParaSecar,
+      if (previsaoSecagem != $none) #previsaoSecagem: previsaoSecagem,
+      if (dataPreParto != $none) #dataPreParto: dataPreParto,
+      if (previsaoParto != $none) #previsaoParto: previsaoParto,
+    }),
+  );
+  @override
+  VisitAnimalEntryModel $make(CopyWithData data) => VisitAnimalEntryModel(
+    animalId: data.get(#animalId, or: $value.animalId),
+    animalIdExterno: data.get(#animalIdExterno, or: $value.animalIdExterno),
+    animalCodigo: data.get(#animalCodigo, or: $value.animalCodigo),
+    animalCategoria: data.get(#animalCategoria, or: $value.animalCategoria),
+    idadeMeses: data.get(#idadeMeses, or: $value.idadeMeses),
+    situacaoProdutiva: data.get(
+      #situacaoProdutiva,
+      or: $value.situacaoProdutiva,
+    ),
+    situacaoReprodutiva: data.get(
+      #situacaoReprodutiva,
+      or: $value.situacaoReprodutiva,
+    ),
+    decisao: data.get(#decisao, or: $value.decisao),
+    dataUltimaIa: data.get(#dataUltimaIa, or: $value.dataUltimaIa),
+    numeroIaRecebida: data.get(#numeroIaRecebida, or: $value.numeroIaRecebida),
+    diasPrenhez: data.get(#diasPrenhez, or: $value.diasPrenhez),
+    diagnostico: data.get(#diagnostico, or: $value.diagnostico),
+    del: data.get(#del, or: $value.del),
+    diasParaSecar: data.get(#diasParaSecar, or: $value.diasParaSecar),
+    previsaoSecagem: data.get(#previsaoSecagem, or: $value.previsaoSecagem),
+    dataPreParto: data.get(#dataPreParto, or: $value.dataPreParto),
+    previsaoParto: data.get(#previsaoParto, or: $value.previsaoParto),
+  );
+
+  @override
+  VisitAnimalEntryModelCopyWith<$R2, VisitAnimalEntryModel, $Out2>
+  $chain<$R2, $Out2>(Then<$Out2, $R2> t) =>
+      _VisitAnimalEntryModelCopyWithImpl<$R2, $Out2>($value, $cast, t);
 }
 

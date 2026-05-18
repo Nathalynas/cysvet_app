@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
 
+import '../../../../core/constants/app_constants.dart';
 import '../../../../core/enums/animal_status.dart';
 import '../../../../core/presentation/app_scaffold_messenger.dart';
 import '../../../../core/utils/formatters.dart';
@@ -80,7 +81,7 @@ class _AnimalFormState extends ConsumerState<_AnimalForm> {
     _lactacao.text = (animal?.numeroLactacao ?? 0).toString();
     _historico.text = animal?.historicoReprodutivo ?? '';
     _propertyId = animal?.idPropriedade;
-    _reproductiveStatus = AnimalReproductiveStatus.pending;
+    _reproductiveStatus = _resolveReproductiveStatus(animal);
   }
 
   @override
@@ -127,6 +128,7 @@ class _AnimalFormState extends ConsumerState<_AnimalForm> {
             dataNascimento: parseDateInput(_nascimento.text),
             numeroLactacao: int.tryParse(_lactacao.text.trim()) ?? 0,
             historicoReprodutivo: _historico.text.trim(),
+            statusReprodutivo: _reproductiveStatus,
             status: animal?.status ?? AnimalStatus.active,
           );
 
@@ -230,5 +232,34 @@ class _AnimalFormState extends ConsumerState<_AnimalForm> {
       default:
         return null;
     }
+  }
+
+  AnimalReproductiveStatus _resolveReproductiveStatus(AnimalSummaryModel? animal) {
+    final savedStatus = animal?.statusReprodutivo;
+    if (savedStatus != null) {
+      return savedStatus;
+    }
+
+    final history = (animal?.historicoReprodutivo ?? '').normalize();
+
+    if (history.contains('pren') || history.contains('confirm')) {
+      return AnimalReproductiveStatus.pregnant;
+    }
+
+    if (history.contains('insemin')) {
+      return AnimalReproductiveStatus.inseminated;
+    }
+
+    if (history.contains('seca') || history.contains('dry')) {
+      return AnimalReproductiveStatus.dry;
+    }
+
+    if (history.contains('vazia') ||
+        history.contains('empty') ||
+        history.contains('negativ')) {
+      return AnimalReproductiveStatus.empty;
+    }
+
+    return AnimalReproductiveStatus.pending;
   }
 }

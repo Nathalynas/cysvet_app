@@ -1,20 +1,30 @@
 package com.cysvet.backend.service;
 
+import com.cysvet.backend.dto.visita.VisitaAnimalItemDto;
+import com.cysvet.backend.entity.Animal;
+import com.cysvet.backend.entity.EventoReprodutivo;
+import com.cysvet.backend.entity.Propriedade;
+import com.cysvet.backend.entity.Usuario;
+import com.cysvet.backend.entity.Visita;
+import com.cysvet.backend.repository.AnimalRepository;
 import com.lowagie.text.Document;
 import com.lowagie.text.DocumentException;
+import com.lowagie.text.Element;
+import com.lowagie.text.Font;
 import com.lowagie.text.FontFactory;
+import com.lowagie.text.PageSize;
 import com.lowagie.text.Paragraph;
+import com.lowagie.text.Phrase;
+import com.lowagie.text.Rectangle;
 import com.lowagie.text.pdf.PdfPCell;
 import com.lowagie.text.pdf.PdfPTable;
 import com.lowagie.text.pdf.PdfWriter;
-import com.cysvet.backend.entity.Animal;
-import com.cysvet.backend.entity.Propriedade;
-import com.cysvet.backend.entity.EventoReprodutivo;
-import com.cysvet.backend.entity.Visita;
-import com.cysvet.backend.repository.AnimalRepository;
+import java.awt.Color;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.util.Comparator;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.apache.poi.ss.usermodel.Row;
@@ -26,6 +36,9 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @RequiredArgsConstructor
 public class ReportService {
+
+    private static final DateTimeFormatter SHORT_DATE_FORMAT = DateTimeFormatter.ofPattern("dd/MM/yy");
+    private static final DateTimeFormatter FULL_DATE_FORMAT = DateTimeFormatter.ofPattern("dd/MM/yyyy");
 
     private final PropriedadeService propriedadeService;
     private final AnimalRepository animalRepository;
@@ -149,7 +162,36 @@ public class ReportService {
     @Transactional(readOnly = true)
     public byte[] generateVisitPdf(Long visitId) {
         Visita visit = visitService.getEntity(visitId);
-        return generatePdf(visit.getPropriedade().getId(), visit.getDataVisita(), visit.getDataVisita());
+        List<VisitaAnimalItemDto> items = visitService.toResponse(visit).animais();
+
+        if (items == null || items.isEmpty()) {
+            return generatePdf(visit.getPropriedade().getId(), visit.getDataVisita(), visit.getDataVisita());
+        }
+
+        Propriedade property = visit.getPropriedade();
+        Usuario currentUser = authenticatedUserProvider.getCurrentUser();
+
+        try (ByteArrayOutputStream output = new ByteArrayOutputStream()) {
+            Rectangle pageSize = PageSize.A4.rotate();
+            Document document = new Document(pageSize, 18, 18, 18, 18);
+            PdfWriter.getInstance(document, output);
+            document.open();
+
+            addVisitHeader(document, property, visit, currentUser);
+            document.add(new Paragraph(" "));
+            document.add(buildVisitAnimalTable(items));
+
+            if (visit.getObservacoes() != null && !visit.getObservacoes().isBlank()) {
+                document.add(new Paragraph(" "));
+                document.add(new Paragraph("Observacoes gerais", FontFactory.getFont(FontFactory.HELVETICA_BOLD, 10)));
+                document.add(new Paragraph(visit.getObservacoes(), FontFactory.getFont(FontFactory.HELVETICA, 9)));
+            }
+
+            document.close();
+            return output.toByteArray();
+        } catch (DocumentException | IOException exception) {
+            throw new IllegalStateException("Falha ao gerar PDF da visita: " + exception.getMessage(), exception);
+        }
     }
 
     @Transactional(readOnly = true)
@@ -161,6 +203,113 @@ public class ReportService {
     private void addCell(PdfPTable table, String value) {
         PdfPCell cell = new PdfPCell();
         cell.setPhrase(new Paragraph(value));
+        table.addCell(cell);
+    }
+
+    private void addVisitHeader(Document document, Propriedade property, Visita visit, Usuario currentUser) throws DocumentException {
+        Font titleFont = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 13);
+        Font infoLabelFont = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 9);
+        Font infoValueFont = FontFactory.getFont(FontFactory.HELVETICA, 9);
+
+        document.add(new Paragraph("Relatorio de Visita Tecnica", titleFont));
+
+        PdfPTable infoTable = new PdfPTable(new float[]{1.6f, 2.5f, 1f, 1.4f, 1.1f, 2f});
+        infoTable.setWidthPercentage(100);
+        infoTable.setSpacingBefore(6);
+
+        addInfoCell(infoTable, "Fazenda", infoLabelFont, true);
+        addInfoCell(infoTable, safe(property.getNome()), infoValueFont, false);
+        addInfoCell(infoTable, "Data", infoLabelFont, true);
+        addInfoCell(infoTable, formatDateShort(visit.getDataVisita()), infoValueFont, false);
+        addInfoCell(infoTable, "Med.Vet", infoLabelFont, true);
+        addInfoCell(infoTable, safe(currentUser.getNome()), infoValueFont, false);
+
+        addInfoCell(infoTable, "Proprietario", infoLabelFont, true);
+        addInfoCell(infoTable, safe(property.getNomeProprietario()), infoValueFont, false);
+        addInfoCell(infoTable, "Cidade", infoLabelFont, true);
+        addInfoCell(infoTable, safe(property.getCidade()), infoValueFont, false);
+        addInfoCell(infoTable, "Contato", infoLabelFont, true);
+        addInfoCell(infoTable, safe(property.getContato()), infoValueFont, false);
+
+        document.add(infoTable);
+    }
+
+    private PdfPTable buildVisitAnimalTable(List<VisitaAnimalItemDto> items) {
+        PdfPTable table = new PdfPTable(new float[]{
+                1.3f, 0.9f, 1.1f, 1.2f, 1.7f, 1.15f, 1f, 1f, 1f, 0.8f, 0.9f, 1.2f, 1.1f, 1.2f
+        });
+        table.setWidthPercentage(100);
+        table.setHeaderRows(1);
+        table.setSpacingBefore(4);
+
+        Font headerFont = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 7, Color.WHITE);
+        Font cellFont = FontFactory.getFont(FontFactory.HELVETICA, 7);
+        Color headerColor = new Color(53, 92, 125);
+
+        addHeaderCell(table, "Matriz\n(N°)", headerFont, headerColor);
+        addHeaderCell(table, "Idade\nMeses", headerFont, headerColor);
+        addHeaderCell(table, "Sit.\nProdutiva", headerFont, headerColor);
+        addHeaderCell(table, "Sit.\nReprodutiva", headerFont, headerColor);
+        addHeaderCell(table, "Decisao", headerFont, headerColor);
+        addHeaderCell(table, "Data IA\nultima", headerFont, headerColor);
+        addHeaderCell(table, "N° IA\nrecebida", headerFont, headerColor);
+        addHeaderCell(table, "Dias\nprenhez", headerFont, headerColor);
+        addHeaderCell(table, "Diagnostico", headerFont, headerColor);
+        addHeaderCell(table, "DEL", headerFont, headerColor);
+        addHeaderCell(table, "Dias p/\nsecar", headerFont, headerColor);
+        addHeaderCell(table, "Previsao\nsecagem", headerFont, headerColor);
+        addHeaderCell(table, "Data pre\nparto", headerFont, headerColor);
+        addHeaderCell(table, "Previsao\nparto", headerFont, headerColor);
+
+        items.stream()
+                .sorted(Comparator
+                        .comparing((VisitaAnimalItemDto item) -> productiveStatusOrder(item.situacaoProdutiva()))
+                        .thenComparing(item -> safe(item.animalCodigo())))
+                .forEach(item -> {
+                    addBodyCell(table, safe(item.animalCodigo()), cellFont);
+                    addBodyCell(table, formatInteger(item.idadeMeses()), cellFont);
+                    addBodyCell(table, safe(item.situacaoProdutiva()), cellFont);
+                    addBodyCell(table, safe(item.situacaoReprodutiva()), cellFont);
+                    addBodyCell(table, safe(item.decisao()), cellFont);
+                    addBodyCell(table, formatDateFull(item.dataUltimaIa()), cellFont);
+                    addBodyCell(table, formatInteger(item.numeroIaRecebida()), cellFont);
+                    addBodyCell(table, formatInteger(item.diasPrenhez()), cellFont);
+                    addBodyCell(table, safe(item.diagnostico()), cellFont);
+                    addBodyCell(table, formatInteger(item.del()), cellFont);
+                    addBodyCell(table, formatInteger(item.diasParaSecar()), cellFont);
+                    addBodyCell(table, formatDateFull(item.previsaoSecagem()), cellFont);
+                    addBodyCell(table, formatDateFull(item.dataPreParto()), cellFont);
+                    addBodyCell(table, formatDateFull(item.previsaoParto()), cellFont);
+                });
+
+        return table;
+    }
+
+    private void addInfoCell(PdfPTable table, String value, Font font, boolean shaded) {
+        PdfPCell cell = new PdfPCell(new Phrase(value, font));
+        cell.setPadding(6);
+        cell.setBorderColor(new Color(180, 187, 194));
+        if (shaded) {
+            cell.setBackgroundColor(new Color(236, 240, 244));
+        }
+        table.addCell(cell);
+    }
+
+    private void addHeaderCell(PdfPTable table, String value, Font font, Color background) {
+        PdfPCell cell = new PdfPCell(new Phrase(value, font));
+        cell.setHorizontalAlignment(Element.ALIGN_CENTER);
+        cell.setVerticalAlignment(Element.ALIGN_MIDDLE);
+        cell.setPadding(5);
+        cell.setBackgroundColor(background);
+        cell.setBorderColor(new Color(53, 92, 125));
+        table.addCell(cell);
+    }
+
+    private void addBodyCell(PdfPTable table, String value, Font font) {
+        PdfPCell cell = new PdfPCell(new Phrase(value, font));
+        cell.setPadding(4);
+        cell.setVerticalAlignment(Element.ALIGN_MIDDLE);
+        cell.setBorderColor(new Color(196, 201, 208));
         table.addCell(cell);
     }
 
@@ -176,5 +325,34 @@ public class ReportService {
             return "Todo o historico";
         }
         return dataInicio + " a " + dataFim;
+    }
+
+    private String formatDateShort(LocalDate date) {
+        return date == null ? "" : SHORT_DATE_FORMAT.format(date);
+    }
+
+    private String formatDateFull(LocalDate date) {
+        return date == null ? "" : FULL_DATE_FORMAT.format(date);
+    }
+
+    private String formatInteger(Integer value) {
+        return value == null ? "" : String.valueOf(value);
+    }
+
+    private String safe(String value) {
+        return value == null ? "" : value;
+    }
+
+    private int productiveStatusOrder(String value) {
+        if (value == null) {
+            return 99;
+        }
+
+        return switch (value.trim().toLowerCase()) {
+            case "lactante" -> 0;
+            case "novilha" -> 1;
+            case "seca" -> 2;
+            default -> 3;
+        };
     }
 }

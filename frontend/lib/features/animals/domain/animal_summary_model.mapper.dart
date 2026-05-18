@@ -98,6 +98,15 @@ class AnimalSummaryModelMapper extends ClassMapperBase<AnimalSummaryModel> {
       v.historicoReprodutivo;
   static const Field<AnimalSummaryModel, String> _f$historicoReprodutivo =
       Field('historicoReprodutivo', _$historicoReprodutivo, opt: true);
+  static AnimalReproductiveStatus? _$statusReprodutivo(AnimalSummaryModel v) =>
+      v.statusReprodutivo;
+  static const Field<AnimalSummaryModel, AnimalReproductiveStatus>
+  _f$statusReprodutivo = Field(
+    'statusReprodutivo',
+    _$statusReprodutivo,
+    opt: true,
+    hook: _AnimalReproductiveStatusHook(),
+  );
   static AnimalStatus _$status(AnimalSummaryModel v) => v.status;
   static const Field<AnimalSummaryModel, AnimalStatus> _f$status = Field(
     'status',
@@ -121,6 +130,7 @@ class AnimalSummaryModelMapper extends ClassMapperBase<AnimalSummaryModel> {
     #dataUltimoParto: _f$dataUltimoParto,
     #diasEmLactacao: _f$diasEmLactacao,
     #historicoReprodutivo: _f$historicoReprodutivo,
+    #statusReprodutivo: _f$statusReprodutivo,
     #status: _f$status,
   };
 
@@ -138,6 +148,7 @@ class AnimalSummaryModelMapper extends ClassMapperBase<AnimalSummaryModel> {
       dataUltimoParto: data.dec(_f$dataUltimoParto),
       diasEmLactacao: data.dec(_f$diasEmLactacao),
       historicoReprodutivo: data.dec(_f$historicoReprodutivo),
+      statusReprodutivo: data.dec(_f$statusReprodutivo),
       status: data.dec(_f$status),
     );
   }
@@ -226,6 +237,7 @@ abstract class AnimalSummaryModelCopyWith<
     DateTime? dataUltimoParto,
     int? diasEmLactacao,
     String? historicoReprodutivo,
+    AnimalReproductiveStatus? statusReprodutivo,
     AnimalStatus? status,
   });
   AnimalSummaryModelCopyWith<$R2, $In, $Out2> $chain<$R2, $Out2>(
@@ -255,6 +267,7 @@ class _AnimalSummaryModelCopyWithImpl<$R, $Out>
     Object? dataUltimoParto = $none,
     Object? diasEmLactacao = $none,
     Object? historicoReprodutivo = $none,
+    Object? statusReprodutivo = $none,
     AnimalStatus? status,
   }) => $apply(
     FieldCopyWithData({
@@ -272,6 +285,7 @@ class _AnimalSummaryModelCopyWithImpl<$R, $Out>
       if (diasEmLactacao != $none) #diasEmLactacao: diasEmLactacao,
       if (historicoReprodutivo != $none)
         #historicoReprodutivo: historicoReprodutivo,
+      if (statusReprodutivo != $none) #statusReprodutivo: statusReprodutivo,
       if (status != null) #status: status,
     }),
   );
@@ -294,6 +308,10 @@ class _AnimalSummaryModelCopyWithImpl<$R, $Out>
     historicoReprodutivo: data.get(
       #historicoReprodutivo,
       or: $value.historicoReprodutivo,
+    ),
+    statusReprodutivo: data.get(
+      #statusReprodutivo,
+      or: $value.statusReprodutivo,
     ),
     status: data.get(#status, or: $value.status),
   );
