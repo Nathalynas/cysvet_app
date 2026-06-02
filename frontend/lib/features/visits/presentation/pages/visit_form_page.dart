@@ -1,5 +1,6 @@
 import 'package:cysvet_app/core/constants/app_constants.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_material_design_icons/flutter_material_design_icons.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:uuid/uuid.dart';
@@ -8,6 +9,7 @@ import '../../../../core/enums/animal_status.dart';
 import '../../../../core/presentation/app_scaffold_messenger.dart';
 import '../../../../core/utils/formatters.dart';
 import '../../../../core/widgets/app_button.dart';
+import '../../../../core/widgets/app_card.dart';
 import '../../../../core/widgets/app_dialog.dart';
 import '../../../../core/widgets/app_dropdown.dart';
 import '../../../../core/widgets/app_text_field.dart';
@@ -105,123 +107,111 @@ class _VisitFormPageState extends ConsumerState<VisitFormPage> {
 
     return Form(
       key: _formKey,
-      child: ListView(
-        padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: colorScheme.surfaceContainerHighest,
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: colorScheme.outline),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
+          Expanded(
+            child: ListView(
+              padding: const EdgeInsets.all(16),
               children: [
-                Text(
-                  'Nova visita',
-                  style: theme.textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  'Vincule a propriedade e depois selecione um brinco na lista para preencher a coleta do animal.',
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    color: colorScheme.onSurfaceVariant,
+                AppCard(
+                  padding: const EdgeInsets.all(16),
+                  borderRadius: 14,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Text(
+                        'Nova visita',
+                        style: theme.textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        'Vincule a propriedade e depois selecione um brinco na lista para preencher a coleta do animal.',
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          color: colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      _HeaderFields(
+                        propertyId: _propertyId,
+                        properties: properties,
+                        dataVisitaController: _dataVisita,
+                        observacoesController: _observacoes,
+                        onPropertyChanged: (value) {
+                          setState(() {
+                            if (_propertyId != value) {
+                              _propertyId = value;
+                              _resetAnimalCollection();
+                            }
+                          });
+                          _loadAnimalsForSelectedProperty();
+                        },
+                      ),
+                      const SizedBox(height: 12),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: [
+                          _SummaryChip(
+                            icon: Icons.agriculture_outlined,
+                            label: selectedProperty?.nome ?? 'Sem propriedade',
+                          ),
+                          _SummaryChip(
+                            icon: Icons.pets_outlined,
+                            label: '${_animalEntries.length} animais',
+                          ),
+                          _SummaryChip(
+                            icon: Icons.fact_check_outlined,
+                            label: '$collectedCount com coleta',
+                          ),
+                        ],
+                      ),
+                    ],
                   ),
                 ),
                 const SizedBox(height: 16),
-                _HeaderFields(
-                  propertyId: _propertyId,
-                  properties: properties,
-                  dataVisitaController: _dataVisita,
-                  observacoesController: _observacoes,
-                  onPropertyChanged: (value) {
-                    setState(() {
-                      if (_propertyId != value) {
-                        _propertyId = value;
-                        _resetAnimalCollection();
-                      }
-                    });
-                    _loadAnimalsForSelectedProperty();
-                  },
-                ),
-                const SizedBox(height: 12),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: [
-                    _SummaryChip(
-                      icon: Icons.agriculture_outlined,
-                      label: selectedProperty?.nome ?? 'Sem propriedade',
-                    ),
-                    _SummaryChip(
-                      icon: Icons.pets_outlined,
-                      label: '${_animalEntries.length} animais',
-                    ),
-                    _SummaryChip(
-                      icon: Icons.fact_check_outlined,
-                      label: '$collectedCount com coleta',
-                    ),
-                  ],
-                ),
+                if (_isLoadingAnimals)
+                  const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 48),
+                    child: Center(child: CircularProgressIndicator()),
+                  )
+                else if (_animalsError != null)
+                  _FeedbackPanel(message: _animalsError!, error: true)
+                else if (_propertyId == null)
+                  const _FeedbackPanel(
+                    message:
+                        'Selecione a propriedade para carregar a lista de animais.',
+                  )
+                else if (_animalEntries.isEmpty)
+                  const _FeedbackPanel(
+                    message:
+                        'Nenhum animal encontrado para a propriedade selecionada.',
+                  )
+                else
+                  _AnimalCollectionLayout(
+                    entries: _animalEntries,
+                    reviewedAnimalIds: _reviewedAnimalIds,
+                    selectedAnimalId: _selectedAnimalId,
+                    selectedEntry: selectedEntry,
+                    onSelectAnimal: (animalId) {
+                      setState(() {
+                        _selectedAnimalId = animalId;
+                      });
+                    },
+                    onChanged: _updateAnimalEntry,
+                    onConfirmAnimal: _confirmAnimal,
+                    onOpenAnimal: _editAnimalInModal,
+                  ),
               ],
             ),
           ),
-          const SizedBox(height: 16),
-          if (_isLoadingAnimals)
-            const Padding(
-              padding: EdgeInsets.symmetric(vertical: 48),
-              child: Center(child: CircularProgressIndicator()),
-            )
-          else if (_animalsError != null)
-            _FeedbackPanel(
-              message: _animalsError!,
-              error: true,
-            )
-          else if (_propertyId == null)
-            const _FeedbackPanel(
-              message: 'Selecione a propriedade para carregar a lista de animais.',
-            )
-          else if (_animalEntries.isEmpty)
-            const _FeedbackPanel(
-              message: 'Nenhum animal encontrado para a propriedade selecionada.',
-            )
-          else
-            _AnimalCollectionLayout(
-              entries: _animalEntries,
-              reviewedAnimalIds: _reviewedAnimalIds,
-              selectedAnimalId: _selectedAnimalId,
-              selectedEntry: selectedEntry,
-              onSelectAnimal: (animalId) {
-                setState(() {
-                  _selectedAnimalId = animalId;
-                });
-              },
-              onChanged: _updateAnimalEntry,
-              onConfirmAnimal: _confirmAnimal,
-              onOpenAnimal: _editAnimalInModal,
-            ),
-          const SizedBox(height: 18),
-          Wrap(
-            spacing: 10,
-            runSpacing: 10,
-            alignment: WrapAlignment.end,
-            children: [
-              AppButton(
-                text: 'Cancelar',
-                outlined: true,
-                height: 40,
-                onPressed: isBusy ? null : () => context.go('/visitas'),
-              ),
-              AppButton(
-                text: 'Salvar visita',
-                height: 40,
-                loading: isBusy,
-                onPressed: _isLoadingAnimals || isBusy ? null : _saveVisit,
-              ),
-            ],
+          _VisitActionsBar(
+            isBusy: isBusy,
+            isLoadingAnimals: _isLoadingAnimals,
+            onCancel: () => context.go('/visitas'),
+            onSave: _saveVisit,
           ),
         ],
       ),
@@ -265,9 +255,7 @@ class _VisitFormPageState extends ConsumerState<VisitFormPage> {
         return;
       }
 
-      final entries = animals
-          .map(_entryFromAnimal)
-          .toList(growable: false);
+      final entries = animals.map(_entryFromAnimal).toList(growable: false);
       setState(() {
         _loadedPropertyId = propertyId;
         _animalEntries = entries;
@@ -331,12 +319,14 @@ class _VisitFormPageState extends ConsumerState<VisitFormPage> {
 
   void _updateAnimalEntry(VisitAnimalEntryModel updated) {
     setState(() {
-      _animalEntries = _animalEntries.map((entry) {
-        if (entry.animalId == updated.animalId) {
-          return updated;
-        }
-        return entry;
-      }).toList(growable: false);
+      _animalEntries = _animalEntries
+          .map((entry) {
+            if (entry.animalId == updated.animalId) {
+              return updated;
+            }
+            return entry;
+          })
+          .toList(growable: false);
     });
   }
 
@@ -349,7 +339,9 @@ class _VisitFormPageState extends ConsumerState<VisitFormPage> {
   Future<void> _editAnimalInModal(VisitAnimalEntryModel entry) async {
     final updated = await AppDialog.show<VisitAnimalEntryModel>(
       context: context,
-      title: entry.animalCodigo.isEmpty ? 'Animal' : 'Brinco ${entry.animalCodigo}',
+      title: entry.animalCodigo.isEmpty
+          ? 'Animal'
+          : 'Brinco ${entry.animalCodigo}',
       width: 760,
       useInternalScroll: true,
       fullscreenOnMobile: true,
@@ -364,7 +356,9 @@ class _VisitFormPageState extends ConsumerState<VisitFormPage> {
     _confirmAnimal(updated.animalId);
   }
 
-  PropertySummaryModel? _selectedProperty(List<PropertySummaryModel> properties) {
+  PropertySummaryModel? _selectedProperty(
+    List<PropertySummaryModel> properties,
+  ) {
     final propertyId = _propertyId;
     if (propertyId == null) {
       return null;
@@ -518,8 +512,10 @@ class _HeaderFields extends StatelessWidget {
             onChanged: onPropertyChanged,
             options: properties
                 .map(
-                  (property) =>
-                      AppDropdownOption(label: property.nome, value: property.id),
+                  (property) => AppDropdownOption(
+                    label: property.nome,
+                    value: property.id,
+                  ),
                 )
                 .toList(growable: false),
           ),
@@ -532,15 +528,14 @@ class _HeaderFields extends StatelessWidget {
             inputFormatters: const [DateInputFormatter()],
             validator: (value) {
               if (parseDateInput(value ?? '') == null) {
-                return 'Informe uma data valida';
+                return 'Informe uma data válida';
               }
               return null;
             },
           ),
           AppTextField(
-            label: 'Observacoes gerais',
+            label: 'Observações gerais',
             controller: observacoesController,
-            maxLines: 3,
           ),
         ];
 
@@ -579,7 +574,64 @@ class _HeaderFields extends StatelessWidget {
   }
 }
 
-class _AnimalCollectionLayout extends StatelessWidget {
+class _VisitActionsBar extends StatelessWidget {
+  const _VisitActionsBar({
+    required this.isBusy,
+    required this.isLoadingAnimals,
+    required this.onCancel,
+    required this.onSave,
+  });
+
+  final bool isBusy;
+  final bool isLoadingAnimals;
+  final VoidCallback onCancel;
+  final VoidCallback onSave;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Material(
+      color: colorScheme.surface,
+      child: SafeArea(
+        top: false,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(height: 1, color: colorScheme.outline),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+              child: Align(
+                alignment: Alignment.centerRight,
+                child: Wrap(
+                  spacing: 10,
+                  runSpacing: 10,
+                  alignment: WrapAlignment.end,
+                  children: [
+                    AppButton(
+                      text: 'Cancelar',
+                      outlined: true,
+                      height: 40,
+                      onPressed: isBusy ? null : onCancel,
+                    ),
+                    AppButton(
+                      text: 'Salvar visita',
+                      height: 40,
+                      loading: isBusy,
+                      onPressed: isLoadingAnimals || isBusy ? null : onSave,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _AnimalCollectionLayout extends StatefulWidget {
   const _AnimalCollectionLayout({
     required this.entries,
     required this.reviewedAnimalIds,
@@ -601,28 +653,48 @@ class _AnimalCollectionLayout extends StatelessWidget {
   final ValueChanged<VisitAnimalEntryModel> onOpenAnimal;
 
   @override
+  State<_AnimalCollectionLayout> createState() =>
+      _AnimalCollectionLayoutState();
+}
+
+class _AnimalCollectionLayoutState extends State<_AnimalCollectionLayout> {
+  final _editorKey = GlobalKey();
+  double? _editorHeight;
+
+  @override
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
         final stacked = constraints.maxWidth < 920;
         final listPane = _AnimalListPane(
-          entries: entries,
-          reviewedAnimalIds: reviewedAnimalIds,
-          selectedAnimalId: selectedAnimalId,
-          onSelectAnimal: stacked ? null : onSelectAnimal,
-          onOpenAnimal: stacked ? onOpenAnimal : null,
+          entries: widget.entries,
+          reviewedAnimalIds: widget.reviewedAnimalIds,
+          selectedAnimalId: widget.selectedAnimalId,
+          height: stacked ? null : _editorHeight,
+          onSelectAnimal: stacked ? null : widget.onSelectAnimal,
+          onOpenAnimal: stacked ? widget.onOpenAnimal : null,
         );
-        final editorPane = _AnimalEditorPane(
-          entry: selectedEntry,
-          onChanged: onChanged,
-          onConfirmAnimal: onConfirmAnimal,
-          reviewed: selectedEntry != null &&
-              reviewedAnimalIds.contains(selectedEntry!.animalId),
+        final editorPane = KeyedSubtree(
+          key: _editorKey,
+          child: _AnimalEditorPane(
+            entry: widget.selectedEntry,
+            onChanged: widget.onChanged,
+            onConfirmAnimal: widget.onConfirmAnimal,
+            reviewed:
+                widget.selectedEntry != null &&
+                widget.reviewedAnimalIds.contains(
+                  widget.selectedEntry!.animalId,
+                ),
+          ),
         );
 
         if (stacked) {
           return listPane;
         }
+
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          _syncEditorHeight();
+        });
 
         return Row(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -635,13 +707,36 @@ class _AnimalCollectionLayout extends StatelessWidget {
       },
     );
   }
+
+  void _syncEditorHeight() {
+    if (!mounted) {
+      return;
+    }
+
+    final renderObject = _editorKey.currentContext?.findRenderObject();
+    if (renderObject is! RenderBox || !renderObject.hasSize) {
+      return;
+    }
+
+    final height = renderObject.size.height;
+    if (height <= 0) {
+      return;
+    }
+
+    if (_editorHeight == null || (height - _editorHeight!).abs() > 0.5) {
+      setState(() {
+        _editorHeight = height;
+      });
+    }
+  }
 }
 
-class _AnimalListPane extends StatelessWidget {
+class _AnimalListPane extends StatefulWidget {
   const _AnimalListPane({
     required this.entries,
     required this.reviewedAnimalIds,
     required this.selectedAnimalId,
+    this.height,
     this.onSelectAnimal,
     this.onOpenAnimal,
   });
@@ -649,25 +744,84 @@ class _AnimalListPane extends StatelessWidget {
   final List<VisitAnimalEntryModel> entries;
   final Set<int> reviewedAnimalIds;
   final int? selectedAnimalId;
+  final double? height;
   final ValueChanged<int>? onSelectAnimal;
   final ValueChanged<VisitAnimalEntryModel>? onOpenAnimal;
 
   @override
+  State<_AnimalListPane> createState() => _AnimalListPaneState();
+}
+
+class _AnimalListPaneState extends State<_AnimalListPane> {
+  late final TextEditingController _searchController;
+  String _searchTerm = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _searchController = TextEditingController();
+    _searchController.addListener(_handleSearchChanged);
+  }
+
+  @override
+  void dispose() {
+    _searchController
+      ..removeListener(_handleSearchChanged)
+      ..dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
+    final visibleEntries = _visibleEntries;
+    final hasFixedHeight = widget.height != null;
+    final entriesList = visibleEntries.isEmpty
+        ? _AnimalListEmptyState(expanded: hasFixedHeight)
+        : ListView.separated(
+            padding: const EdgeInsets.fromLTRB(8, 8, 8, 10),
+            primary: false,
+            shrinkWrap: !hasFixedHeight,
+            itemCount: visibleEntries.length,
+            separatorBuilder: (context, index) => const SizedBox(height: 6),
+            itemBuilder: (context, index) {
+              final entry = visibleEntries[index];
+              final selected =
+                  entry.animalId == widget.selectedAnimalId ||
+                  (widget.selectedAnimalId == null &&
+                      widget.entries.isNotEmpty &&
+                      entry.animalId == widget.entries.first.animalId);
 
-    return Container(
-      decoration: BoxDecoration(
-        color: colorScheme.surface,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: colorScheme.outline),
-      ),
+              return _AnimalListItem(
+                entry: entry,
+                selected: selected,
+                reviewed: widget.reviewedAnimalIds.contains(entry.animalId),
+                subtitle: _buildSubtitle(entry),
+                onTap: () {
+                  if (widget.onOpenAnimal != null) {
+                    widget.onOpenAnimal!(entry);
+                    return;
+                  }
+                  widget.onSelectAnimal?.call(entry.animalId);
+                },
+              );
+            },
+          );
+    final listBody = hasFixedHeight
+        ? Expanded(child: entriesList)
+        : ConstrainedBox(
+            constraints: const BoxConstraints(maxHeight: 480),
+            child: entriesList,
+          );
+
+    final card = AppCard(
+      padding: EdgeInsets.zero,
+      borderRadius: 14,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(14, 14, 14, 8),
+            padding: const EdgeInsets.fromLTRB(14, 14, 14, 10),
             child: Text(
               'Brincos',
               style: theme.textTheme.titleSmall?.copyWith(
@@ -675,66 +829,69 @@ class _AnimalListPane extends StatelessWidget {
               ),
             ),
           ),
-          const Divider(height: 1),
-          SizedBox(
-            height: 480,
-            child: ListView.separated(
-              padding: EdgeInsets.zero,
-              itemCount: entries.length,
-              separatorBuilder: (context, index) =>
-                  const Divider(height: 1),
-              itemBuilder: (context, index) {
-                final entry = entries[index];
-                final selected = entry.animalId == selectedAnimalId ||
-                    (selectedAnimalId == null && index == 0);
-
-                return ListTile(
-                  selected: selected,
-                  selectedTileColor:
-                      colorScheme.primaryContainer.withValues(alpha: 0.45),
-                  title: Text(
-                    entry.animalCodigo.isEmpty
-                        ? 'Sem brinco'
-                        : entry.animalCodigo,
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
-                    ),
-                  ),
-                  subtitle: Text(
-                    _buildSubtitle(entry),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-                  trailing: reviewedAnimalIds.contains(entry.animalId)
-                      ? Icon(
-                          Icons.check_circle,
-                          size: 18,
-                          color: colorScheme.primary,
-                        )
-                      : const Icon(Icons.chevron_right),
-                  onTap: () {
-                    if (onOpenAnimal != null) {
-                      onOpenAnimal!(entry);
-                      return;
-                    }
-                    onSelectAnimal?.call(entry.animalId);
-                  },
-                );
-              },
+          Padding(
+            padding: const EdgeInsets.fromLTRB(14, 0, 14, 12),
+            child: AppTextField(
+              controller: _searchController,
+              label: 'Buscar brinco',
+              hint: 'Digite o brinco',
+              clearable: true,
+              prefixIcon: const Icon(Icons.search_outlined),
+              isDense: true,
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 14,
+                vertical: 10,
+              ),
             ),
           ),
+          const Divider(height: 1),
+          listBody,
         ],
       ),
     );
+
+    final height = widget.height;
+    if (height == null) {
+      return card;
+    }
+
+    return SizedBox(height: height, child: card);
+  }
+
+  List<VisitAnimalEntryModel> get _visibleEntries {
+    final query = _searchTerm.trim().normalize();
+    if (query.isEmpty) {
+      return widget.entries;
+    }
+
+    return widget.entries
+        .where((entry) {
+          final searchText = [
+            entry.animalId.toString(),
+            entry.animalCodigo,
+            entry.animalCategoria,
+            entry.situacaoProdutiva ?? '',
+            entry.situacaoReprodutiva ?? '',
+          ].join(' ').normalize();
+
+          return searchText.contains(query);
+        })
+        .toList(growable: false);
+  }
+
+  void _handleSearchChanged() {
+    if (_searchTerm == _searchController.text) {
+      return;
+    }
+
+    setState(() {
+      _searchTerm = _searchController.text;
+    });
   }
 
   String _buildSubtitle(VisitAnimalEntryModel entry) {
     final parts = <String>[
-      if (entry.situacaoProdutiva?.isNotEmpty == true)
-        entry.situacaoProdutiva!,
+      if (entry.situacaoProdutiva?.isNotEmpty == true) entry.situacaoProdutiva!,
       if (entry.situacaoReprodutiva?.isNotEmpty == true)
         entry.situacaoReprodutiva!,
       if (entry.animalCategoria.isNotEmpty) entry.animalCategoria,
@@ -745,6 +902,134 @@ class _AnimalListPane extends StatelessWidget {
     }
 
     return parts.join(' | ');
+  }
+}
+
+class _AnimalListEmptyState extends StatelessWidget {
+  const _AnimalListEmptyState({required this.expanded});
+
+  final bool expanded;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final content = Padding(
+      padding: const EdgeInsets.all(18),
+      child: Text(
+        'Nenhum brinco encontrado.',
+        textAlign: TextAlign.center,
+        style: theme.textTheme.bodyMedium?.copyWith(
+          color: theme.colorScheme.onSurfaceVariant,
+        ),
+      ),
+    );
+
+    if (!expanded) {
+      return content;
+    }
+
+    return Center(child: content);
+  }
+}
+
+class _AnimalListItem extends StatelessWidget {
+  const _AnimalListItem({
+    required this.entry,
+    required this.selected,
+    required this.reviewed,
+    required this.subtitle,
+    required this.onTap,
+  });
+
+  final VisitAnimalEntryModel entry;
+  final bool selected;
+  final bool reviewed;
+  final String subtitle;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final selectedBackground = theme.brightness == Brightness.dark
+        ? colorScheme.secondary.withValues(alpha: 0.28)
+        : colorScheme.secondary.withValues(alpha: 0.72);
+    final title = entry.animalCodigo;
+
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(10),
+      child: Material(
+        color: selected ? selectedBackground : Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          child: Stack(
+            children: [
+              if (selected)
+                Positioned(
+                  left: 0,
+                  top: 0,
+                  bottom: 0,
+                  child: Container(width: 4, color: colorScheme.primary),
+                ),
+              Container(
+                decoration: BoxDecoration(
+                  border: Border.all(
+                    color: selected
+                        ? colorScheme.primary.withValues(alpha: 0.18)
+                        : colorScheme.outline.withValues(alpha: 0.16),
+                  ),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                padding: EdgeInsets.fromLTRB(selected ? 16 : 12, 10, 10, 10),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            title,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: theme.textTheme.titleSmall?.copyWith(
+                              color: selected
+                                  ? colorScheme.primary
+                                  : colorScheme.onSurface,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            subtitle,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: colorScheme.onSurfaceVariant,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    reviewed
+                        ? Icon(
+                            Icons.check_circle,
+                            size: 20,
+                            color: colorScheme.primary,
+                          )
+                        : Icon(
+                            Icons.chevron_right,
+                            size: 20,
+                            color: colorScheme.onSurfaceVariant,
+                          ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }
 
@@ -769,52 +1054,176 @@ class _AnimalEditorPane extends StatelessWidget {
       );
     }
 
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
+    final selectedEntry = entry!;
 
-    return Container(
-      key: ValueKey(entry!.animalId),
+    return AppCard(
+      key: ValueKey(selectedEntry.animalId),
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: colorScheme.surface,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: colorScheme.outline),
-      ),
+      borderRadius: 14,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text(
-            entry!.animalCodigo.isEmpty ? 'Animal sem brinco' : entry!.animalCodigo,
-            style: theme.textTheme.titleMedium?.copyWith(
-              fontWeight: FontWeight.w800,
+          _AnimalEditorHeader(entry: selectedEntry, reviewed: reviewed),
+          const SizedBox(height: 18),
+          _AnimalEditorFields(entry: selectedEntry, onChanged: onChanged),
+          const SizedBox(height: 14),
+          Align(
+            alignment: Alignment.centerRight,
+            child: _AnimalConfirmationButton(
+              animalId: selectedEntry.animalId,
+              reviewed: reviewed,
+              onConfirmAnimal: onConfirmAnimal,
             ),
           ),
-          const SizedBox(height: 4),
-          const SizedBox(height: 16),
-          _AnimalEditorFields(
-            entry: entry!,
-            onChanged: onChanged,
+        ],
+      ),
+    );
+  }
+}
+
+class _AnimalEditorHeader extends StatelessWidget {
+  const _AnimalEditorHeader({required this.entry, required this.reviewed});
+
+  final VisitAnimalEntryModel entry;
+  final bool reviewed;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final title = entry.animalCodigo;
+    final identity = Row(
+      children: [
+        Container(
+          width: 44,
+          height: 44,
+          decoration: BoxDecoration(
+            color: colorScheme.secondary.withValues(
+              alpha: theme.brightness == Brightness.dark ? 0.28 : 0.8,
+            ),
+            borderRadius: BorderRadius.circular(12),
           ),
-          const SizedBox(height: 16),
-          Wrap(
-            spacing: 10,
-            runSpacing: 10,
-            alignment: WrapAlignment.end,
+          child: Icon(MdiIcons.cow, color: colorScheme.primary, size: 26),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              if (reviewed)
-                Text(
-                  'Animal confirmado na visita',
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: colorScheme.primary,
-                    fontWeight: FontWeight.w700,
+              Expanded(
+                flex: 3,
+                child: Text(
+                  title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.titleLarge?.copyWith(
+                    color: colorScheme.onSurface,
+                    fontWeight: FontWeight.w800,
                   ),
                 ),
-              AppButton(
-                text: reviewed ? 'Atualizar confirmacao' : 'Confirmar animal',
-                height: 40,
-                onPressed: () => onConfirmAnimal(entry!.animalId),
+              ),
+              const SizedBox(width: 10),
+              Flexible(
+                flex: 2,
+                child: Align(
+                  alignment: Alignment.centerRight,
+                  child: _AnimalVisitStatusBadge(reviewed: reviewed),
+                ),
               ),
             ],
+          ),
+        ),
+      ],
+    );
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        if (constraints.maxWidth < 640) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [identity],
+          );
+        }
+
+        return Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [Expanded(child: identity)],
+        );
+      },
+    );
+  }
+}
+
+class _AnimalConfirmationButton extends StatelessWidget {
+  const _AnimalConfirmationButton({
+    required this.animalId,
+    required this.reviewed,
+    required this.onConfirmAnimal,
+  });
+
+  final int animalId;
+  final bool reviewed;
+  final ValueChanged<int> onConfirmAnimal;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return AppButton(
+      text: reviewed ? 'Atualizar confirmação' : 'Confirmar animal',
+      height: 40,
+      outlined: reviewed,
+      icon: reviewed
+          ? Icon(Icons.refresh_rounded, size: 18, color: colorScheme.primary)
+          : null,
+      borderColor: reviewed ? colorScheme.outline : null,
+      textColor: reviewed ? colorScheme.primary : null,
+      onPressed: () => onConfirmAnimal(animalId),
+    );
+  }
+}
+
+class _AnimalVisitStatusBadge extends StatelessWidget {
+  const _AnimalVisitStatusBadge({required this.reviewed});
+
+  final bool reviewed;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final foreground = reviewed ? Colors.green.shade700 : Colors.amber.shade800;
+    final backgroundColor = reviewed
+        ? Colors.green.shade100
+        : Colors.amber.shade100;
+    final borderColor = reviewed
+        ? Colors.green.shade300
+        : Colors.amber.shade300;
+    final icon = reviewed
+        ? Icons.check_circle_outline_rounded
+        : Icons.hourglass_bottom_rounded;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: backgroundColor,
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: borderColor),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 15, color: foreground),
+          const SizedBox(width: 6),
+          Flexible(
+            child: Text(
+              reviewed ? 'Confirmado na visita' : 'Aguardando confirmação',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: theme.textTheme.labelMedium?.copyWith(
+                color: foreground,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
           ),
         ],
       ),
@@ -823,104 +1232,119 @@ class _AnimalEditorPane extends StatelessWidget {
 }
 
 class _AnimalEditorFields extends StatelessWidget {
-  const _AnimalEditorFields({
-    required this.entry,
-    required this.onChanged,
-  });
+  const _AnimalEditorFields({required this.entry, required this.onChanged});
 
   final VisitAnimalEntryModel entry;
   final ValueChanged<VisitAnimalEntryModel> onChanged;
 
   @override
   Widget build(BuildContext context) {
-    return _EditorGrid(
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        AppDropdown<String>(
-          value: entry.situacaoProdutiva,
-          labelText: 'Situacao produtiva',
-          onChanged: (value) =>
-              onChanged(entry.copyWith(situacaoProdutiva: value)),
-          options: _VisitFormPageState._situacaoProdutivaOptions,
+        _EditorSection(
+          title: 'Informações reprodutivas',
+          child: _EditorGrid(
+            children: [
+              AppDropdown<String>(
+                value: entry.situacaoProdutiva,
+                labelText: 'Situação produtiva',
+                onChanged: (value) =>
+                    onChanged(entry.copyWith(situacaoProdutiva: value)),
+                options: _VisitFormPageState._situacaoProdutivaOptions,
+              ),
+              AppDropdown<String>(
+                value: entry.situacaoReprodutiva,
+                labelText: 'Situação reprodutiva',
+                onChanged: (value) =>
+                    onChanged(entry.copyWith(situacaoReprodutiva: value)),
+                options: _VisitFormPageState._situacaoReprodutivaOptions,
+              ),
+              AppTextField(
+                label: 'Decisão',
+                initialValue: entry.decisao ?? '',
+                onChanged: (value) => onChanged(
+                  entry.copyWith(
+                    decisao: value.trim().isEmpty ? null : value.trim(),
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
-        AppDropdown<String>(
-          value: entry.situacaoReprodutiva,
-          labelText: 'Situacao reprodutiva',
-          onChanged: (value) =>
-              onChanged(entry.copyWith(situacaoReprodutiva: value)),
-          options: _VisitFormPageState._situacaoReprodutivaOptions,
-        ),
-        AppTextField(
-          label: 'Decisão',
-          initialValue: entry.decisao ?? '',
-          onChanged: (value) => onChanged(
-            entry.copyWith(
-              decisao: value.trim().isEmpty ? null : value.trim(),
+        const SizedBox(height: 22),
+        _EditorSection(
+          title: 'Diagnóstico',
+          child: AppTextField(
+            label: 'Diagnóstico / Histórico',
+            initialValue: entry.diagnostico ?? '',
+            onChanged: (value) => onChanged(
+              entry.copyWith(
+                diagnostico: value.trim().isEmpty ? null : value.trim(),
+              ),
             ),
           ),
         ),
-        AppTextField(
-          label: 'Diagnóstico / Histórico',
-          initialValue: entry.diagnostico ?? '',
-          maxLines: 2,
-          onChanged: (value) => onChanged(
-            entry.copyWith(
-              diagnostico: value.trim().isEmpty ? null : value.trim(),
-            ),
+        const SizedBox(height: 22),
+        _EditorSection(
+          title: 'Inseminação e parto',
+          child: _EditorGrid(
+            children: [
+              _DateInputField(
+                label: 'Data da última IA',
+                value: entry.dataUltimaIa,
+                onChanged: (value) =>
+                    onChanged(entry.copyWith(dataUltimaIa: value)),
+              ),
+              AppTextField(
+                label: 'Número da IA recebida',
+                initialValue: _formatInt(entry.numeroIaRecebida),
+                keyboardType: TextInputType.number,
+                onChanged: (value) => onChanged(
+                  entry.copyWith(numeroIaRecebida: _parseInt(value)),
+                ),
+              ),
+              AppTextField(
+                label: 'Dias prenhez',
+                initialValue: _formatInt(entry.diasPrenhez),
+                keyboardType: TextInputType.number,
+                onChanged: (value) =>
+                    onChanged(entry.copyWith(diasPrenhez: _parseInt(value))),
+              ),
+              AppTextField(
+                label: 'DEL',
+                initialValue: _formatInt(entry.del),
+                keyboardType: TextInputType.number,
+                onChanged: (value) =>
+                    onChanged(entry.copyWith(del: _parseInt(value))),
+              ),
+              AppTextField(
+                label: 'Dias p/ secar',
+                initialValue: _formatInt(entry.diasParaSecar),
+                keyboardType: TextInputType.number,
+                onChanged: (value) =>
+                    onChanged(entry.copyWith(diasParaSecar: _parseInt(value))),
+              ),
+              _DateInputField(
+                label: 'Previsão secagem',
+                value: entry.previsaoSecagem,
+                onChanged: (value) =>
+                    onChanged(entry.copyWith(previsaoSecagem: value)),
+              ),
+              _DateInputField(
+                label: 'Data pré-parto',
+                value: entry.dataPreParto,
+                onChanged: (value) =>
+                    onChanged(entry.copyWith(dataPreParto: value)),
+              ),
+              _DateInputField(
+                label: 'Previsão parto',
+                value: entry.previsaoParto,
+                onChanged: (value) =>
+                    onChanged(entry.copyWith(previsaoParto: value)),
+              ),
+            ],
           ),
-        ),
-        _DateInputField(
-          label: 'Data ultima IA',
-          value: entry.dataUltimaIa,
-          onChanged: (value) =>
-              onChanged(entry.copyWith(dataUltimaIa: value)),
-        ),
-        AppTextField(
-          label: 'No IA recebida',
-          initialValue: _formatInt(entry.numeroIaRecebida),
-          keyboardType: TextInputType.number,
-          onChanged: (value) => onChanged(
-            entry.copyWith(numeroIaRecebida: _parseInt(value)),
-          ),
-        ),
-        AppTextField(
-          label: 'Dias prenhez',
-          initialValue: _formatInt(entry.diasPrenhez),
-          keyboardType: TextInputType.number,
-          onChanged: (value) => onChanged(
-            entry.copyWith(diasPrenhez: _parseInt(value)),
-          ),
-        ),
-        AppTextField(
-          label: 'DEL',
-          initialValue: _formatInt(entry.del),
-          keyboardType: TextInputType.number,
-          onChanged: (value) => onChanged(entry.copyWith(del: _parseInt(value))),
-        ),
-        AppTextField(
-          label: 'Dias p/ secar',
-          initialValue: _formatInt(entry.diasParaSecar),
-          keyboardType: TextInputType.number,
-          onChanged: (value) => onChanged(
-            entry.copyWith(diasParaSecar: _parseInt(value)),
-          ),
-        ),
-        _DateInputField(
-          label: 'Previsao secagem',
-          value: entry.previsaoSecagem,
-          onChanged: (value) =>
-              onChanged(entry.copyWith(previsaoSecagem: value)),
-        ),
-        _DateInputField(
-          label: 'Data pre-parto',
-          value: entry.dataPreParto,
-          onChanged: (value) =>
-              onChanged(entry.copyWith(dataPreParto: value)),
-        ),
-        _DateInputField(
-          label: 'Previsao parto',
-          value: entry.previsaoParto,
-          onChanged: (value) =>
-              onChanged(entry.copyWith(previsaoParto: value)),
         ),
       ],
     );
@@ -929,6 +1353,45 @@ class _AnimalEditorFields extends StatelessWidget {
   static String _formatInt(int? value) => value?.toString() ?? '';
 
   static int? _parseInt(String value) => int.tryParse(value.trim());
+}
+
+class _EditorSection extends StatelessWidget {
+  const _EditorSection({required this.title, required this.child});
+
+  final String title;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          children: [
+            Text(
+              title,
+              style: theme.textTheme.titleSmall?.copyWith(
+                color: colorScheme.primary,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Container(
+                height: 1,
+                color: colorScheme.outline.withValues(alpha: 0.35),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        child,
+      ],
+    );
+  }
 }
 
 class _EditorGrid extends StatelessWidget {
@@ -944,8 +1407,8 @@ class _EditorGrid extends StatelessWidget {
         final columns = maxWidth >= 980
             ? 3
             : maxWidth >= 640
-                ? 2
-                : 1;
+            ? 2
+            : 1;
         final spacing = 12.0;
         final itemWidth = (maxWidth - ((columns - 1) * spacing)) / columns;
 
@@ -1046,10 +1509,7 @@ class _DateInputField extends StatelessWidget {
 }
 
 class _FeedbackPanel extends StatelessWidget {
-  const _FeedbackPanel({
-    required this.message,
-    this.error = false,
-  });
+  const _FeedbackPanel({required this.message, this.error = false});
 
   final String message;
   final bool error;
@@ -1083,10 +1543,7 @@ class _FeedbackPanel extends StatelessWidget {
 }
 
 class _SummaryChip extends StatelessWidget {
-  const _SummaryChip({
-    required this.icon,
-    required this.label,
-  });
+  const _SummaryChip({required this.icon, required this.label});
 
   final IconData icon;
   final String label;
