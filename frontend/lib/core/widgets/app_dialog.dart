@@ -10,6 +10,7 @@ class AppDialog extends StatelessWidget {
     this.subtitle,
     required this.content,
     this.actions,
+    this.headerActions,
     this.persistent = false,
     this.width = 420,
     this.height,
@@ -33,6 +34,7 @@ class AppDialog extends StatelessWidget {
   final String? subtitle;
   final Widget content;
   final List<Widget>? actions;
+  final List<Widget>? headerActions;
   final bool persistent;
   final double width;
   final double? height;
@@ -57,6 +59,7 @@ class AppDialog extends StatelessWidget {
     String? subtitle,
     required Widget content,
     List<Widget>? actions,
+    List<Widget>? headerActions,
     bool persistent = false,
     bool fullscreen = false,
     bool useInternalScroll = false,
@@ -84,6 +87,7 @@ class AppDialog extends StatelessWidget {
           subtitle: subtitle,
           content: content,
           actions: actions,
+          headerActions: headerActions,
           persistent: persistent,
           fullscreen: fullscreen,
           isFullscreen: isFullscreen,
@@ -171,6 +175,7 @@ class AppDialog extends StatelessWidget {
                   _DialogHeader(
                     title: title,
                     subtitle: subtitle,
+                    actions: headerActions,
                     showCloseButton: showCloseButton,
                     fullscreen: effectiveFullscreen,
                     indent: headerIndent,
@@ -192,7 +197,8 @@ class AppDialog extends StatelessWidget {
   bool get _hasHeader =>
       showCloseButton ||
       (title != null && title!.isNotEmpty) ||
-      (subtitle != null && subtitle!.isNotEmpty);
+      (subtitle != null && subtitle!.isNotEmpty) ||
+      (headerActions != null && headerActions!.isNotEmpty);
 
   bool get _shouldShowDefaultActions =>
       showDefaultActions ||
@@ -238,6 +244,7 @@ class _DialogHeader extends StatelessWidget {
   const _DialogHeader({
     this.title,
     this.subtitle,
+    this.actions,
     required this.showCloseButton,
     required this.fullscreen,
     required this.indent,
@@ -245,6 +252,7 @@ class _DialogHeader extends StatelessWidget {
 
   final String? title;
   final String? subtitle;
+  final List<Widget>? actions;
   final bool showCloseButton;
   final bool fullscreen;
   final double indent;
@@ -266,6 +274,24 @@ class _DialogHeader extends StatelessWidget {
     final subtitleStyle = theme.textTheme.bodyMedium?.copyWith(
       color: colorScheme.onSurfaceVariant,
     );
+    final headerActions = actions ?? const <Widget>[];
+    final actionColor = fullscreen
+        ? colorScheme.onPrimary
+        : colorScheme.primary;
+    final actionsWidget = headerActions.isEmpty
+        ? null
+        : IconTheme.merge(
+            data: IconThemeData(color: actionColor),
+            child: DefaultTextStyle.merge(
+              style: TextStyle(color: actionColor),
+              child: Wrap(
+                spacing: 4,
+                runSpacing: 4,
+                alignment: WrapAlignment.end,
+                children: headerActions,
+              ),
+            ),
+          );
 
     if (fullscreen) {
       return Material(
@@ -299,7 +325,11 @@ class _DialogHeader extends StatelessWidget {
                     ),
                   ),
                 ),
-                const SizedBox(width: 16),
+                if (actionsWidget != null) ...[
+                  const SizedBox(width: 8),
+                  actionsWidget,
+                ],
+                const SizedBox(width: 8),
               ],
             ),
           ),
@@ -317,6 +347,10 @@ class _DialogHeader extends StatelessWidget {
                 ? Text(subtitle!, style: subtitleStyle)
                 : const SizedBox.shrink(),
           ),
+          if (actionsWidget != null) ...[
+            const SizedBox(width: 12),
+            actionsWidget,
+          ],
           if (showCloseButton) ...[
             const SizedBox(width: 12),
             _CloseDialogButton(colorScheme: colorScheme),
@@ -333,6 +367,10 @@ class _DialogHeader extends StatelessWidget {
           children: [
             if (indent > 0) SizedBox(width: indent),
             Expanded(child: Text(title!, style: titleStyle)),
+            if (actionsWidget != null) ...[
+              const SizedBox(width: 12),
+              actionsWidget,
+            ],
             if (showCloseButton) ...[
               const SizedBox(width: 12),
               _CloseDialogButton(colorScheme: colorScheme),

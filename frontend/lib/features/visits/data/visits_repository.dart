@@ -24,7 +24,7 @@ class VisitsRepository {
     );
 
     final items = _asList(response.data);
-    return items.map(VisitSummaryModelMapper.fromMap).toList(growable: false);
+    return items.map(_toVisitModel).toList(growable: false);
   }
 
   Future<VisitSummaryModel> create(VisitSummaryModel visit) async {
@@ -33,7 +33,7 @@ class VisitsRepository {
       data: _toRequest(visit),
     );
 
-    return VisitSummaryModelMapper.fromMap(_asMap(response.data));
+    return _toVisitModel(_asMap(response.data));
   }
 
   Future<VisitSummaryModel> update(VisitSummaryModel visit) async {
@@ -42,7 +42,7 @@ class VisitsRepository {
       data: _toRequest(visit),
     );
 
-    return VisitSummaryModelMapper.fromMap(_asMap(response.data));
+    return _toVisitModel(_asMap(response.data));
   }
 
   Future<Uint8List> downloadReportPdf(int visitId) async {
@@ -78,6 +78,46 @@ class VisitsRepository {
     return const {};
   }
 
+  VisitSummaryModel _toVisitModel(Map<String, dynamic> map) {
+    return VisitSummaryModelMapper.fromMap(_normalizeVisitUser(map));
+  }
+
+  Map<String, dynamic> _normalizeVisitUser(Map<String, dynamic> map) {
+    // Frontend-only nesta etapa: VisitaResponse ainda nao expoe o usuario.
+    // Quando o backend retornar o usuario criador, esses aliases ja alimentam
+    // o card de propriedade e o dialog de detalhes.
+    final rawUser = map['usuario'];
+    final user = rawUser is Map
+        ? rawUser.map((key, value) => MapEntry(key.toString(), value))
+        : null;
+    final idUsuario = _asNullableInt(
+      map['idUsuario'] ?? map['usuarioId'] ?? map['id_usuario'] ?? user?['id'],
+    );
+    final nomeUsuario = _asNullableString(
+      map['nomeUsuario'] ??
+          map['usuarioNome'] ??
+          map['nomeVeterinario'] ??
+          map['veterinarioResponsavel'] ??
+          user?['name'] ??
+          user?['nome'],
+    );
+
+    return {...map, 'idUsuario': idUsuario, 'nomeUsuario': nomeUsuario};
+  }
+
+  int? _asNullableInt(Object? value) {
+    if (value is int) return value;
+    if (value is num) return value.toInt();
+    if (value is String) return int.tryParse(value);
+    return null;
+  }
+
+  String? _asNullableString(Object? value) {
+    final text = value?.toString().trim();
+    if (text == null || text.isEmpty) return null;
+    return text;
+  }
+
   Map<String, dynamic> _toRequest(VisitSummaryModel visit) {
     return {
       'idExterno': visit.idExterno,
@@ -97,7 +137,9 @@ class VisitsRepository {
   Map<String, dynamic> _toAnimalItemRequest(VisitAnimalEntryModel item) {
     return {
       'animalId': item.animalId == 0 ? null : item.animalId,
-      'animalIdExterno': item.animalIdExterno.isEmpty ? null : item.animalIdExterno,
+      'animalIdExterno': item.animalIdExterno.isEmpty
+          ? null
+          : item.animalIdExterno,
       'animalCodigo': item.animalCodigo,
       'animalCategoria': item.animalCategoria,
       'idadeMeses': item.idadeMeses,

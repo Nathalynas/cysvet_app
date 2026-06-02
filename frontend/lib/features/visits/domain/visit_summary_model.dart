@@ -11,6 +11,8 @@ class VisitSummaryModel with VisitSummaryModelMappable {
     this.idExternoPropriedade = '',
     this.dataVisita,
     this.observacoes,
+    this.idUsuario,
+    this.nomeUsuario,
     this.animais = const [],
   });
 
@@ -21,7 +23,17 @@ class VisitSummaryModel with VisitSummaryModelMappable {
   @MappableField(hook: _NullableDateTimeHook())
   final DateTime? dataVisita;
   final String? observacoes;
+  // Frontend-only nesta etapa. A API atual ainda nao retorna o usuario
+  // que cadastrou a visita; o repositorio normaliza esse campo quando existir.
+  final int? idUsuario;
+  final String? nomeUsuario;
   final List<VisitAnimalEntryModel> animais;
+
+  String? get veterinarioResponsavel {
+    final name = nomeUsuario?.trim();
+    if (name == null || name.isEmpty) return null;
+    return name;
+  }
 }
 
 @MappableClass()

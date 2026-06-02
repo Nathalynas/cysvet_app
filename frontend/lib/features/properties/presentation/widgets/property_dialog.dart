@@ -16,13 +16,15 @@ import '../../domain/ibge_uf_model.dart';
 import '../../domain/property_summary_model.dart';
 
 class PropertyDialog extends StatelessWidget {
-  const PropertyDialog({super.key, this.property});
+  const PropertyDialog({super.key, this.property, this.fromDetails = false});
 
   final PropertySummaryModel? property;
+  final bool fromDetails;
 
   static Future<void> show(
     BuildContext context, {
     PropertySummaryModel? property,
+    bool fromDetails = false,
   }) {
     return AppDialog.show<void>(
       context: context,
@@ -33,20 +35,21 @@ class PropertyDialog extends StatelessWidget {
       headerIndent: 16,
       useInternalScroll: true,
       fullscreenOnMobile: true,
-      content: PropertyDialog(property: property),
+      content: PropertyDialog(property: property, fromDetails: fromDetails),
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    return _PropertyForm(property: property);
+    return _PropertyForm(property: property, fromDetails: fromDetails);
   }
 }
 
 class _PropertyForm extends ConsumerStatefulWidget {
-  const _PropertyForm({this.property});
+  const _PropertyForm({this.property, this.fromDetails = false});
 
   final PropertySummaryModel? property;
+  final bool fromDetails;
 
   @override
   ConsumerState<_PropertyForm> createState() => _PropertyFormState();
@@ -98,9 +101,9 @@ class _PropertyFormState extends ConsumerState<_PropertyForm> {
       actionButtonFontSize: 14,
       actionButtonPadding: const EdgeInsets.symmetric(horizontal: 14),
       submitText: 'Salvar',
-      onCancel: () => Navigator.of(context).maybePop(),
+      onCancel: () => Navigator.of(context, rootNavigator: false).maybePop(),
       onSubmit: () async {
-        final navigator = Navigator.of(context);
+        final navigator = Navigator.of(context, rootNavigator: false);
         try {
           final payload = PropertySummaryModel(
             id: property?.id ?? 0,
@@ -116,7 +119,9 @@ class _PropertyFormState extends ConsumerState<_PropertyForm> {
           await ref.read(propertiesControllerProvider).save(payload);
           if (mounted) {
             await navigator.maybePop();
-            showAppSuccess('Propriedade salva com sucesso.');
+            if (!widget.fromDetails) {
+              showAppSuccess('Propriedade salva com sucesso.');
+            }
           }
         } catch (error) {
           showAppError(error);

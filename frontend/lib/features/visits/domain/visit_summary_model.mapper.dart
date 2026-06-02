@@ -65,6 +65,18 @@ class VisitSummaryModelMapper extends ClassMapperBase<VisitSummaryModel> {
     _$observacoes,
     opt: true,
   );
+  static int? _$idUsuario(VisitSummaryModel v) => v.idUsuario;
+  static const Field<VisitSummaryModel, int> _f$idUsuario = Field(
+    'idUsuario',
+    _$idUsuario,
+    opt: true,
+  );
+  static String? _$nomeUsuario(VisitSummaryModel v) => v.nomeUsuario;
+  static const Field<VisitSummaryModel, String> _f$nomeUsuario = Field(
+    'nomeUsuario',
+    _$nomeUsuario,
+    opt: true,
+  );
   static List<VisitAnimalEntryModel> _$animais(VisitSummaryModel v) =>
       v.animais;
   static const Field<VisitSummaryModel, List<VisitAnimalEntryModel>>
@@ -78,6 +90,8 @@ class VisitSummaryModelMapper extends ClassMapperBase<VisitSummaryModel> {
     #idExternoPropriedade: _f$idExternoPropriedade,
     #dataVisita: _f$dataVisita,
     #observacoes: _f$observacoes,
+    #idUsuario: _f$idUsuario,
+    #nomeUsuario: _f$nomeUsuario,
     #animais: _f$animais,
   };
 
@@ -89,6 +103,8 @@ class VisitSummaryModelMapper extends ClassMapperBase<VisitSummaryModel> {
       idExternoPropriedade: data.dec(_f$idExternoPropriedade),
       dataVisita: data.dec(_f$dataVisita),
       observacoes: data.dec(_f$observacoes),
+      idUsuario: data.dec(_f$idUsuario),
+      nomeUsuario: data.dec(_f$nomeUsuario),
       animais: data.dec(_f$animais),
     );
   }
@@ -181,6 +197,8 @@ abstract class VisitSummaryModelCopyWith<
     String? idExternoPropriedade,
     DateTime? dataVisita,
     String? observacoes,
+    int? idUsuario,
+    String? nomeUsuario,
     List<VisitAnimalEntryModel>? animais,
   });
   VisitSummaryModelCopyWith<$R2, $In, $Out2> $chain<$R2, $Out2>(
@@ -219,6 +237,8 @@ class _VisitSummaryModelCopyWithImpl<$R, $Out>
     String? idExternoPropriedade,
     Object? dataVisita = $none,
     Object? observacoes = $none,
+    Object? idUsuario = $none,
+    Object? nomeUsuario = $none,
     List<VisitAnimalEntryModel>? animais,
   }) => $apply(
     FieldCopyWithData({
@@ -229,6 +249,8 @@ class _VisitSummaryModelCopyWithImpl<$R, $Out>
         #idExternoPropriedade: idExternoPropriedade,
       if (dataVisita != $none) #dataVisita: dataVisita,
       if (observacoes != $none) #observacoes: observacoes,
+      if (idUsuario != $none) #idUsuario: idUsuario,
+      if (nomeUsuario != $none) #nomeUsuario: nomeUsuario,
       if (animais != null) #animais: animais,
     }),
   );
@@ -243,6 +265,8 @@ class _VisitSummaryModelCopyWithImpl<$R, $Out>
     ),
     dataVisita: data.get(#dataVisita, or: $value.dataVisita),
     observacoes: data.get(#observacoes, or: $value.observacoes),
+    idUsuario: data.get(#idUsuario, or: $value.idUsuario),
+    nomeUsuario: data.get(#nomeUsuario, or: $value.nomeUsuario),
     animais: data.get(#animais, or: $value.animais),
   );
 
