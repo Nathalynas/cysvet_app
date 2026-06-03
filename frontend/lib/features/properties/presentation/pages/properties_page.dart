@@ -346,7 +346,7 @@ class _PropertyCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 12),
                 _InfoLine(
-                  label: 'Responsavel',
+                  label: 'Responsável',
                   value: _dashIfBlank(property.nomeProprietario),
                 ),
                 _InfoLine(
@@ -354,7 +354,7 @@ class _PropertyCard extends StatelessWidget {
                   value: _dashIfBlank(property.contato),
                 ),
                 _InfoLine(
-                  label: 'Localizacao',
+                  label: 'Localização',
                   value: _dashIfBlank(property.localizacao),
                 ),
                 const SizedBox(height: 14),
@@ -365,13 +365,13 @@ class _PropertyCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 12),
                 _InfoLine(
-                  label: 'Ultima visita',
+                  label: 'Última visita',
                   value: lastVisit == null
                       ? loadingLabel
                       : formatDate(lastVisit.dataVisita),
                 ),
                 _InfoLine(
-                  label: 'Veterinario',
+                  label: 'Veterinário',
                   value: _dashIfBlank(
                     lastVisit?.veterinarioResponsavel ?? loadingLabel,
                   ),
