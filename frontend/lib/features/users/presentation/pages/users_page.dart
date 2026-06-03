@@ -196,6 +196,18 @@ class _UsersTable extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isMobile = MediaQuery.sizeOf(context).width < MOBILE_WIDTH;
+
+    if (isMobile) {
+      return _UsersMobileList(
+        users: users,
+        onEdit: onEdit,
+        onInactivate: onInactivate,
+        onActivate: onActivate,
+        onDelete: onDelete,
+      );
+    }
+
     return AppTable<UserSummaryModel>(
       rows: users,
       equalColumnWidth: true,
@@ -246,6 +258,178 @@ class _UsersTable extends StatelessWidget {
           },
         ),
       ],
+    );
+  }
+}
+
+class _UsersMobileList extends StatelessWidget {
+  const _UsersMobileList({
+    required this.users,
+    required this.onEdit,
+    required this.onInactivate,
+    required this.onActivate,
+    required this.onDelete,
+  });
+
+  final List<UserSummaryModel> users;
+  final _UserCallback onEdit;
+  final _UserCallback onInactivate;
+  final _UserCallback onActivate;
+  final _UserCallback onDelete;
+
+  @override
+  Widget build(BuildContext context) {
+    if (users.isEmpty) {
+      return const Card(
+        child: Padding(
+          padding: EdgeInsets.all(24),
+          child: Text(
+            'Nenhum usuário encontrado para os filtros atuais.',
+            textAlign: TextAlign.center,
+          ),
+        ),
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        for (final user in users) ...[
+          _UserMobileCard(
+            user: user,
+            onEdit: () => onEdit(user),
+            onInactivate: () => onInactivate(user),
+            onActivate: () => onActivate(user),
+            onDelete: () => onDelete(user),
+          ),
+          const SizedBox(height: 10),
+        ],
+        Text(
+          _recordsLabel(users.length),
+          textAlign: TextAlign.center,
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _UserMobileCard extends StatelessWidget {
+  const _UserMobileCard({
+    required this.user,
+    required this.onEdit,
+    required this.onInactivate,
+    required this.onActivate,
+    required this.onDelete,
+  });
+
+  final UserSummaryModel user;
+  final VoidCallback onEdit;
+  final VoidCallback onInactivate;
+  final VoidCallback onActivate;
+  final VoidCallback onDelete;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
+    return Card(
+      elevation: 0,
+      margin: EdgeInsets.zero,
+      color: colorScheme.surface,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(
+          color: colorScheme.outlineVariant.withValues(alpha: 0.8),
+        ),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Usuário:',
+                        style: theme.textTheme.labelSmall?.copyWith(
+                          color: colorScheme.onSurfaceVariant,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      _UserIdentityCell(user: user),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 10),
+                _UserStatusBadge(user: user),
+              ],
+            ),
+            const SizedBox(height: 14),
+            Text(
+              'Perfil',
+              style: theme.textTheme.labelSmall?.copyWith(
+                color: colorScheme.onSurfaceVariant,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+            const SizedBox(height: 6),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: _UserRoleBadge(user: user),
+            ),
+            const SizedBox(height: 14),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Empresa:',
+                        style: theme.textTheme.labelSmall?.copyWith(
+                          color: colorScheme.onSurfaceVariant,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        _dashIfBlank(user.companyName),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: colorScheme.onSurface,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 12),
+                _UserActions(
+                  user: user,
+                  alignment: WrapAlignment.end,
+                  onEdit: onEdit,
+                  onInactivate: onInactivate,
+                  onActivate: onActivate,
+                  onDelete: onDelete,
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
@@ -327,6 +511,7 @@ class _UserActions extends StatelessWidget {
     required this.onInactivate,
     required this.onActivate,
     required this.onDelete,
+    this.alignment = WrapAlignment.end,
   });
 
   final UserSummaryModel user;
@@ -334,6 +519,7 @@ class _UserActions extends StatelessWidget {
   final VoidCallback onInactivate;
   final VoidCallback onActivate;
   final VoidCallback onDelete;
+  final WrapAlignment alignment;
 
   @override
   Widget build(BuildContext context) {
