@@ -28,6 +28,7 @@ class AppTable<T> extends StatelessWidget {
     this.footerLabel,
     this.emptyMessage = 'Nenhum registro encontrado.',
     this.mobileBreakpoint = 720,
+    this.equalColumnWidth = false,
   });
 
   final List<T> rows;
@@ -36,7 +37,7 @@ class AppTable<T> extends StatelessWidget {
   final String? footerLabel;
   final String emptyMessage;
   final double mobileBreakpoint;
-
+  final bool equalColumnWidth;
   @override
   Widget build(BuildContext context) {
     return LayoutBuilder(
@@ -56,6 +57,7 @@ class AppTable<T> extends StatelessWidget {
           columns: columns,
           footerLabel: footerLabel,
           emptyMessage: emptyMessage,
+          equalColumnWidth: equalColumnWidth,
         );
       },
     );
@@ -68,12 +70,14 @@ class _AppTableGrid<T> extends StatelessWidget {
     required this.columns,
     required this.footerLabel,
     required this.emptyMessage,
+    required this.equalColumnWidth,
   });
 
   final List<T> rows;
   final List<AppTableColumn<T>> columns;
   final String? footerLabel;
   final String emptyMessage;
+  final bool equalColumnWidth;
 
   @override
   Widget build(BuildContext context) {
@@ -91,6 +95,7 @@ class _AppTableGrid<T> extends StatelessWidget {
             item: null,
             isHeader: true,
             backgroundColor: colorScheme.surface,
+            equalColumnWidth: equalColumnWidth,
           ),
           if (rows.isEmpty)
             Padding(
@@ -114,6 +119,7 @@ class _AppTableGrid<T> extends StatelessWidget {
                     : colorScheme.surfaceContainerHighest.withValues(
                         alpha: 0.28,
                       ),
+                equalColumnWidth: equalColumnWidth,
               ),
             ],
           if (footerLabel != null) ...[
@@ -142,12 +148,14 @@ class _AppTableRow<T> extends StatelessWidget {
     required this.item,
     this.isHeader = false,
     this.backgroundColor,
+    this.equalColumnWidth = false,
   });
 
   final List<AppTableColumn<T>> columns;
   final T? item;
   final bool isHeader;
   final Color? backgroundColor;
+  final bool equalColumnWidth;
 
   @override
   Widget build(BuildContext context) {
@@ -165,9 +173,11 @@ class _AppTableRow<T> extends StatelessWidget {
           children: [
             for (var index = 0; index < columns.length; index++) ...[
               Expanded(
-                flex: columns[index].flex,
+                flex: equalColumnWidth ? 1 : columns[index].flex,
                 child: Align(
-                  alignment: columns[index].alignment,
+                  alignment: isHeader
+                      ? Alignment.center
+                      : columns[index].alignment,
                   child: isHeader
                       ? Text(
                           columns[index].label,
