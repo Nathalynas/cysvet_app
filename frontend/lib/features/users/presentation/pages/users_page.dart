@@ -9,6 +9,7 @@ import '../../../../core/presentation/async_value_view.dart';
 import '../../../../core/widgets/app_button.dart';
 import '../../../../core/widgets/app_dialog.dart';
 import '../../../../core/widgets/app_dropdown.dart';
+import '../../../../core/widgets/app_table.dart';
 import '../../../../core/widgets/search_card.dart';
 import '../../../../core/widgets/status_badge.dart';
 import '../../application/users_provider.dart';
@@ -67,33 +68,13 @@ class UsuariosPage extends ConsumerWidget {
                     statusFilter,
                   );
 
-                  if (filteredItems.isEmpty) {
-                    return Padding(
-                      padding: const EdgeInsets.only(top: 24),
-                      child: Center(
-                        child: Text(
-                          'Nenhum usuário encontrado para os filtros atuais.',
-                          style: theme.textTheme.bodyMedium,
-                          textAlign: TextAlign.center,
-                        ),
-                      ),
-                    );
-                  }
-
-                  return Column(
-                    children: [
-                      for (final user in filteredItems) ...[
-                        _UserCard(
-                          user: user,
-                          onInactivate: () =>
-                              _confirmInactivate(context, ref, user),
-                          onActivate: () =>
-                              _confirmActivate(context, ref, user),
-                          onDelete: () => _confirmDelete(context, ref, user),
-                        ),
-                        const SizedBox(height: 12),
-                      ],
-                    ],
+                  return _UsersTable(
+                    users: filteredItems,
+                    onEdit: (user) => UserDialog.show(context, user: user),
+                    onInactivate: (user) =>
+                        _confirmInactivate(context, ref, user),
+                    onActivate: (user) => _confirmActivate(context, ref, user),
+                    onDelete: (user) => _confirmDelete(context, ref, user),
                   );
                 },
               ),
@@ -196,140 +177,246 @@ List<UserSummaryModel> _filterUsers(
   }).toList();
 }
 
-class _UserCard extends StatelessWidget {
-  const _UserCard({
+typedef _UserCallback = void Function(UserSummaryModel user);
+
+class _UsersTable extends StatelessWidget {
+  const _UsersTable({
+    required this.users,
+    required this.onEdit,
+    required this.onInactivate,
+    required this.onActivate,
+    required this.onDelete,
+  });
+
+  final List<UserSummaryModel> users;
+  final _UserCallback onEdit;
+  final _UserCallback onInactivate;
+  final _UserCallback onActivate;
+  final _UserCallback onDelete;
+
+  @override
+  Widget build(BuildContext context) {
+    return AppTable<UserSummaryModel>(
+      rows: users,
+      equalColumnWidth: true,
+      emptyMessage: 'Nenhum usuário encontrado para os filtros atuais.',
+      footerLabel: _recordsLabel(users.length),
+      columns: [
+        AppTableColumn<UserSummaryModel>(
+          label: 'Usuário',
+          alignment: Alignment.centerLeft,
+          cellBuilder: (context, user) => _UserIdentityCell(user: user),
+        ),
+        AppTableColumn<UserSummaryModel>(
+          label: 'Perfil',
+          alignment: Alignment.center,
+          cellBuilder: (context, user) =>
+              Center(child: _UserRoleBadge(user: user)),
+        ),
+        AppTableColumn<UserSummaryModel>(
+          label: 'Empresa',
+          alignment: Alignment.center,
+          cellBuilder: (context, user) => Center(
+            child: Text(
+              _dashIfBlank(user.companyName),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        ),
+        AppTableColumn<UserSummaryModel>(
+          label: 'Status',
+          alignment: Alignment.center,
+          cellBuilder: (context, user) =>
+              Center(child: _UserStatusBadge(user: user)),
+        ),
+        AppTableColumn<UserSummaryModel>(
+          label: 'Ações',
+          alignment: Alignment.center,
+          cellBuilder: (context, user) {
+            return Center(
+              child: _UserActions(
+                user: user,
+                onEdit: () => onEdit(user),
+                onInactivate: () => onInactivate(user),
+                onActivate: () => onActivate(user),
+                onDelete: () => onDelete(user),
+              ),
+            );
+          },
+        ),
+      ],
+    );
+  }
+}
+
+class _UserIdentityCell extends StatelessWidget {
+  const _UserIdentityCell({required this.user});
+
+  final UserSummaryModel user;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          user.name,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: theme.textTheme.bodyMedium?.copyWith(
+            fontWeight: FontWeight.w800,
+            color: colorScheme.onSurface,
+          ),
+        ),
+        const SizedBox(height: 3),
+        Text(
+          user.email,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: theme.textTheme.bodySmall?.copyWith(
+            color: colorScheme.onSurfaceVariant,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _UserRoleBadge extends StatelessWidget {
+  const _UserRoleBadge({required this.user});
+
+  final UserSummaryModel user;
+
+  @override
+  Widget build(BuildContext context) {
+    return StatusBadge(
+      label: user.displayRole,
+      type: user.isAdmin ? StatusBadgeType.info : StatusBadgeType.neutral,
+      icon: user.isAdmin
+          ? Icons.admin_panel_settings_outlined
+          : Icons.badge_outlined,
+    );
+  }
+}
+
+class _UserStatusBadge extends StatelessWidget {
+  const _UserStatusBadge({required this.user});
+
+  final UserSummaryModel user;
+
+  @override
+  Widget build(BuildContext context) {
+    return StatusBadge(
+      label: user.status.label,
+      type: user.status == UserStatus.active
+          ? StatusBadgeType.success
+          : StatusBadgeType.neutral,
+    );
+  }
+}
+
+class _UserActions extends StatelessWidget {
+  const _UserActions({
     required this.user,
+    required this.onEdit,
     required this.onInactivate,
     required this.onActivate,
     required this.onDelete,
   });
 
   final UserSummaryModel user;
+  final VoidCallback onEdit;
   final VoidCallback onInactivate;
   final VoidCallback onActivate;
   final VoidCallback onDelete;
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
+    final colorScheme = Theme.of(context).colorScheme;
     final canManageMembership = !user.isAdmin;
+    final isInactive = user.status == UserStatus.inactive;
+    final toggleTooltip = isInactive ? 'Ativar' : 'Inativar';
 
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                const Icon(Icons.badge_outlined),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Text(
-                    user.name,
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ),
-                StatusBadge(
-                  label: user.status.label,
-                  type: user.status == UserStatus.active
-                      ? StatusBadgeType.success
-                      : StatusBadgeType.neutral,
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            _InfoLine(label: 'E-mail', value: user.email),
-            _InfoLine(label: 'Perfil', value: user.displayRole),
-            _InfoLine(label: 'Empresa', value: user.companyName ?? '--'),
-            const SizedBox(height: 12),
-            _CardActionRow(
-              leadingActions: const [],
-              trailingActions: [
-                AppButton(
-                  text: user.status == UserStatus.inactive
-                      ? 'Ativar'
-                      : 'Inativar',
-                  outlined: true,
-                  disabled: !canManageMembership,
-                  height: 40,
-                  icon: Icon(
-                    user.status == UserStatus.inactive
-                        ? Icons.unarchive_outlined
-                        : Icons.archive_outlined,
-                    size: 18,
-                  ),
-                  onPressed: user.status == UserStatus.inactive
-                      ? onActivate
-                      : onInactivate,
-                ),
-                IconButton(
-                  tooltip: 'Excluir',
-                  color: colorScheme.error,
-                  icon: const Icon(Icons.delete_outline),
-                  onPressed: canManageMembership ? onDelete : null,
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _CardActionRow extends StatelessWidget {
-  const _CardActionRow({
-    required this.leadingActions,
-    required this.trailingActions,
-  });
-
-  final List<Widget> leadingActions;
-  final List<Widget> trailingActions;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
+    return Wrap(
+      spacing: 6,
+      runSpacing: 6,
+      alignment: WrapAlignment.end,
       children: [
-        Wrap(spacing: 8, runSpacing: 8, children: leadingActions),
-        const Spacer(),
-        Wrap(spacing: 8, runSpacing: 8, children: trailingActions),
+        _UserActionIconButton(
+          tooltip: 'Editar',
+          icon: Icons.edit_outlined,
+          disabled: !canManageMembership,
+          onPressed: onEdit,
+        ),
+        _UserActionIconButton(
+          tooltip: toggleTooltip,
+          icon: isInactive ? Icons.unarchive_outlined : Icons.archive_outlined,
+          disabled: !canManageMembership,
+          onPressed: isInactive ? onActivate : onInactivate,
+        ),
+        _UserActionIconButton(
+          tooltip: 'Excluir',
+          icon: Icons.delete_outline,
+          color: colorScheme.error,
+          disabled: !canManageMembership,
+          onPressed: onDelete,
+        ),
       ],
     );
   }
 }
 
-class _InfoLine extends StatelessWidget {
-  const _InfoLine({required this.label, required this.value});
+class _UserActionIconButton extends StatelessWidget {
+  const _UserActionIconButton({
+    required this.tooltip,
+    required this.icon,
+    required this.onPressed,
+    this.color,
+    this.disabled = false,
+  });
 
-  final String label;
-  final String value;
+  final String tooltip;
+  final IconData icon;
+  final VoidCallback onPressed;
+  final Color? color;
+  final bool disabled;
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    return Padding(
-      padding: const EdgeInsets.only(top: 6),
-      child: Text.rich(
-        TextSpan(
-          children: [
-            TextSpan(
-              text: '$label: ',
-              style: TextStyle(
-                fontWeight: FontWeight.w700,
-                color: colorScheme.onSurface,
-              ),
-            ),
-            TextSpan(text: value),
-          ],
-        ),
+    final effectiveColor = color ?? Theme.of(context).colorScheme.primary;
+
+    return Tooltip(
+      message: tooltip,
+      child: AppButton(
+        outlined: true,
+        width: 36,
+        height: 36,
+        padding: EdgeInsets.zero,
+        color: effectiveColor,
+        textColor: effectiveColor,
+        borderColor: effectiveColor.withValues(alpha: 0.55),
+        disabled: disabled,
+        onPressed: onPressed,
+        child: Icon(icon, size: 18),
       ),
     );
   }
+}
+
+String _dashIfBlank(String? value) {
+  final normalized = value?.trim();
+  if (normalized == null || normalized.isEmpty) return '--';
+  return normalized;
+}
+
+String _recordsLabel(int count) {
+  if (count == 1) return '1 usuário encontrado';
+  return '$count usuários encontrados';
 }
 
 Future<void> _confirmInactivate(

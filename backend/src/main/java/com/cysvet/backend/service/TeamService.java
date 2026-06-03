@@ -2,6 +2,7 @@ package com.cysvet.backend.service;
 
 import com.cysvet.backend.dto.user.CreateUserRequest;
 import com.cysvet.backend.dto.user.UpdateUserMembershipStatusRequest;
+import com.cysvet.backend.dto.user.UpdateUserRequest;
 import com.cysvet.backend.dto.user.UserMembershipStatus;
 import com.cysvet.backend.dto.user.UserResponse;
 import com.cysvet.backend.entity.Empresa;
@@ -58,6 +59,31 @@ public class TeamService {
         membership.setAtivo(true);
 
         return toResponse(usuarioEmpresaRepository.saveAndFlush(membership));
+    }
+
+    @Transactional
+    public UserResponse updateMember(Long userId, UpdateUserRequest request) {
+        Usuario currentUser = requireCurrentAdmin();
+        Long tenantId = requireTenantId();
+        UsuarioEmpresa membership = findMembershipOrThrow(userId, tenantId);
+        Usuario targetUser = membership.getUsuario();
+
+        validateMemberCanBeManaged(currentUser, targetUser);
+
+        String normalizedName = request.name().trim();
+        String normalizedEmail = request.email().trim();
+
+        usuarioRepository.findByEmail(normalizedEmail)
+                .filter(existingUser -> !existingUser.getId().equals(targetUser.getId()))
+                .ifPresent(existingUser -> {
+                    throw new IllegalArgumentException("E-mail ja cadastrado");
+                });
+
+        targetUser.setNome(normalizedName);
+        targetUser.setEmail(normalizedEmail);
+        usuarioRepository.saveAndFlush(targetUser);
+
+        return toResponse(membership);
     }
 
     @Transactional
@@ -155,12 +181,15 @@ public class TeamService {
     }
 
     private void validateMembershipMutation(Usuario currentUser, UsuarioEmpresa membership) {
-        Usuario targetUser = membership.getUsuario();
+        validateMemberCanBeManaged(currentUser, membership.getUsuario());
+    }
+
+    private void validateMemberCanBeManaged(Usuario currentUser, Usuario targetUser) {
         if (targetUser.getPerfil() == Perfil.ADMIN) {
-            throw new IllegalArgumentException("O vinculo de administradores nao pode ser alterado por este endpoint");
+            throw new IllegalArgumentException("Administradores nao podem ser alterados por este endpoint");
         }
         if (currentUser.getId().equals(targetUser.getId())) {
-            throw new IllegalArgumentException("Nao e permitido alterar o proprio vinculo");
+            throw new IllegalArgumentException("Nao e permitido alterar o proprio usuario");
         }
     }
 

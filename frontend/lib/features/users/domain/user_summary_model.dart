@@ -24,7 +24,7 @@ class UserSummaryModel {
       case 'ADMIN':
         return 'Administrador';
       case 'VETERINARIO':
-        return 'Veterinario';
+        return 'Veterinário';
       default:
         return perfil;
     }

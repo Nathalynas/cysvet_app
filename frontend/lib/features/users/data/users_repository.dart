@@ -36,6 +36,15 @@ class UsersRepository {
     return _fromMap(_asMap(response.data));
   }
 
+  Future<UserSummaryModel> update(UserSummaryModel user) async {
+    final response = await _dio.put<Object?>(
+      '/api/users/${user.id}',
+      data: {'name': user.name.trim(), 'email': user.email.trim()},
+    );
+
+    return _fromMap(_asMap(response.data));
+  }
+
   Future<UserSummaryModel> updateStatus({
     required int id,
     required UserStatus status,

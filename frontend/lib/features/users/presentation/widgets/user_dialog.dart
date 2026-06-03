@@ -12,30 +12,34 @@ import '../../application/users_provider.dart';
 import '../../domain/user_summary_model.dart';
 
 class UserDialog extends StatelessWidget {
-  const UserDialog({super.key});
+  const UserDialog({super.key, this.user});
 
-  static Future<void> show(BuildContext context) {
+  final UserSummaryModel? user;
+
+  static Future<void> show(BuildContext context, {UserSummaryModel? user}) {
     return AppDialog.show<void>(
       context: context,
-      title: 'Novo usuário',
+      title: user == null ? 'Novo usuário' : 'Editar usuário',
       width: 560,
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 14),
       fullscreenBodyPadding: const EdgeInsets.fromLTRB(16, 20, 16, 12),
       headerIndent: 16,
       useInternalScroll: true,
       fullscreenOnMobile: true,
-      content: const UserDialog(),
+      content: UserDialog(user: user),
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    return const _UserForm();
+    return _UserForm(user: user);
   }
 }
 
 class _UserForm extends ConsumerStatefulWidget {
-  const _UserForm();
+  const _UserForm({this.user});
+
+  final UserSummaryModel? user;
 
   @override
   ConsumerState<_UserForm> createState() => _UserFormState();
@@ -45,6 +49,14 @@ class _UserFormState extends ConsumerState<_UserForm> {
   final _name = TextEditingController();
   final _email = TextEditingController();
   final _password = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    final user = widget.user;
+    _name.text = user?.name ?? '';
+    _email.text = user?.email ?? '';
+  }
 
   @override
   void dispose() {
@@ -58,6 +70,8 @@ class _UserFormState extends ConsumerState<_UserForm> {
   Widget build(BuildContext context) {
     final isBusy = ref.watch(usersBusyProvider);
     final session = ref.watch(authSessionProvider);
+    final user = widget.user;
+    final isEditing = user != null;
 
     return AppForm(
       internalScroll: true,
@@ -74,19 +88,30 @@ class _UserFormState extends ConsumerState<_UserForm> {
         final activeCompany = session?.activeCompany;
         final navigator = Navigator.of(context);
         try {
-          final payload = UserSummaryModel(
-            name: _name.text.trim(),
-            email: _email.text.trim(),
-            perfil: 'VETERINARIO',
-            companyName: activeCompany?.name,
-            status: UserStatus.active,
-          );
-          await ref
-              .read(usersControllerProvider)
-              .save(payload, password: _password.text.trim());
+          final controller = ref.read(usersControllerProvider);
+          if (isEditing) {
+            final payload = user.copyWith(
+              name: _name.text.trim(),
+              email: _email.text.trim(),
+            );
+            await controller.update(payload);
+          } else {
+            final payload = UserSummaryModel(
+              name: _name.text.trim(),
+              email: _email.text.trim(),
+              perfil: 'VETERINARIO',
+              companyName: activeCompany?.name,
+              status: UserStatus.active,
+            );
+            await controller.save(payload, password: _password.text.trim());
+          }
           if (mounted) {
             await navigator.maybePop();
-            showAppSuccess('Usuário criado com sucesso.');
+            showAppSuccess(
+              isEditing
+                  ? 'Usuário atualizado com sucesso.'
+                  : 'Usuário criado com sucesso.',
+            );
           }
         } catch (error) {
           showAppError(error);
@@ -104,17 +129,20 @@ class _UserFormState extends ConsumerState<_UserForm> {
           controller: _email,
           required: true,
           keyboardType: TextInputType.emailAddress,
-          textInputAction: TextInputAction.next,
+          textInputAction: isEditing
+              ? TextInputAction.done
+              : TextInputAction.next,
           validator: _validateEmail,
         ),
-        AppTextField(
-          label: 'Senha',
-          controller: _password,
-          required: true,
-          obscureText: true,
-          minChars: 6,
-          textInputAction: TextInputAction.done,
-        ),
+        if (!isEditing)
+          AppTextField(
+            label: 'Senha',
+            controller: _password,
+            required: true,
+            obscureText: true,
+            minChars: 6,
+            textInputAction: TextInputAction.done,
+          ),
       ],
     );
   }

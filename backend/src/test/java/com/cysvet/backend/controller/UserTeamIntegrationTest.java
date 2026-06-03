@@ -8,6 +8,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -69,6 +70,40 @@ class UserTeamIntegrationTest {
                 .andExpect(jsonPath("$[1].email").value("bia.vet@example.com"))
                 .andExpect(jsonPath("$[1].perfil").value("VETERINARIO"))
                 .andExpect(jsonPath("$[1].status").value("ATIVO"));
+    }
+
+    @Test
+    void adminShouldUpdateTeamMember() throws Exception {
+        AuthContext admin = registerAndAuthenticate("update.admin@example.com", "Admin Update", "123456");
+        JsonNode createdUser = createVeterinarian(
+                admin,
+                "Felipe Vet",
+                "felipe.vet@example.com",
+                "123456"
+        );
+        long userId = createdUser.path("id").asLong();
+
+        mockMvc.perform(put("/api/users/{userId}", userId)
+                        .header("Authorization", admin.authorization())
+                        .header("empresaid", admin.tenantId())
+                        .contentType(APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "name": "Felipe Silva",
+                                  "email": "felipe.silva@example.com"
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(userId))
+                .andExpect(jsonPath("$.name").value("Felipe Silva"))
+                .andExpect(jsonPath("$.email").value("felipe.silva@example.com"))
+                .andExpect(jsonPath("$.perfil").value("VETERINARIO"))
+                .andExpect(jsonPath("$.status").value("ATIVO"));
+
+        Usuario usuario = usuarioRepository.findById(userId)
+                .orElseThrow(() -> new AssertionError("Usuario nao encontrado"));
+        assertEquals("Felipe Silva", usuario.getNome());
+        assertEquals("felipe.silva@example.com", usuario.getEmail());
     }
 
     @Test
@@ -189,6 +224,18 @@ class UserTeamIntegrationTest {
                         .content("""
                                 {
                                   "status": "INATIVO"
+                                }
+                                """))
+                .andExpect(status().isForbidden());
+
+        mockMvc.perform(put("/api/users/{userId}", createdUser.path("id").asLong())
+                        .header("Authorization", veterinarian.authorization())
+                        .header("empresaid", veterinarian.tenantId())
+                        .contentType(APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "name": "Eva Editada",
+                                  "email": "eva.editada@example.com"
                                 }
                                 """))
                 .andExpect(status().isForbidden());

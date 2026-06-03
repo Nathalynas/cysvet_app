@@ -3,6 +3,7 @@ package com.cysvet.backend.controller;
 import com.cysvet.backend.config.SwaggerConfig;
 import com.cysvet.backend.dto.user.CreateUserRequest;
 import com.cysvet.backend.dto.user.UpdateUserMembershipStatusRequest;
+import com.cysvet.backend.dto.user.UpdateUserRequest;
 import com.cysvet.backend.dto.user.UserResponse;
 import com.cysvet.backend.service.TeamService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -19,6 +20,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
@@ -55,6 +57,22 @@ public class UserController {
     })
     public UserResponse create(@Valid @RequestBody CreateUserRequest request) {
         return teamService.createVeterinarian(request);
+    }
+
+    @PutMapping("/{userId}")
+    @Operation(summary = "Atualiza dados de um membro da empresa ativa")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Membro atualizado com sucesso"),
+            @ApiResponse(responseCode = "400", description = "Dados invalidos"),
+            @ApiResponse(responseCode = "401", description = "Nao autorizado"),
+            @ApiResponse(responseCode = "403", description = "Apenas administradores podem alterar membros"),
+            @ApiResponse(responseCode = "404", description = "Vinculo nao encontrado")
+    })
+    public UserResponse update(
+            @PathVariable Long userId,
+            @Valid @RequestBody UpdateUserRequest request
+    ) {
+        return teamService.updateMember(userId, request);
     }
 
     @PatchMapping("/{userId}/status")

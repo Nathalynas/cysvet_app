@@ -42,6 +42,16 @@ class UsersController {
     }
   }
 
+  Future<void> update(UserSummaryModel user) async {
+    _ref.read(usersBusyProvider.notifier).setBusy(true);
+    try {
+      await _ref.read(usersRepositoryProvider).update(user);
+      _ref.invalidate(usersProvider);
+    } finally {
+      _ref.read(usersBusyProvider.notifier).setBusy(false);
+    }
+  }
+
   Future<void> inactivate(int id) async {
     _ref.read(usersBusyProvider.notifier).setBusy(true);
     try {
