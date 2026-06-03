@@ -510,7 +510,8 @@ class _AnimalsTable extends StatelessWidget {
         AppTableColumn<AnimalSummaryModel>(
           label: 'Identificação\n(Brinco)',
           mobileLabel: 'Identificação/Brinco',
-          flex: 3,
+          flex: 2,
+          alignment: Alignment.centerLeft,
           cellBuilder: (context, animal) {
             return _AnimalIdentityHeader(
               animal: animal,
@@ -518,37 +519,49 @@ class _AnimalsTable extends StatelessWidget {
             );
           },
         ),
+
         AppTableColumn<AnimalSummaryModel>(
           label: 'Raça',
-          flex: 2,
-          cellBuilder: (context, animal) => _AnimalBreedCell(animal: animal),
+          flex: 3,
+          alignment: Alignment.center,
+          cellBuilder: (context, animal) {
+            return Center(child: _AnimalBreedCell(animal: animal));
+          },
         ),
         AppTableColumn<AnimalSummaryModel>(
           label: 'Status\nreprodutivo',
           mobileLabel: 'Status reprodutivo',
           flex: 2,
+          alignment: Alignment.center,
           cellBuilder: (context, animal) {
-            return _ReproductiveStatusPill(
-              status: reproductiveStatusFor(animal),
+            return Center(
+              child: _ReproductiveStatusPill(
+                status: reproductiveStatusFor(animal),
+              ),
             );
           },
         ),
         AppTableColumn<AnimalSummaryModel>(
           label: 'Último evento',
-          flex: 2,
-          cellBuilder: (context, animal) => _LastEventCell(animal: animal),
+          flex: 3,
+          alignment: Alignment.center,
+          cellBuilder: (context, animal) {
+            return Center(child: _LastEventCell(animal: animal));
+          },
         ),
         AppTableColumn<AnimalSummaryModel>(
           label: 'Ações',
-          flex: 2,
-          alignment: Alignment.centerRight,
+          flex: 1,
+          alignment: Alignment.center,
           cellBuilder: (context, animal) {
-            return _AnimalActions(
-              animal: animal,
-              onEdit: () => onEdit(animal),
-              onInactivate: () => onInactivate(animal),
-              onActivate: () => onActivate(animal),
-              onDelete: () => onDelete(animal),
+            return Center(
+              child: _AnimalActions(
+                animal: animal,
+                onEdit: () => onEdit(animal),
+                onInactivate: () => onInactivate(animal),
+                onActivate: () => onActivate(animal),
+                onDelete: () => onDelete(animal),
+              ),
             );
           },
         ),
