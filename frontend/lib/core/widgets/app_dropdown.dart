@@ -1,6 +1,20 @@
 import 'package:cysvet_app/core/constants/app_constants.dart';
 import 'package:flutter/material.dart';
 
+class _DropdownControlStyle {
+  static const double height = 42;
+  static const double radius = 16;
+
+  static const EdgeInsets fieldPadding = EdgeInsets.symmetric(
+    horizontal: 14,
+    vertical: 8,
+  );
+  static const BoxConstraints prefixIconConstraints = BoxConstraints(
+    minWidth: 38,
+    minHeight: height,
+  );
+}
+
 class AppDropdownOption<T> {
   const AppDropdownOption({
     required this.label,
@@ -23,7 +37,8 @@ class AppDropdown<T> extends StatefulWidget {
     this.nullLabel = '',
     this.searchable = false,
     this.required = false,
-    this.height = 46,
+    this.height = _DropdownControlStyle.height,
+    this.borderRadius = _DropdownControlStyle.radius,
     this.menuMaxHeight = 320,
     this.validator,
   });
@@ -36,6 +51,7 @@ class AppDropdown<T> extends StatefulWidget {
   final bool searchable;
   final bool required;
   final double height;
+  final double borderRadius;
   final double menuMaxHeight;
   final FormFieldValidator<T?>? validator;
 
@@ -116,6 +132,7 @@ class _AppDropdownState<T> extends State<AppDropdown<T>> {
                   : widget.labelText,
               selectedLabel: _selectedOption?.label ?? widget.nullLabel,
               height: widget.height,
+              borderRadius: widget.borderRadius,
               onTap: _toggleOverlay,
             ),
             if (field.hasError)
@@ -143,7 +160,8 @@ class _AppDropdownState<T> extends State<AppDropdown<T>> {
   }
 
   void _showOverlay() {
-    final renderBox = _fieldKey.currentContext?.findRenderObject() as RenderBox?;
+    final renderBox =
+        _fieldKey.currentContext?.findRenderObject() as RenderBox?;
     if (renderBox == null) return;
 
     final size = renderBox.size;
@@ -172,7 +190,7 @@ class _AppDropdownState<T> extends State<AppDropdown<T>> {
               child: Material(
                 color: colorScheme.surface,
                 elevation: 8,
-                borderRadius: BorderRadius.circular(10),
+                borderRadius: BorderRadius.circular(widget.borderRadius),
                 clipBehavior: Clip.antiAlias,
                 child: ConstrainedBox(
                   constraints: BoxConstraints(
@@ -190,12 +208,21 @@ class _AppDropdownState<T> extends State<AppDropdown<T>> {
                             controller: _searchController,
                             autofocus: true,
                             maxLines: 1,
+                            style: theme.textTheme.bodyMedium?.copyWith(
+                              fontSize: 14,
+                            ),
                             decoration: InputDecoration(
                               isDense: true,
                               hintText: 'Pesquisar',
-                              prefixIcon: const Icon(Icons.search, size: 20),
+                              contentPadding:
+                                  _DropdownControlStyle.fieldPadding,
+                              prefixIcon: const Icon(Icons.search, size: 18),
+                              prefixIconConstraints:
+                                  _DropdownControlStyle.prefixIconConstraints,
                               border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(8),
+                                borderRadius: BorderRadius.circular(
+                                  widget.borderRadius,
+                                ),
                               ),
                             ),
                             onChanged: (value) {
@@ -232,8 +259,8 @@ class _AppDropdownState<T> extends State<AppDropdown<T>> {
                                     },
                                     child: Padding(
                                       padding: const EdgeInsets.symmetric(
-                                        horizontal: 10,
-                                        vertical: 12,
+                                        horizontal: 12,
+                                        vertical: 10,
                                       ),
                                       child: Row(
                                         children: [
@@ -244,11 +271,11 @@ class _AppDropdownState<T> extends State<AppDropdown<T>> {
                                               overflow: TextOverflow.ellipsis,
                                               style: theme.textTheme.bodyMedium
                                                   ?.copyWith(
-                                                fontSize: 15,
-                                                fontWeight: selected
-                                                    ? FontWeight.w600
-                                                    : FontWeight.w400,
-                                              ),
+                                                    fontSize: 14,
+                                                    fontWeight: selected
+                                                        ? FontWeight.w600
+                                                        : FontWeight.w400,
+                                                  ),
                                             ),
                                           ),
                                           if (option.suffix != null) ...[
@@ -296,6 +323,7 @@ class _DropdownShell<T> extends StatelessWidget {
     required this.labelText,
     required this.selectedLabel,
     required this.height,
+    required this.borderRadius,
     required this.onTap,
   });
 
@@ -306,6 +334,7 @@ class _DropdownShell<T> extends StatelessWidget {
   final String labelText;
   final String selectedLabel;
   final double height;
+  final double borderRadius;
   final VoidCallback onTap;
 
   @override
@@ -317,15 +346,15 @@ class _DropdownShell<T> extends StatelessWidget {
       link: layerLink,
       child: InkWell(
         key: fieldKey,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(borderRadius),
         onTap: onTap,
         child: Container(
           height: height,
           width: double.infinity,
-          padding: const EdgeInsets.symmetric(horizontal: 10),
+          padding: const EdgeInsets.symmetric(horizontal: 12),
           decoration: BoxDecoration(
             color: colorScheme.surfaceContainerHighest,
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(borderRadius),
             border: Border.all(
               color: hasError ? colorScheme.error : colorScheme.outline,
             ),
@@ -352,12 +381,15 @@ class _DropdownShell<T> extends StatelessWidget {
                       selectedLabel,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: theme.textTheme.bodyMedium?.copyWith(fontSize: 15),
+                      style: theme.textTheme.bodyMedium?.copyWith(fontSize: 14),
                     ),
                   ],
                 ),
               ),
-              Icon(isOpen ? Icons.arrow_drop_up : Icons.arrow_drop_down),
+              Icon(
+                isOpen ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
+                size: 20,
+              ),
             ],
           ),
         ),

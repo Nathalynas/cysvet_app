@@ -2,6 +2,24 @@ import 'package:flutter/material.dart';
 
 import 'app_text_field.dart';
 
+class _SearchControlStyle {
+  static const double height = 42;
+  static const double radius = 16;
+
+  static const EdgeInsets fieldPadding = EdgeInsets.symmetric(
+    horizontal: 14,
+    vertical: 8,
+  );
+  static const BoxConstraints prefixIconConstraints = BoxConstraints(
+    minWidth: 38,
+    minHeight: height,
+  );
+  static const BoxConstraints suffixIconConstraints = BoxConstraints(
+    minWidth: 36,
+    minHeight: height,
+  );
+}
+
 class SearchCard extends StatefulWidget {
   const SearchCard({
     super.key,
@@ -49,13 +67,20 @@ class _SearchCardState extends State<SearchCard> {
 
   @override
   Widget build(BuildContext context) {
+    final textStyle = Theme.of(context).textTheme.bodyMedium;
+
     return AppTextField(
       controller: _controller,
       onChanged: widget.onChanged,
-      label: widget.labelText,
-      hint: widget.hintText,
+      hint: widget.hintText ?? widget.labelText,
       clearable: true,
-      prefixIcon: const Icon(Icons.search_outlined),
+      isDense: true,
+      borderRadius: _SearchControlStyle.radius,
+      contentPadding: _SearchControlStyle.fieldPadding,
+      prefixIcon: const Icon(Icons.search_outlined, size: 18),
+      prefixIconConstraints: _SearchControlStyle.prefixIconConstraints,
+      suffixIconConstraints: _SearchControlStyle.suffixIconConstraints,
+      textStyle: textStyle?.copyWith(fontSize: 14),
     );
   }
 }

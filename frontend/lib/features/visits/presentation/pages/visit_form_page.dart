@@ -112,7 +112,7 @@ class _VisitFormPageState extends ConsumerState<VisitFormPage> {
         children: [
           Expanded(
             child: ListView(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
               children: [
                 AppCard(
                   padding: const EdgeInsets.all(16),

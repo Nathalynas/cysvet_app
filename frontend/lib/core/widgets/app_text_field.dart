@@ -198,7 +198,10 @@ class AppTextField extends StatelessWidget {
 
         return IconButton(
           tooltip: 'Limpar',
-          icon: const Icon(Icons.clear),
+          icon: const Icon(Icons.clear, size: 18),
+          visualDensity: VisualDensity.compact,
+          constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+          padding: EdgeInsets.zero,
           onPressed: enabled && !readOnly ? controller!.clear : null,
         );
       },

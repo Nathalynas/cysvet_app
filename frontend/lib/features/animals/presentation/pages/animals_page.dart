@@ -62,7 +62,7 @@ class AnimalsPage extends ConsumerWidget {
         child: RefreshIndicator(
           onRefresh: () => ref.refresh(animalsProvider.future),
           child: ListView(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
             physics: const AlwaysScrollableScrollPhysics(),
             children: [
               _AnimalsToolbar(
@@ -254,7 +254,6 @@ class _AnimalsToolbarState extends State<_AnimalsToolbar> {
           message: 'Importar CSV',
           child: AppButton(
             outlined: true,
-            width: 48,
             onPressed: widget.onImport,
             child: const Icon(Icons.upload_file_outlined),
           ),
@@ -270,7 +269,6 @@ class _AnimalsToolbarState extends State<_AnimalsToolbar> {
           message: _filtersOpen ? 'Ocultar filtros' : 'Mostrar filtros',
           child: AppButton(
             outlined: !_filtersOpen,
-            width: 48,
             onPressed: () {
               setState(() => _filtersOpen = !_filtersOpen);
             },

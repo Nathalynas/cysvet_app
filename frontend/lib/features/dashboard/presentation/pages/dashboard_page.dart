@@ -26,7 +26,7 @@ class DashboardPage extends ConsumerWidget {
         child: RefreshIndicator(
           onRefresh: () => ref.refresh(dashboardProvider.future),
           child: ListView(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
             children: [
               PropertyFilterCard(
                 properties: propertyOptions,

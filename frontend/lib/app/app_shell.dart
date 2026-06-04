@@ -97,7 +97,10 @@ class _AppShellState extends State<AppShell> {
                       left: 0,
                       top: 0,
                       right: 0,
-                      child: Container(height: 60, color: Colors.transparent),
+                      child: Container(
+                        height: _AppShellSizes.headerHeight,
+                        color: Colors.transparent,
+                      ),
                     ),
                 ],
               ),
@@ -219,11 +222,11 @@ class _PageHeader extends StatelessWidget {
     final colorScheme = theme.colorScheme;
 
     return Material(
-      color: colorScheme.primary,
+      color: colorScheme.surface,
       child: SafeArea(
         bottom: false,
         child: Container(
-          height: 64,
+          height: _AppShellSizes.headerHeight,
           padding: EdgeInsets.only(left: showMenuButton ? 8 : 24, right: 24),
           alignment: Alignment.centerLeft,
           child: Row(
@@ -232,7 +235,7 @@ class _PageHeader extends StatelessWidget {
                 IconButton(
                   tooltip: 'Abrir menu',
                   icon: const Icon(Icons.menu),
-                  color: colorScheme.onPrimary,
+                  color: colorScheme.primary,
                   onPressed: onMenuPressed,
                 ),
                 const SizedBox(width: 8),
@@ -243,7 +246,7 @@ class _PageHeader extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: titleStyle?.copyWith(
-                    color: colorScheme.onPrimary,
+                    color: colorScheme.primary,
                     fontWeight: FontWeight.w700,
                   ),
                 ),
@@ -257,10 +260,48 @@ class _PageHeader extends StatelessWidget {
 }
 
 class _AppShellSizes {
-  static const double desktopMenuCollapsedWidth = 80;
+  static const double desktopMenuCollapsedWidth = 64;
   static const double menuExpandedWidth = 224;
+  static const double headerHeight = 56;
 
-  static const EdgeInsets menuPadding = EdgeInsets.fromLTRB(12, 16, 12, 16);
+  static const double menuHorizontalPadding = 12;
+  static const double menuCompactHorizontalPadding = 8;
+  static const double menuVerticalPadding = 16;
+  static const double dividerHeight = 1;
+
+  static const double compactDesktopTileWidth = 44;
+  static const double compactMobileTileWidth = 52;
+  static const double compactDesktopTileHeight = 44;
+  static const double compactMobileTileHeight = 48;
+  static const double expandedDesktopTileHeight = 42;
+  static const double mobileNavigationItemWidth = desktopMenuCollapsedWidth;
+  static const double expandedContentMinWidth = 120;
+  static const double logoIconSize = 40;
+  static const double logoWordmarkWidth = 140;
+  static const double logoWordmarkHeight = 36;
+  static const double logoTopOffset = (headerHeight - logoIconSize) / 2;
+  static const double logoDividerGap = 14;
+  static const double logoDividerTopSpacing =
+      logoTopOffset + logoIconSize + logoDividerGap - menuVerticalPadding;
+
+  static const EdgeInsets menuPadding = EdgeInsets.fromLTRB(
+    menuHorizontalPadding,
+    menuVerticalPadding,
+    menuHorizontalPadding,
+    menuVerticalPadding,
+  );
+  static const EdgeInsets compactMenuPadding = EdgeInsets.fromLTRB(
+    menuCompactHorizontalPadding,
+    menuVerticalPadding,
+    menuCompactHorizontalPadding,
+    menuVerticalPadding,
+  );
+  static const EdgeInsets mobileNavigationPadding = EdgeInsets.fromLTRB(
+    4,
+    4,
+    4,
+    4,
+  );
   static const EdgeInsets logoPadding = EdgeInsets.only(left: 16, right: 12);
 }
 
@@ -309,84 +350,122 @@ class _DesktopNavigationMenuState extends State<_DesktopNavigationMenu> {
             : _AppShellSizes.desktopMenuCollapsedWidth,
         color: colorScheme.surface,
         child: SafeArea(
-          child: Stack(
-            children: [
-              Padding(
-                padding: _AppShellSizes.menuPadding,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const SizedBox(height: 47),
-                    Container(
-                      height: 1,
-                      color: colorScheme.outline,
-                      margin: const EdgeInsets.only(bottom: 18),
-                    ),
-                    for (var index = 0; index < AppShell._items.length; index++)
-                      _NavigationTile(
-                        item: AppShell._items[index],
-                        isSelected: widget.currentIndex == index,
-                        isCompact: !_isHovering,
-                        isDesktop: true,
-                        onTap: () {
-                          widget.onDestinationSelected(index);
-                        },
-                      ),
-                  ],
-                ),
-              ),
-              Positioned(
-                top: 20,
-                left: 0,
-                right: 0,
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 300),
-                  curve: Curves.easeInOut,
-                  alignment: _isHovering
-                      ? Alignment.centerLeft
-                      : Alignment.center,
-                  padding: EdgeInsets.only(
-                    left: _isHovering ? 16 : 0,
-                    right: _isHovering ? 12 : 0,
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Image.asset(
-                        'assets/images/icon.png',
-                        width: 32,
-                        height: 32,
-                        fit: BoxFit.contain,
-                      ),
-                      AnimatedContainer(
-                        duration: const Duration(milliseconds: 300),
-                        curve: Curves.easeInOut,
-                        width: _isHovering ? 130 : 0,
-                        child: ClipRect(
-                          child: Align(
-                            alignment: Alignment.centerLeft,
-                            widthFactor: 1,
-                            child: Image.asset(
-                              'assets/images/letreiro.png',
-                              height: 32,
-                              fit: BoxFit.contain,
-                            ),
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final width = constraints.maxWidth;
+              final isExpandedLayout =
+                  _isHovering &&
+                  width >= _AppShellSizes.expandedContentMinWidth;
+
+              return Stack(
+                children: [
+                  Padding(
+                    padding: isExpandedLayout
+                        ? _AppShellSizes.menuPadding
+                        : _AppShellSizes.compactMenuPadding,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const SizedBox(
+                          height: _AppShellSizes.logoDividerTopSpacing,
+                        ),
+                        Container(
+                          height: _AppShellSizes.dividerHeight,
+                          color: colorScheme.outline,
+                          margin: const EdgeInsets.only(
+                            bottom: _AppShellSizes.logoDividerGap,
                           ),
                         ),
-                      ),
-                    ],
+                        for (
+                          var index = 0;
+                          index < AppShell._items.length;
+                          index++
+                        )
+                          _NavigationTile(
+                            item: AppShell._items[index],
+                            isSelected: widget.currentIndex == index,
+                            isCompact: !isExpandedLayout,
+                            isDesktop: true,
+                            onTap: () {
+                              widget.onDestinationSelected(index);
+                            },
+                          ),
+                      ],
+                    ),
                   ),
-                ),
-              ),
-              Positioned(
-                right: 0,
-                top: 0,
-                bottom: 0,
-                child: Container(width: 1, color: colorScheme.outline),
-              ),
-            ],
+                  Positioned(
+                    top: _AppShellSizes.logoTopOffset,
+                    left: 0,
+                    right: 0,
+                    child: _DesktopLogo(
+                      isExpanded: _isHovering,
+                      availableWidth: width,
+                    ),
+                  ),
+                  Positioned(
+                    right: 0,
+                    top: 0,
+                    bottom: 0,
+                    child: Container(width: 1, color: colorScheme.outline),
+                  ),
+                ],
+              );
+            },
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _DesktopLogo extends StatelessWidget {
+  const _DesktopLogo({required this.isExpanded, required this.availableWidth});
+
+  final bool isExpanded;
+  final double availableWidth;
+
+  @override
+  Widget build(BuildContext context) {
+    final leftPadding = isExpanded ? 16.0 : 0.0;
+    final rightPadding = isExpanded ? 12.0 : 0.0;
+    final wordmarkWidth = isExpanded
+        ? (availableWidth -
+                  leftPadding -
+                  rightPadding -
+                  _AppShellSizes.logoIconSize)
+              .clamp(0.0, _AppShellSizes.logoWordmarkWidth)
+              .toDouble()
+        : 0.0;
+
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeInOut,
+      alignment: isExpanded ? Alignment.centerLeft : Alignment.center,
+      padding: EdgeInsets.only(left: leftPadding, right: rightPadding),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Image.asset(
+            'assets/images/icon.png',
+            width: _AppShellSizes.logoIconSize,
+            height: _AppShellSizes.logoIconSize,
+            fit: BoxFit.contain,
+          ),
+          SizedBox(
+            width: wordmarkWidth,
+            child: ClipRect(
+              child: Align(
+                alignment: Alignment.centerLeft,
+                widthFactor: 1,
+                child: Image.asset(
+                  'assets/images/letreiro.png',
+                  height: _AppShellSizes.logoWordmarkHeight,
+                  fit: BoxFit.contain,
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -412,9 +491,12 @@ class _MobileNavigationBar extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Container(height: 1, color: colorScheme.outline),
+            Container(
+              height: _AppShellSizes.dividerHeight,
+              color: colorScheme.outline,
+            ),
             Padding(
-              padding: const EdgeInsets.fromLTRB(6, 6, 6, 8),
+              padding: _AppShellSizes.mobileNavigationPadding,
               child: Row(
                 children: [
                   for (
@@ -424,15 +506,19 @@ class _MobileNavigationBar extends StatelessWidget {
                   )
                     Expanded(
                       flex: 1,
-                      child: Container(
-                        constraints: const BoxConstraints(maxWidth: 80),
-                        child: _NavigationTile(
-                          item: AppShell._items[index],
-                          isSelected: currentIndex == index,
-                          isCompact: true,
-                          onTap: () {
-                            onDestinationSelected(index);
-                          },
+                      child: Center(
+                        child: SizedBox(
+                          width: _AppShellSizes.mobileNavigationItemWidth,
+                          child: Center(
+                            child: _NavigationTile(
+                              item: AppShell._items[index],
+                              isSelected: currentIndex == index,
+                              isCompact: true,
+                              onTap: () {
+                                onDestinationSelected(index);
+                              },
+                            ),
+                          ),
                         ),
                       ),
                     ),
@@ -476,11 +562,13 @@ class _MobileNavigationDrawer extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const SizedBox(height: 47),
+                  const SizedBox(height: _AppShellSizes.logoDividerTopSpacing),
                   Container(
-                    height: 1,
+                    height: _AppShellSizes.dividerHeight,
                     color: colorScheme.outline,
-                    margin: const EdgeInsets.only(bottom: 18),
+                    margin: const EdgeInsets.only(
+                      bottom: _AppShellSizes.logoDividerGap,
+                    ),
                   ),
                   for (var index = 0; index < AppShell._items.length; index++)
                     _NavigationTile(
@@ -498,7 +586,7 @@ class _MobileNavigationDrawer extends StatelessWidget {
             ),
 
             Positioned(
-              top: 20,
+              top: _AppShellSizes.logoTopOffset,
               left: 0,
               right: 0,
               child: Padding(
@@ -507,8 +595,8 @@ class _MobileNavigationDrawer extends StatelessWidget {
                   children: [
                     Image.asset(
                       'assets/images/icon.png',
-                      width: 32,
-                      height: 32,
+                      width: _AppShellSizes.logoIconSize,
+                      height: _AppShellSizes.logoIconSize,
                       fit: BoxFit.contain,
                     ),
                     const SizedBox(width: 8),
@@ -517,7 +605,7 @@ class _MobileNavigationDrawer extends StatelessWidget {
                         alignment: Alignment.centerLeft,
                         child: Image.asset(
                           'assets/images/letreiro.png',
-                          height: 32,
+                          height: _AppShellSizes.logoIconSize,
                           fit: BoxFit.contain,
                         ),
                       ),
@@ -616,16 +704,24 @@ class _NavigationTileState extends State<_NavigationTile> {
           onTap: widget.onTap,
           behavior: HitTestBehavior.opaque,
           child: SizedBox(
-            width: widget.isCompact ? 58 : null,
+            width: widget.isCompact
+                ? (widget.isDesktop
+                      ? _AppShellSizes.compactDesktopTileWidth
+                      : _AppShellSizes.compactMobileTileWidth)
+                : null,
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 180),
               curve: Curves.easeOut,
-              height: widget.isDesktop && widget.isCompact
-                  ? 50
-                  : (widget.isCompact ? 58 : 48),
+              height: widget.isCompact
+                  ? (widget.isDesktop
+                        ? _AppShellSizes.compactDesktopTileHeight
+                        : _AppShellSizes.compactMobileTileHeight)
+                  : (widget.isDesktop
+                        ? _AppShellSizes.expandedDesktopTileHeight
+                        : 48),
               padding: EdgeInsets.symmetric(
                 horizontal: widget.isCompact ? 4 : 14,
-                vertical: widget.isCompact ? 6 : 0,
+                vertical: widget.isCompact ? 4 : 0,
               ),
               decoration: BoxDecoration(
                 color: backgroundColor,

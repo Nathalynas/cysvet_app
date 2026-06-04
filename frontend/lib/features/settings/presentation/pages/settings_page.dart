@@ -72,7 +72,7 @@ class _ConfiguracoesPageState extends ConsumerState<ConfiguracoesPage> {
       backgroundColor: theme.scaffoldBackgroundColor,
       body: SafeArea(
         child: ListView(
-          padding: const EdgeInsets.all(20),
+          padding: const EdgeInsets.fromLTRB(20, 8, 20, 20),
           children: [
             _AppearanceCard(themeMode: themeMode),
 
@@ -89,10 +89,7 @@ class _ConfiguracoesPageState extends ConsumerState<ConfiguracoesPage> {
               onSubmit: _saveUserData,
               fields: [
                 ..._buildUserFields(isEditing: _isEditingUser),
-                _InfoRow(
-                  label: 'Perfil',
-                  value: session.user.displayRole,
-                ),
+                _InfoRow(label: 'Perfil', value: session.user.displayRole),
               ],
             ),
 
@@ -163,10 +160,7 @@ class _ConfiguracoesPageState extends ConsumerState<ConfiguracoesPage> {
 
             const SizedBox(height: 20),
 
-            _LogoutCard(
-              isBusy: isBusy,
-              onLogout: _logout,
-            ),
+            _LogoutCard(isBusy: isBusy, onLogout: _logout),
           ],
         ),
       ),
@@ -467,10 +461,7 @@ class _AppearanceCard extends ConsumerWidget {
 }
 
 class _ThemeSegmentedSelector extends StatelessWidget {
-  const _ThemeSegmentedSelector({
-    required this.value,
-    required this.onChanged,
-  });
+  const _ThemeSegmentedSelector({required this.value, required this.onChanged});
 
   final ThemeMode value;
   final ValueChanged<ThemeMode> onChanged;
@@ -485,9 +476,7 @@ class _ThemeSegmentedSelector extends StatelessWidget {
       decoration: BoxDecoration(
         color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.70),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: colorScheme.outline.withValues(alpha: 0.14),
-        ),
+        border: Border.all(color: colorScheme.outline.withValues(alpha: 0.14)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -693,10 +682,7 @@ class _SettingsCard extends StatelessWidget {
                   children: [
                     titleContent,
                     const SizedBox(height: 12),
-                    Align(
-                      alignment: Alignment.centerLeft,
-                      child: trailing!,
-                    ),
+                    Align(alignment: Alignment.centerLeft, child: trailing!),
                   ],
                 )
               else
@@ -708,10 +694,7 @@ class _SettingsCard extends StatelessWidget {
                     trailing!,
                   ],
                 ),
-              if (child != null) ...[
-                const SizedBox(height: 18),
-                child!,
-              ],
+              if (child != null) ...[const SizedBox(height: 18), child!],
             ],
           );
         },
@@ -721,10 +704,7 @@ class _SettingsCard extends StatelessWidget {
 }
 
 class _LogoutCard extends StatelessWidget {
-  const _LogoutCard({
-    required this.isBusy,
-    required this.onLogout,
-  });
+  const _LogoutCard({required this.isBusy, required this.onLogout});
 
   final bool isBusy;
   final VoidCallback onLogout;
@@ -768,10 +748,7 @@ class _LogoutCard extends StatelessWidget {
 }
 
 class _InfoRow extends StatelessWidget {
-  const _InfoRow({
-    required this.label,
-    required this.value,
-  });
+  const _InfoRow({required this.label, required this.value});
 
   final String label;
   final String value;
@@ -787,9 +764,7 @@ class _InfoRow extends StatelessWidget {
       decoration: BoxDecoration(
         color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.45),
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(
-          color: colorScheme.outline.withValues(alpha: 0.18),
-        ),
+        border: Border.all(color: colorScheme.outline.withValues(alpha: 0.18)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

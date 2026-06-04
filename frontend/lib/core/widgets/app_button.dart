@@ -1,5 +1,13 @@
 import 'package:flutter/material.dart';
 
+class _ButtonControlStyle {
+  static const double height = 42;
+  static const double radius = 16;
+  static const double iconWidth = height;
+
+  static const EdgeInsets buttonPadding = EdgeInsets.symmetric(horizontal: 14);
+}
+
 class AppButton extends StatelessWidget {
   const AppButton({
     super.key,
@@ -14,12 +22,12 @@ class AppButton extends StatelessWidget {
     this.textColor,
     this.borderColor,
     this.outlined = false,
-    this.height = 48,
+    this.height = _ButtonControlStyle.height,
     this.width,
     this.padding,
     this.margin,
-    this.borderRadius = 8,
-    this.fontSize = 15,
+    this.borderRadius = _ButtonControlStyle.radius,
+    this.fontSize = 14,
     this.fontWeight = FontWeight.w600,
     this.expanded = false,
     this.child,
@@ -55,9 +63,12 @@ class AppButton extends StatelessWidget {
         textColor ?? (outlined ? effectiveColor : colorScheme.onPrimary);
     final effectiveBorderColor = borderColor ?? effectiveColor;
     final isEnabled = !loading && !disabled && onPressed != null;
+    final isIconOnly = _isIconOnly;
 
     final button = SizedBox(
-      width: expanded ? double.infinity : width,
+      width: expanded
+          ? double.infinity
+          : (width ?? (isIconOnly ? _ButtonControlStyle.iconWidth : null)),
       height: height,
       child: outlined
           ? OutlinedButton(
@@ -67,6 +78,7 @@ class AppButton extends StatelessWidget {
                 backgroundColor: Colors.transparent,
                 foregroundColor: effectiveTextColor,
                 borderColor: effectiveBorderColor,
+                isIconOnly: isIconOnly,
               ),
               child: _buildContent(effectiveTextColor),
             )
@@ -77,6 +89,7 @@ class AppButton extends StatelessWidget {
                 backgroundColor: effectiveColor,
                 foregroundColor: effectiveTextColor,
                 borderColor: effectiveBorderColor,
+                isIconOnly: isIconOnly,
               ),
               child: _buildContent(effectiveTextColor),
             ),
@@ -94,6 +107,7 @@ class AppButton extends StatelessWidget {
     required Color backgroundColor,
     required Color foregroundColor,
     required Color borderColor,
+    required bool isIconOnly,
   }) {
     final disabledBackgroundColor = theme.colorScheme.onSurface.withValues(
       alpha: 0.12,
@@ -104,6 +118,9 @@ class AppButton extends StatelessWidget {
 
     return ButtonStyle(
       elevation: WidgetStateProperty.all(outlined ? 0 : 1),
+      minimumSize: WidgetStateProperty.all(Size.zero),
+      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+      visualDensity: VisualDensity.compact,
       mouseCursor: WidgetStateProperty.resolveWith((states) {
         if (states.contains(WidgetState.disabled)) {
           return SystemMouseCursors.basic;
@@ -130,7 +147,8 @@ class AppButton extends StatelessWidget {
         return outlined ? BorderSide(color: color) : BorderSide.none;
       }),
       padding: WidgetStateProperty.all(
-        padding ?? const EdgeInsets.symmetric(horizontal: 16),
+        padding ??
+            (isIconOnly ? EdgeInsets.zero : _ButtonControlStyle.buttonPadding),
       ),
       shape: WidgetStateProperty.all(
         RoundedRectangleBorder(
@@ -157,6 +175,10 @@ class AppButton extends StatelessWidget {
     }
 
     final label = upperCase ? (text ?? '').toUpperCase() : (text ?? '');
+    if (label.isEmpty) {
+      return icon ?? trailingIcon ?? const SizedBox.shrink();
+    }
+
     final textWidget = Text(
       label,
       maxLines: 1,
@@ -178,5 +200,11 @@ class AppButton extends StatelessWidget {
         if (trailingIcon != null) ...[const SizedBox(width: 8), trailingIcon!],
       ],
     );
+  }
+
+  bool get _isIconOnly {
+    final hasText = text != null && text!.trim().isNotEmpty;
+    if (hasText || loading) return false;
+    return child != null || icon != null || trailingIcon != null;
   }
 }

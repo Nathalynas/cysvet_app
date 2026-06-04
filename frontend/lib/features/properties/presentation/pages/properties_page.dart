@@ -97,7 +97,7 @@ class PropertiesPage extends ConsumerWidget {
             ]);
           },
           child: ListView(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
             physics: const AlwaysScrollableScrollPhysics(),
             children: [
               Container(
@@ -151,7 +151,9 @@ class PropertiesPage extends ConsumerWidget {
                       final isMobile = size.width < MOBILE_WIDTH;
                       final isSmallMobile = size.width < 360;
                       final cardWidth = isSmallMobile ? double.infinity : 360.0;
-                      final alignment = isMobile ? WrapAlignment.center : WrapAlignment.start;
+                      final alignment = isMobile
+                          ? WrapAlignment.center
+                          : WrapAlignment.start;
 
                       return Wrap(
                         alignment: alignment,
@@ -168,8 +170,11 @@ class PropertiesPage extends ConsumerWidget {
                                     ? null
                                     : _PropertyInsights.from(property, related),
                                 insightsLoading: relatedData.isLoading,
-                                onTap: () =>
-                                    _showPropertyDetails(context, ref, property),
+                                onTap: () => _showPropertyDetails(
+                                  context,
+                                  ref,
+                                  property,
+                                ),
                               ),
                             ),
                         ],
@@ -401,7 +406,7 @@ class _PropertyMetricRow extends StatelessWidget {
     return LayoutBuilder(
       builder: (context, constraints) {
         final canFitSideBySide = constraints.maxWidth >= 310;
-        
+
         final total = _PropertyMetricTile(
           label: 'REBANHO TOTAL',
           value: totalHerd == null ? loadingLabel : _formatCount(totalHerd!),
@@ -421,11 +426,7 @@ class _PropertyMetricRow extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               mainAxisSize: MainAxisSize.min,
-              children: [
-                total, 
-                const SizedBox(height: 8), 
-                reproduction
-              ],
+              children: [total, const SizedBox(height: 8), reproduction],
             ),
           );
         }
@@ -545,7 +546,8 @@ Future<void> _showPropertyDetails(
     headerActions: [
       _PropertyDialogHeaderActions(
         property: property,
-        onEdit: () => PropertyDialog.show(context, property: property, fromDetails: true),
+        onEdit: () =>
+            PropertyDialog.show(context, property: property, fromDetails: true),
         onToggleStatus: () => closeDetailsAndRun(() {
           return property.status == PropertyStatus.inactive
               ? _confirmActivate(context, ref, property)
@@ -725,18 +727,24 @@ class _PropertyDetailsCard extends StatelessWidget {
           LayoutBuilder(
             builder: (context, constraints) {
               final isMobile = constraints.maxWidth < 600;
-              
+
               if (isMobile) {
                 return Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    _InfoLine(label: 'Nome', value: _dashIfBlank(property.nome)),
+                    _InfoLine(
+                      label: 'Nome',
+                      value: _dashIfBlank(property.nome),
+                    ),
                     _InfoLine(label: 'Status', value: property.status.label),
                     _InfoLine(
                       label: 'Responsável',
                       value: _dashIfBlank(property.nomeProprietario),
                     ),
-                    _InfoLine(label: 'Contato', value: _dashIfBlank(property.contato)),
+                    _InfoLine(
+                      label: 'Contato',
+                      value: _dashIfBlank(property.contato),
+                    ),
                     _InfoLine(
                       label: 'Localização',
                       value: _dashIfBlank(property.localizacao),
@@ -779,7 +787,7 @@ class _PropertyDetailsCard extends StatelessWidget {
                   ],
                 );
               }
-              
+
               return Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -787,13 +795,22 @@ class _PropertyDetailsCard extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        _InfoLine(label: 'Nome', value: _dashIfBlank(property.nome)),
-                        _InfoLine(label: 'Status', value: property.status.label),
+                        _InfoLine(
+                          label: 'Nome',
+                          value: _dashIfBlank(property.nome),
+                        ),
+                        _InfoLine(
+                          label: 'Status',
+                          value: property.status.label,
+                        ),
                         _InfoLine(
                           label: 'Responsável',
                           value: _dashIfBlank(property.nomeProprietario),
                         ),
-                        _InfoLine(label: 'Contato', value: _dashIfBlank(property.contato)),
+                        _InfoLine(
+                          label: 'Contato',
+                          value: _dashIfBlank(property.contato),
+                        ),
                         _InfoLine(
                           label: 'Localização',
                           value: _dashIfBlank(property.localizacao),
@@ -834,7 +851,8 @@ class _PropertyDetailsCard extends StatelessWidget {
                             lastVisit?.veterinarioResponsavel ?? loadingLabel,
                           ),
                         ),
-                        if (property.observacoes?.trim().isNotEmpty == true) ...[
+                        if (property.observacoes?.trim().isNotEmpty ==
+                            true) ...[
                           const SizedBox(height: 8),
                           _InfoLine(
                             label: 'Observações',

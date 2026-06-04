@@ -46,7 +46,7 @@ class VisitsPage extends ConsumerWidget {
         child: RefreshIndicator(
           onRefresh: () => ref.refresh(visitsProvider.future),
           child: ListView(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
             physics: const AlwaysScrollableScrollPhysics(),
             children: [
               _VisitsToolbar(
