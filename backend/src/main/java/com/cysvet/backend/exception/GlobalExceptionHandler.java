@@ -29,7 +29,10 @@ public class GlobalExceptionHandler {
     public ResponseEntity<Map<String, Object>> handleValidation(MethodArgumentNotValidException exception) {
         String message = exception.getBindingResult().getFieldErrors().stream()
                 .findFirst()
-                .map(error -> error.getField() + ": " + error.getDefaultMessage())
+                .map(error -> error.getDefaultMessage())
+                .or(() -> exception.getBindingResult().getGlobalErrors().stream()
+                        .findFirst()
+                        .map(error -> error.getDefaultMessage()))
                 .orElse("Dados invalidos");
         return buildResponse(HttpStatus.BAD_REQUEST, message);
     }

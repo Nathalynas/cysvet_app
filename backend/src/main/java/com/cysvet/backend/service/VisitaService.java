@@ -3,6 +3,7 @@ package com.cysvet.backend.service;
 import com.cysvet.backend.dto.visita.VisitaAnimalItemDto;
 import com.cysvet.backend.dto.visita.VisitaRequest;
 import com.cysvet.backend.dto.visita.VisitaResponse;
+import com.cysvet.backend.dto.sync.SyncEntityNames;
 import com.cysvet.backend.entity.Propriedade;
 import com.cysvet.backend.entity.Usuario;
 import com.cysvet.backend.entity.Visita;
@@ -60,7 +61,7 @@ public class VisitaService {
         Visita visit = new Visita();
         apply(visit, request, user);
         Visita saved = visitRepository.save(visit);
-        deletedRecordService.clearDeletionMarker("visit", saved.getIdExterno(), user.getId());
+        deletedRecordService.clearDeletionMarker(SyncEntityNames.VISIT, saved.getIdExterno());
         return toResponse(saved);
     }
 
@@ -70,7 +71,7 @@ public class VisitaService {
         Visita visit = getEntity(id);
         apply(visit, request, user);
         Visita saved = visitRepository.save(visit);
-        deletedRecordService.clearDeletionMarker("visit", saved.getIdExterno(), user.getId());
+        deletedRecordService.clearDeletionMarker(SyncEntityNames.VISIT, saved.getIdExterno());
         return toResponse(saved);
     }
 
@@ -79,7 +80,7 @@ public class VisitaService {
         Usuario user = authenticatedUserProvider.getCurrentUser();
         Visita visit = getEntity(id);
         visitRepository.delete(visit);
-        deletedRecordService.registerDeletion("visit", visit.getIdExterno(), user.getId());
+        deletedRecordService.registerDeletion(SyncEntityNames.VISIT, visit.getIdExterno(), user.getId());
     }
 
     @Transactional
@@ -93,7 +94,7 @@ public class VisitaService {
 
         apply(visit, request, user);
         Visita saved = visitRepository.save(visit);
-        deletedRecordService.clearDeletionMarker("visit", saved.getIdExterno(), user.getId());
+        deletedRecordService.clearDeletionMarker(SyncEntityNames.VISIT, saved.getIdExterno());
         return saved;
     }
 
@@ -101,7 +102,7 @@ public class VisitaService {
     public void deleteByExternalId(String idExterno, Usuario user) {
         Visita visit = getByExternalId(idExterno);
         visitRepository.delete(visit);
-        deletedRecordService.registerDeletion("visit", visit.getIdExterno(), user.getId());
+        deletedRecordService.registerDeletion(SyncEntityNames.VISIT, visit.getIdExterno(), user.getId());
     }
 
     public VisitaResponse toResponse(Visita visit) {
@@ -120,9 +121,7 @@ public class VisitaService {
     }
 
     private void apply(Visita visit, VisitaRequest request, Usuario user) {
-        Propriedade property = request.idPropriedade() != null
-                ? propriedadeService.getEntity(request.idPropriedade())
-                : propriedadeService.getByExternalId(request.idExternoPropriedade());
+        Propriedade property = resolveProperty(request.idPropriedade(), request.idExternoPropriedade());
 
         visit.setIdExterno(request.idExterno());
         visit.setPropriedade(property);
@@ -130,6 +129,16 @@ public class VisitaService {
         visit.setDataVisita(request.dataVisita());
         visit.setObservacoes(request.observacoes());
         visit.setAnimaisJson(writeAnimalItems(request.animais()));
+    }
+
+    private Propriedade resolveProperty(Long idPropriedade, String idExternoPropriedade) {
+        if (idPropriedade != null) {
+            return propriedadeService.getEntity(idPropriedade);
+        }
+        if (idExternoPropriedade != null && !idExternoPropriedade.isBlank()) {
+            return propriedadeService.getByExternalId(idExternoPropriedade);
+        }
+        throw new IllegalArgumentException("Visita deve informar idPropriedade ou idExternoPropriedade");
     }
 
     private List<VisitaAnimalItemDto> readAnimalItems(Visita visit) {

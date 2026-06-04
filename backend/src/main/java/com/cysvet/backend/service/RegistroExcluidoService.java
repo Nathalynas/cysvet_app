@@ -18,7 +18,7 @@ public class RegistroExcluidoService {
     @Transactional
     public void registerDeletion(String nomeEntidade, String idExterno, Long idUsuario) {
         RegistroExcluido deletedRecord = deletedRecordRepository
-                .findByIdUsuarioAndNomeEntidadeAndIdExterno(idUsuario, nomeEntidade, idExterno)
+                .findByNomeEntidadeAndIdExterno(nomeEntidade, idExterno)
                 .orElseGet(RegistroExcluido::new);
 
         deletedRecord.setNomeEntidade(nomeEntidade);
@@ -29,9 +29,8 @@ public class RegistroExcluidoService {
     }
 
     @Transactional
-    public void clearDeletionMarker(String nomeEntidade, String idExterno, Long idUsuario) {
-        deletedRecordRepository.findByIdUsuarioAndNomeEntidadeAndIdExterno(idUsuario, nomeEntidade, idExterno)
-                .ifPresent(deletedRecordRepository::delete);
+    public void clearDeletionMarker(String nomeEntidade, String idExterno) {
+        deletedRecordRepository.deleteAllByNomeEntidadeAndIdExterno(nomeEntidade, idExterno);
     }
 
     @Transactional(readOnly = true)

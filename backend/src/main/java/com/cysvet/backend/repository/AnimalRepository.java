@@ -21,7 +21,9 @@ public interface AnimalRepository extends JpaRepository<Animal, Long> {
             select a
             from Animal a
             join a.propriedade p
+            left join a.lote l
             where (:idPropriedade is null or p.id = :idPropriedade)
+              and (:idLote is null or l.id = :idLote)
               and (:status is null or a.status = :status)
               and (
                   :search is null
@@ -29,6 +31,8 @@ public interface AnimalRepository extends JpaRepository<Animal, Long> {
                   or lower(a.codigo) like lower(concat('%', :search, '%'))
                   or lower(a.categoria) like lower(concat('%', :search, '%'))
                   or lower(coalesce(a.sexo, '')) like lower(concat('%', :search, '%'))
+                  or lower(coalesce(l.idExterno, '')) like lower(concat('%', :search, '%'))
+                  or lower(coalesce(l.nome, '')) like lower(concat('%', :search, '%'))
                   or lower(p.idExterno) like lower(concat('%', :search, '%'))
                   or lower(p.nome) like lower(concat('%', :search, '%'))
               )
@@ -36,6 +40,7 @@ public interface AnimalRepository extends JpaRepository<Animal, Long> {
             """)
     List<Animal> search(
             @Param("idPropriedade") Long idPropriedade,
+            @Param("idLote") Long idLote,
             @Param("search") String search,
             @Param("status") StatusAnimal status
     );

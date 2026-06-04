@@ -18,7 +18,7 @@ import lombok.Setter;
 @Table(name = "animal")
 public class Animal extends TenantAwareEntity {
 
-    @Column(name = "id_externo", nullable = false, unique = true, length = 64)
+    @Column(name = "id_externo", nullable = false, length = 64)
     private String idExterno;
 
     @Column(name = "codigo", nullable = false)
@@ -53,6 +53,10 @@ public class Animal extends TenantAwareEntity {
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "id_propriedade", nullable = false)
     private Propriedade propriedade;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "id_lote")
+    private Lote lote;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "id_usuario", nullable = false)

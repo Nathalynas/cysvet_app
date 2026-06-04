@@ -10,5 +10,7 @@ public interface RegistroExcluidoRepository extends JpaRepository<RegistroExclui
 
     List<RegistroExcluido> findAllByDataAtualizacaoAfterOrderByDataAtualizacaoAsc(Instant dataAtualizacao);
 
-    Optional<RegistroExcluido> findByIdUsuarioAndNomeEntidadeAndIdExterno(Long idUsuario, String nomeEntidade, String idExterno);
+    Optional<RegistroExcluido> findByNomeEntidadeAndIdExterno(String nomeEntidade, String idExterno);
+
+    void deleteAllByNomeEntidadeAndIdExterno(String nomeEntidade, String idExterno);
 }

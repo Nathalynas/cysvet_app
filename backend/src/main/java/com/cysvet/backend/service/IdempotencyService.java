@@ -17,7 +17,8 @@ public class IdempotencyService {
     }
 
     public void register(String chaveMutacao, String nomeEntidade, Long idUsuario, Long idEntidade) {
-        MutacaoCliente mutation = new MutacaoCliente();
+        MutacaoCliente mutation = clientMutationRepository.findByChaveMutacao(chaveMutacao)
+                .orElseGet(MutacaoCliente::new);
         mutation.setChaveMutacao(chaveMutacao);
         mutation.setNomeEntidade(nomeEntidade);
         mutation.setIdUsuario(idUsuario);

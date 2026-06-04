@@ -15,6 +15,7 @@ DROP TABLE IF EXISTS token_atualizacao;
 DROP TABLE IF EXISTS evento_reprodutivo;
 DROP TABLE IF EXISTS visita;
 DROP TABLE IF EXISTS animal;
+DROP TABLE IF EXISTS lote;
 DROP TABLE IF EXISTS propriedade;
 DROP TABLE IF EXISTS usuario;
 
@@ -53,6 +54,29 @@ CREATE TABLE propriedade (
         FOREIGN KEY (id_usuario) REFERENCES usuario (id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+CREATE TABLE lote (
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    data_criacao DATETIME(6) NOT NULL,
+    data_atualizacao DATETIME(6) NOT NULL,
+    versao BIGINT NOT NULL,
+    id_externo VARCHAR(64) NOT NULL,
+    nome VARCHAR(255) NOT NULL,
+    descricao VARCHAR(1000) NULL,
+    status VARCHAR(32) NOT NULL,
+    id_propriedade BIGINT NOT NULL,
+    id_usuario BIGINT NOT NULL,
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_lote_id_externo (id_externo),
+    KEY idx_lote_id_propriedade (id_propriedade),
+    KEY idx_lote_id_usuario (id_usuario),
+    KEY idx_lote_status (status),
+    KEY idx_lote_id_usuario_data_atualizacao (id_usuario, data_atualizacao),
+    CONSTRAINT fk_lote_propriedade
+        FOREIGN KEY (id_propriedade) REFERENCES propriedade (id),
+    CONSTRAINT fk_lote_usuario
+        FOREIGN KEY (id_usuario) REFERENCES usuario (id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 CREATE TABLE animal (
     id BIGINT NOT NULL AUTO_INCREMENT,
     data_criacao DATETIME(6) NOT NULL,
@@ -67,15 +91,19 @@ CREATE TABLE animal (
     historico_reprodutivo VARCHAR(2000) NULL,
     status_reprodutivo VARCHAR(32) NULL,
     id_propriedade BIGINT NOT NULL,
+    id_lote BIGINT NULL,
     id_usuario BIGINT NOT NULL,
     PRIMARY KEY (id),
     UNIQUE KEY uk_animal_id_externo (id_externo),
     KEY idx_animal_id_propriedade (id_propriedade),
+    KEY idx_animal_id_lote (id_lote),
     KEY idx_animal_id_usuario (id_usuario),
     KEY idx_animal_id_usuario_data_atualizacao (id_usuario, data_atualizacao),
     KEY idx_animal_status_reprodutivo (status_reprodutivo),
     CONSTRAINT fk_animal_propriedade
         FOREIGN KEY (id_propriedade) REFERENCES propriedade (id),
+    CONSTRAINT fk_animal_lote
+        FOREIGN KEY (id_lote) REFERENCES lote (id),
     CONSTRAINT fk_animal_usuario
         FOREIGN KEY (id_usuario) REFERENCES usuario (id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

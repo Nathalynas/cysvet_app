@@ -1,10 +1,10 @@
 package com.cysvet.backend.controller;
 
 import com.cysvet.backend.config.SwaggerConfig;
-import com.cysvet.backend.dto.animal.AnimalRequest;
-import com.cysvet.backend.dto.animal.AnimalResponse;
-import com.cysvet.backend.dto.animal.AnimalStatusRequest;
-import com.cysvet.backend.service.AnimalService;
+import com.cysvet.backend.dto.lote.LoteRequest;
+import com.cysvet.backend.dto.lote.LoteResponse;
+import com.cysvet.backend.dto.lote.LoteStatusRequest;
+import com.cysvet.backend.service.LoteService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
@@ -27,80 +27,79 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/api/animals")
+@RequestMapping("/api/lots")
 @RequiredArgsConstructor
-@Tag(name = "Animais", description = "Endpoints para gerenciar os animais das propriedades.")
+@Tag(name = "Lotes", description = "Endpoints para organizacao dos lotes dentro das propriedades.")
 @SecurityRequirement(name = SwaggerConfig.BEARER_SCHEME)
-public class AnimalController {
+public class LoteController {
 
-    private final AnimalService animalService;
+    private final LoteService loteService;
 
     @GetMapping
-    @Operation(summary = "Lista animais")
+    @Operation(summary = "Lista lotes")
     @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "Animais listados com sucesso"),
+            @ApiResponse(responseCode = "200", description = "Lotes listados com sucesso"),
             @ApiResponse(responseCode = "400", description = "Parametros invalidos"),
             @ApiResponse(responseCode = "401", description = "Nao autorizado"),
             @ApiResponse(responseCode = "500", description = "Erro interno no servidor")
     })
-    public List<AnimalResponse> list(
+    public List<LoteResponse> list(
             @RequestParam(name = "idPropriedade", required = false) Long idPropriedade,
-            @RequestParam(name = "idLote", required = false) Long idLote,
             @RequestParam(name = "search", required = false) String search,
             @RequestParam(name = "status", required = false) String status
     ) {
-        return animalService.list(idPropriedade, idLote, search, status);
+        return loteService.list(idPropriedade, search, status);
     }
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    @Operation(summary = "Cadastra um animal")
+    @Operation(summary = "Cadastra um lote")
     @ApiResponses(value = {
-            @ApiResponse(responseCode = "201", description = "Animal cadastrado com sucesso"),
+            @ApiResponse(responseCode = "201", description = "Lote cadastrado com sucesso"),
             @ApiResponse(responseCode = "400", description = "Dados invalidos"),
             @ApiResponse(responseCode = "401", description = "Nao autorizado"),
             @ApiResponse(responseCode = "500", description = "Erro interno no servidor")
     })
-    public AnimalResponse create(@Valid @RequestBody AnimalRequest request) {
-        return animalService.create(request);
+    public LoteResponse create(@Valid @RequestBody LoteRequest request) {
+        return loteService.create(request);
     }
 
     @PutMapping("/{id}")
-    @Operation(summary = "Atualiza um animal")
+    @Operation(summary = "Atualiza um lote")
     @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "Animal atualizado com sucesso"),
+            @ApiResponse(responseCode = "200", description = "Lote atualizado com sucesso"),
             @ApiResponse(responseCode = "400", description = "Dados invalidos"),
             @ApiResponse(responseCode = "401", description = "Nao autorizado"),
-            @ApiResponse(responseCode = "404", description = "Animal nao encontrado"),
+            @ApiResponse(responseCode = "404", description = "Lote nao encontrado"),
             @ApiResponse(responseCode = "500", description = "Erro interno no servidor")
     })
-    public AnimalResponse update(@PathVariable("id") Long id, @Valid @RequestBody AnimalRequest request) {
-        return animalService.update(id, request);
+    public LoteResponse update(@PathVariable("id") Long id, @Valid @RequestBody LoteRequest request) {
+        return loteService.update(id, request);
     }
 
     @PatchMapping("/{id}/status")
-    @Operation(summary = "Atualiza o status de um animal")
+    @Operation(summary = "Atualiza o status de um lote")
     @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "Status do animal atualizado com sucesso"),
+            @ApiResponse(responseCode = "200", description = "Status do lote atualizado com sucesso"),
             @ApiResponse(responseCode = "400", description = "Dados invalidos"),
             @ApiResponse(responseCode = "401", description = "Nao autorizado"),
-            @ApiResponse(responseCode = "404", description = "Animal nao encontrado"),
+            @ApiResponse(responseCode = "404", description = "Lote nao encontrado"),
             @ApiResponse(responseCode = "500", description = "Erro interno no servidor")
     })
-    public AnimalResponse updateStatus(@PathVariable("id") Long id, @Valid @RequestBody AnimalStatusRequest request) {
-        return animalService.updateStatus(id, request.status());
+    public LoteResponse updateStatus(@PathVariable("id") Long id, @Valid @RequestBody LoteStatusRequest request) {
+        return loteService.updateStatus(id, request.status());
     }
 
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    @Operation(summary = "Remove um animal")
+    @Operation(summary = "Remove um lote")
     @ApiResponses(value = {
-            @ApiResponse(responseCode = "204", description = "Animal removido com sucesso"),
+            @ApiResponse(responseCode = "204", description = "Lote removido com sucesso"),
             @ApiResponse(responseCode = "401", description = "Nao autorizado"),
-            @ApiResponse(responseCode = "404", description = "Animal nao encontrado"),
+            @ApiResponse(responseCode = "404", description = "Lote nao encontrado"),
             @ApiResponse(responseCode = "500", description = "Erro interno no servidor")
     })
     public void delete(@PathVariable("id") Long id) {
-        animalService.delete(id);
+        loteService.delete(id);
     }
 }

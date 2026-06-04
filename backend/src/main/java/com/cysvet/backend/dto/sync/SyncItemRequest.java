@@ -22,6 +22,6 @@ public record SyncItemRequest(
         @JsonAlias("data_atualizacao_cliente")
         Instant dataAtualizacaoCliente,
         @Schema(description = "Payload bruto da entidade sincronizada.")
-        JsonNode payload
+        @NotNull JsonNode payload
 ) {
 }

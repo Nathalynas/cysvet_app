@@ -3,6 +3,7 @@ package com.cysvet.backend.dto.evento;
 import com.cysvet.backend.entity.TipoEventoReprodutivo;
 import com.fasterxml.jackson.annotation.JsonAlias;
 import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import java.time.Instant;
@@ -39,4 +40,13 @@ public record EventoReprodutivoRequest(
         @JsonAlias("data_atualizacao_cliente")
         Instant dataAtualizacaoCliente
 ) {
+    @AssertTrue(message = "Evento deve informar idPropriedade ou idExternoPropriedade")
+    public boolean hasPropertyReference() {
+        return idPropriedade != null || (idExternoPropriedade != null && !idExternoPropriedade.isBlank());
+    }
+
+    @AssertTrue(message = "Evento deve informar idAnimal ou idExternoAnimal")
+    public boolean hasAnimalReference() {
+        return idAnimal != null || (idExternoAnimal != null && !idExternoAnimal.isBlank());
+    }
 }

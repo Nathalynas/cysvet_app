@@ -72,6 +72,16 @@ class PropertyAnimalIntegrationTest {
                 .andExpect(jsonPath("$[0].contato").value("51999999999"))
                 .andExpect(jsonPath("$[0].status").value("ATIVO"));
 
+        mockMvc.perform(get("/api/lots")
+                        .header("Authorization", auth.authorization())
+                        .header("empresaid", auth.tenantId())
+                        .queryParam("idPropriedade", Long.toString(propertyId))
+                        .queryParam("status", "ATIVO"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].idPropriedade").value(propertyId))
+                .andExpect(jsonPath("$[0].nome").value("Lote 1"))
+                .andExpect(jsonPath("$[0].status").value("ATIVO"));
+
         mockMvc.perform(patch("/api/properties/{id}/status", propertyId)
                         .header("Authorization", auth.authorization())
                         .header("empresaid", auth.tenantId())
@@ -141,11 +151,24 @@ class PropertyAnimalIntegrationTest {
                 """);
 
         long propertyId = property.path("id").asLong();
+        JsonNode lote = firstLotForProperty(auth, propertyId);
+        long loteId = lote.path("id").asLong();
+
+        createLot(auth, """
+                {
+                  "idExterno": "lote-ext-1",
+                  "idPropriedade": %d,
+                  "nome": "Lote Lactacao",
+                  "descricao": "Animais em lactacao",
+                  "status": "ATIVO"
+                }
+                """.formatted(propertyId));
 
         JsonNode created = createAnimal(auth, """
                 {
                   "idExterno": "animal-ext-1",
                   "idPropriedade": %d,
+                  "idLote": %d,
                   "codigo": "A-001",
                   "categoria": "Bovino",
                   "sexo": "Femea",
@@ -154,17 +177,20 @@ class PropertyAnimalIntegrationTest {
                   "statusReprodutivo": "pregnant",
                   "status": "ATIVO"
                 }
-                """.formatted(propertyId));
+                """.formatted(propertyId, loteId));
         long animalId = created.path("id").asLong();
 
         mockMvc.perform(get("/api/animals")
                         .header("Authorization", auth.authorization())
                         .header("empresaid", auth.tenantId())
                         .queryParam("idPropriedade", Long.toString(propertyId))
+                        .queryParam("idLote", Long.toString(loteId))
                         .queryParam("search", "femea")
                         .queryParam("status", "ATIVO"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].id").value(animalId))
+                .andExpect(jsonPath("$[0].idLote").value(loteId))
+                .andExpect(jsonPath("$[0].nomeLote").value("Lote 1"))
                 .andExpect(jsonPath("$[0].sexo").value("Femea"))
                 .andExpect(jsonPath("$[0].statusReprodutivo").value("pregnant"))
                 .andExpect(jsonPath("$[0].status").value("ATIVO"));
@@ -196,7 +222,106 @@ class PropertyAnimalIntegrationTest {
     }
 
     @Test
-    void syncPullShouldReturnSoftDeletedPropertyAndAnimalWithoutDeletionMarkers() throws Exception {
+    void lotEndpointsShouldPersistPropertyRelationAndSupportSoftDelete() throws Exception {
+        AuthContext auth = registerAndAuthenticate("lot.status@example.com");
+        JsonNode property = createProperty(auth, """
+                {
+                  "idExterno": "prop-lot-1",
+                  "nome": "Fazenda Lote",
+                  "nomeProprietario": "Rafael",
+                  "status": "ATIVO"
+                }
+                """);
+
+        long propertyId = property.path("id").asLong();
+
+        mockMvc.perform(get("/api/lots")
+                        .header("Authorization", auth.authorization())
+                        .header("empresaid", auth.tenantId())
+                        .queryParam("idPropriedade", Long.toString(propertyId))
+                        .queryParam("status", "ATIVO"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].nome").value("Lote 1"));
+
+        JsonNode created = createLot(auth, """
+                {
+                  "idExterno": "lote-ext-2",
+                  "idPropriedade": %d,
+                  "nome": "Lote Secas",
+                  "descricao": "Animais secando",
+                  "status": "ATIVO"
+                }
+                """.formatted(propertyId));
+        long loteId = created.path("id").asLong();
+
+        mockMvc.perform(get("/api/lots")
+                        .header("Authorization", auth.authorization())
+                        .header("empresaid", auth.tenantId())
+                        .queryParam("idPropriedade", Long.toString(propertyId))
+                        .queryParam("search", "secas")
+                        .queryParam("status", "ATIVO"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].id").value(loteId))
+                .andExpect(jsonPath("$[0].idPropriedade").value(propertyId))
+                .andExpect(jsonPath("$[0].descricao").value("Animais secando"))
+                .andExpect(jsonPath("$[0].status").value("ATIVO"));
+
+        mockMvc.perform(patch("/api/lots/{id}/status", loteId)
+                        .header("Authorization", auth.authorization())
+                        .header("empresaid", auth.tenantId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "status": "ARQUIVADO"
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("INATIVO"));
+
+        mockMvc.perform(put("/api/lots/{id}", loteId)
+                        .header("Authorization", auth.authorization())
+                        .header("empresaid", auth.tenantId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "idExterno": "lote-ext-2",
+                                  "idPropriedade": %d,
+                                  "nome": "Lote Secas",
+                                  "descricao": "Lote atualizado"
+                                }
+                                """.formatted(propertyId)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.descricao").value("Lote atualizado"))
+                .andExpect(jsonPath("$.status").value("INATIVO"));
+
+        mockMvc.perform(patch("/api/lots/{id}/status", loteId)
+                        .header("Authorization", auth.authorization())
+                        .header("empresaid", auth.tenantId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "status": "ATIVO"
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("ATIVO"));
+
+        mockMvc.perform(delete("/api/lots/{id}", loteId)
+                        .header("Authorization", auth.authorization())
+                        .header("empresaid", auth.tenantId()))
+                .andExpect(status().isNoContent());
+
+        mockMvc.perform(get("/api/lots")
+                        .header("Authorization", auth.authorization())
+                        .header("empresaid", auth.tenantId())
+                        .queryParam("status", "INATIVO"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].id").value(loteId))
+                .andExpect(jsonPath("$[0].status").value("INATIVO"));
+    }
+
+    @Test
+    void syncPullShouldReturnSoftDeletedPropertyLotAndAnimalWithoutDeletionMarkers() throws Exception {
         AuthContext auth = registerAndAuthenticate("sync.status@example.com");
         JsonNode property = createProperty(auth, """
                 {
@@ -206,17 +331,20 @@ class PropertyAnimalIntegrationTest {
                 }
                 """);
         long propertyId = property.path("id").asLong();
+        JsonNode lote = firstLotForProperty(auth, propertyId);
+        long loteId = lote.path("id").asLong();
 
         JsonNode animal = createAnimal(auth, """
                 {
                   "idExterno": "animal-sync-1",
                   "idPropriedade": %d,
+                  "idLote": %d,
                   "codigo": "SYNC-01",
                   "categoria": "Bovino",
                   "sexo": "Macho",
                   "numeroLactacao": 0
                 }
-                """.formatted(propertyId));
+                """.formatted(propertyId, loteId));
         long animalId = animal.path("id").asLong();
 
         String since = Instant.now().minusSeconds(5).toString();
@@ -231,6 +359,11 @@ class PropertyAnimalIntegrationTest {
                         .header("empresaid", auth.tenantId()))
                 .andExpect(status().isNoContent());
 
+        mockMvc.perform(delete("/api/lots/{id}", loteId)
+                        .header("Authorization", auth.authorization())
+                        .header("empresaid", auth.tenantId()))
+                .andExpect(status().isNoContent());
+
         mockMvc.perform(get("/api/sync/pull")
                         .header("Authorization", auth.authorization())
                         .header("empresaid", auth.tenantId())
@@ -238,7 +371,10 @@ class PropertyAnimalIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.properties[0].id").value(propertyId))
                 .andExpect(jsonPath("$.properties[0].status").value("INATIVO"))
+                .andExpect(jsonPath("$.lots[0].id").value(loteId))
+                .andExpect(jsonPath("$.lots[0].status").value("INATIVO"))
                 .andExpect(jsonPath("$.animals[0].id").value(animalId))
+                .andExpect(jsonPath("$.animals[0].idLote").value(loteId))
                 .andExpect(jsonPath("$.animals[0].status").value("INATIVO"))
                 .andExpect(jsonPath("$.deletedRecords").isEmpty());
     }
@@ -351,6 +487,33 @@ class PropertyAnimalIntegrationTest {
                 .getResponse()
                 .getContentAsString();
         return objectMapper.readTree(response);
+    }
+
+    private JsonNode createLot(AuthContext auth, String payload) throws Exception {
+        String response = mockMvc.perform(post("/api/lots")
+                        .header("Authorization", auth.authorization())
+                        .header("empresaid", auth.tenantId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(payload))
+                .andExpect(status().isCreated())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+        return objectMapper.readTree(response);
+    }
+
+    private JsonNode firstLotForProperty(AuthContext auth, long propertyId) throws Exception {
+        String response = mockMvc.perform(get("/api/lots")
+                        .header("Authorization", auth.authorization())
+                        .header("empresaid", auth.tenantId())
+                        .queryParam("idPropriedade", Long.toString(propertyId))
+                        .queryParam("status", "ATIVO"))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        return objectMapper.readTree(response).path(0);
     }
 
     private AuthContext registerAndAuthenticate(String email) throws Exception {

@@ -8,38 +8,27 @@ import jakarta.persistence.FetchType;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
-import java.time.LocalDate;
 import lombok.Getter;
 import lombok.Setter;
 
 @Getter
 @Setter
 @Entity
-@Table(name = "evento_reprodutivo")
-public class EventoReprodutivo extends TenantAwareEntity {
+@Table(name = "lote")
+public class Lote extends TenantAwareEntity {
 
     @Column(name = "id_externo", nullable = false, length = 64)
     private String idExterno;
 
+    @Column(name = "nome", nullable = false)
+    private String nome;
+
+    @Column(name = "descricao", length = 1000)
+    private String descricao;
+
     @Enumerated(EnumType.STRING)
-    @Column(name = "tipo", nullable = false)
-    private TipoEventoReprodutivo tipo;
-
-    @Column(name = "data_evento", nullable = false)
-    private LocalDate dataEvento;
-
-    @Column(name = "data_prevista_parto")
-    private LocalDate dataPrevistaParto;
-
-    @Column(name = "prenhez_confirmada")
-    private Boolean prenhezConfirmada;
-
-    @Column(name = "observacoes", length = 2000)
-    private String observacoes;
-
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "id_animal", nullable = false)
-    private Animal animal;
+    @Column(name = "status", nullable = false, length = 32)
+    private StatusLote status = StatusLote.ATIVO;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "id_propriedade", nullable = false)

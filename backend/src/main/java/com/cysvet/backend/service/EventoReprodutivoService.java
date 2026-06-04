@@ -2,6 +2,7 @@ package com.cysvet.backend.service;
 
 import com.cysvet.backend.dto.evento.EventoReprodutivoRequest;
 import com.cysvet.backend.dto.evento.EventoReprodutivoResponse;
+import com.cysvet.backend.dto.sync.SyncEntityNames;
 import com.cysvet.backend.entity.Animal;
 import com.cysvet.backend.entity.Propriedade;
 import com.cysvet.backend.entity.EventoReprodutivo;
@@ -64,7 +65,7 @@ public class EventoReprodutivoService {
         EventoReprodutivo event = new EventoReprodutivo();
         apply(event, request, user);
         EventoReprodutivo saved = eventoReprodutivoRepository.save(event);
-        deletedRecordService.clearDeletionMarker("event", saved.getIdExterno(), user.getId());
+        deletedRecordService.clearDeletionMarker(SyncEntityNames.EVENT, saved.getIdExterno());
         return toResponse(saved);
     }
 
@@ -74,7 +75,7 @@ public class EventoReprodutivoService {
         EventoReprodutivo event = getEntity(id);
         apply(event, request, user);
         EventoReprodutivo saved = eventoReprodutivoRepository.save(event);
-        deletedRecordService.clearDeletionMarker("event", saved.getIdExterno(), user.getId());
+        deletedRecordService.clearDeletionMarker(SyncEntityNames.EVENT, saved.getIdExterno());
         return toResponse(saved);
     }
 
@@ -83,7 +84,7 @@ public class EventoReprodutivoService {
         Usuario user = authenticatedUserProvider.getCurrentUser();
         EventoReprodutivo event = getEntity(id);
         eventoReprodutivoRepository.delete(event);
-        deletedRecordService.registerDeletion("event", event.getIdExterno(), user.getId());
+        deletedRecordService.registerDeletion(SyncEntityNames.EVENT, event.getIdExterno(), user.getId());
     }
 
     @Transactional
@@ -97,7 +98,7 @@ public class EventoReprodutivoService {
 
         apply(event, request, user);
         EventoReprodutivo saved = eventoReprodutivoRepository.save(event);
-        deletedRecordService.clearDeletionMarker("event", saved.getIdExterno(), user.getId());
+        deletedRecordService.clearDeletionMarker(SyncEntityNames.EVENT, saved.getIdExterno());
         return saved;
     }
 
@@ -105,7 +106,7 @@ public class EventoReprodutivoService {
     public void deleteByExternalId(String idExterno, Usuario user) {
         EventoReprodutivo event = getByExternalId(idExterno);
         eventoReprodutivoRepository.delete(event);
-        deletedRecordService.registerDeletion("event", event.getIdExterno(), user.getId());
+        deletedRecordService.registerDeletion(SyncEntityNames.EVENT, event.getIdExterno(), user.getId());
     }
 
     @Transactional(readOnly = true)
@@ -121,12 +122,13 @@ public class EventoReprodutivoService {
     }
 
     private void apply(EventoReprodutivo event, EventoReprodutivoRequest request, Usuario user) {
-        Propriedade property = request.idPropriedade() != null
-                ? propriedadeService.getEntity(request.idPropriedade())
-                : propriedadeService.getByExternalId(request.idExternoPropriedade());
-        Animal animal = request.idAnimal() != null
-                ? animalService.getEntity(request.idAnimal())
-                : animalService.getByExternalId(request.idExternoAnimal());
+        boolean isNewEvent = event.getId() == null;
+        Propriedade property = resolveProperty(request.idPropriedade(), request.idExternoPropriedade());
+        Animal animal = resolveAnimal(request.idAnimal(), request.idExternoAnimal());
+
+        if (!animal.getPropriedade().getId().equals(property.getId())) {
+            throw new IllegalArgumentException("Animal informado nao pertence a propriedade do evento");
+        }
 
         event.setIdExterno(request.idExterno());
         event.setPropriedade(property);
@@ -140,10 +142,30 @@ public class EventoReprodutivoService {
                 request.tipo() == TipoEventoReprodutivo.INSEMINATION ? request.dataEvento().plusDays(283) : null
         );
 
-        if (request.tipo() == TipoEventoReprodutivo.CALVING) {
+        if (isNewEvent && request.tipo() == TipoEventoReprodutivo.CALVING) {
             animal.setDataUltimoParto(request.dataEvento());
             animal.setNumeroLactacao(animal.getNumeroLactacao() + 1);
         }
+    }
+
+    private Propriedade resolveProperty(Long idPropriedade, String idExternoPropriedade) {
+        if (idPropriedade != null) {
+            return propriedadeService.getEntity(idPropriedade);
+        }
+        if (idExternoPropriedade != null && !idExternoPropriedade.isBlank()) {
+            return propriedadeService.getByExternalId(idExternoPropriedade);
+        }
+        throw new IllegalArgumentException("Evento deve informar idPropriedade ou idExternoPropriedade");
+    }
+
+    private Animal resolveAnimal(Long idAnimal, String idExternoAnimal) {
+        if (idAnimal != null) {
+            return animalService.getEntity(idAnimal);
+        }
+        if (idExternoAnimal != null && !idExternoAnimal.isBlank()) {
+            return animalService.getByExternalId(idExternoAnimal);
+        }
+        throw new IllegalArgumentException("Evento deve informar idAnimal ou idExternoAnimal");
     }
 
     public EventoReprodutivoResponse toResponse(EventoReprodutivo event) {

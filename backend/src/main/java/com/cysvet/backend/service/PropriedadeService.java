@@ -8,6 +8,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.cysvet.backend.dto.propriedade.PropriedadeRequest;
 import com.cysvet.backend.dto.propriedade.PropriedadeResponse;
+import com.cysvet.backend.dto.sync.SyncEntityNames;
 import com.cysvet.backend.entity.Propriedade;
 import com.cysvet.backend.entity.StatusPropriedade;
 import com.cysvet.backend.entity.Usuario;
@@ -21,6 +22,7 @@ import lombok.RequiredArgsConstructor;
 public class PropriedadeService {
 
     private final PropriedadeRepository farmPropertyRepository;
+    private final LoteService loteService;
     private final UsuarioAutenticadoProvider authenticatedUserProvider;
     private final RegistroExcluidoService deletedRecordService;
 
@@ -56,7 +58,8 @@ public class PropriedadeService {
         Propriedade property = new Propriedade();
         apply(property, request, user);
         Propriedade saved = farmPropertyRepository.save(property);
-        deletedRecordService.clearDeletionMarker("property", saved.getIdExterno(), user.getId());
+        loteService.ensureDefaultLotForProperty(saved, user);
+        deletedRecordService.clearDeletionMarker(SyncEntityNames.PROPERTY, saved.getIdExterno());
         return toResponse(saved);
     }
 
@@ -66,7 +69,7 @@ public class PropriedadeService {
         Propriedade property = getEntity(id);
         apply(property, request, user);
         Propriedade saved = farmPropertyRepository.save(property);
-        deletedRecordService.clearDeletionMarker("property", saved.getIdExterno(), user.getId());
+        deletedRecordService.clearDeletionMarker(SyncEntityNames.PROPERTY, saved.getIdExterno());
         return toResponse(saved);
     }
 
@@ -89,6 +92,7 @@ public class PropriedadeService {
     public Propriedade upsertForSync(PropriedadeRequest request, Instant dataAtualizacaoCliente, Usuario user) {
         Propriedade property = farmPropertyRepository.findByIdExterno(request.idExterno())
                 .orElseGet(Propriedade::new);
+        boolean isNewProperty = property.getId() == null;
 
         if (property.getId() != null && dataAtualizacaoCliente != null && property.getDataAtualizacao().isAfter(dataAtualizacaoCliente)) {
             return property;
@@ -96,7 +100,10 @@ public class PropriedadeService {
 
         apply(property, request, user);
         Propriedade saved = farmPropertyRepository.save(property);
-        deletedRecordService.clearDeletionMarker("property", saved.getIdExterno(), user.getId());
+        if (isNewProperty) {
+            loteService.ensureDefaultLotForProperty(saved, user);
+        }
+        deletedRecordService.clearDeletionMarker(SyncEntityNames.PROPERTY, saved.getIdExterno());
         return saved;
     }
 
@@ -125,7 +132,7 @@ public class PropriedadeService {
     private Propriedade updateStatus(Propriedade property, StatusPropriedade status, Usuario user) {
         property.setStatus(status);
         Propriedade saved = farmPropertyRepository.save(property);
-        deletedRecordService.clearDeletionMarker("property", saved.getIdExterno(), user.getId());
+        deletedRecordService.clearDeletionMarker(SyncEntityNames.PROPERTY, saved.getIdExterno());
         return saved;
     }
 

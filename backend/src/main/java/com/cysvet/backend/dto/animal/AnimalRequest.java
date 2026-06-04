@@ -4,6 +4,7 @@ import com.cysvet.backend.entity.StatusAnimal;
 import com.cysvet.backend.entity.StatusReprodutivoAnimal;
 import com.fasterxml.jackson.annotation.JsonAlias;
 import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import java.time.Instant;
@@ -20,6 +21,12 @@ public record AnimalRequest(
         @Schema(description = "Identificador externo da propriedade vinculada.", example = "prop-001")
         @JsonAlias("id_externo_propriedade")
         String idExternoPropriedade,
+        @Schema(description = "Identificador interno do lote vinculado.", example = "15")
+        @JsonAlias("id_lote")
+        Long idLote,
+        @Schema(description = "Identificador externo do lote vinculado.", example = "lote-001")
+        @JsonAlias("id_externo_lote")
+        String idExternoLote,
         @Schema(description = "Codigo do animal.", example = "BR-001")
         @NotBlank String codigo,
         @Schema(description = "Categoria zootecnica do animal.", example = "VACA")
@@ -47,4 +54,8 @@ public record AnimalRequest(
         @JsonAlias("data_atualizacao_cliente")
         Instant dataAtualizacaoCliente
 ) {
+    @AssertTrue(message = "Animal deve informar idPropriedade ou idExternoPropriedade")
+    public boolean hasPropertyReference() {
+        return idPropriedade != null || (idExternoPropriedade != null && !idExternoPropriedade.isBlank());
+    }
 }

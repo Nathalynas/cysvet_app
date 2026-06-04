@@ -3,6 +3,7 @@ package com.cysvet.backend.dto.visita;
 import com.fasterxml.jackson.annotation.JsonAlias;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import java.time.Instant;
@@ -31,4 +32,8 @@ public record VisitaRequest(
         @JsonAlias("data_atualizacao_cliente")
         Instant dataAtualizacaoCliente
 ) {
+    @AssertTrue(message = "Visita deve informar idPropriedade ou idExternoPropriedade")
+    public boolean hasPropertyReference() {
+        return idPropriedade != null || (idExternoPropriedade != null && !idExternoPropriedade.isBlank());
+    }
 }

@@ -16,6 +16,12 @@ public record AnimalResponse(
         Long idPropriedade,
         @Schema(description = "Identificador externo da propriedade vinculada.", example = "prop-001")
         String idExternoPropriedade,
+        @Schema(description = "Identificador interno do lote vinculado.", example = "15")
+        Long idLote,
+        @Schema(description = "Identificador externo do lote vinculado.", example = "lote-001")
+        String idExternoLote,
+        @Schema(description = "Nome do lote vinculado.", example = "Lote Pre-Parto")
+        String nomeLote,
         @Schema(description = "Codigo do animal.", example = "BR-001")
         String codigo,
         @Schema(description = "Categoria zootecnica do animal.", example = "VACA")

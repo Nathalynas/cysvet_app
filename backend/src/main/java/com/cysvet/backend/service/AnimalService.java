@@ -10,7 +10,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.cysvet.backend.dto.animal.AnimalRequest;
 import com.cysvet.backend.dto.animal.AnimalResponse;
+import com.cysvet.backend.dto.sync.SyncEntityNames;
 import com.cysvet.backend.entity.Animal;
+import com.cysvet.backend.entity.Lote;
 import com.cysvet.backend.entity.Propriedade;
 import com.cysvet.backend.entity.StatusAnimal;
 import com.cysvet.backend.entity.Usuario;
@@ -25,12 +27,13 @@ public class AnimalService {
 
     private final AnimalRepository animalRepository;
     private final PropriedadeService propriedadeService;
+    private final LoteService loteService;
     private final UsuarioAutenticadoProvider authenticatedUserProvider;
     private final RegistroExcluidoService deletedRecordService;
 
     @Transactional(readOnly = true)
-    public List<AnimalResponse> list(Long idPropriedade, String search, String status) {
-        List<Animal> animals = animalRepository.search(idPropriedade, normalizeSearch(search), parseStatus(status));
+    public List<AnimalResponse> list(Long idPropriedade, Long idLote, String search, String status) {
+        List<Animal> animals = animalRepository.search(idPropriedade, idLote, normalizeSearch(search), parseStatus(status));
         return animals.stream().map(this::toResponse).toList();
     }
 
@@ -59,7 +62,7 @@ public class AnimalService {
         Animal animal = new Animal();
         apply(animal, request, user);
         Animal saved = animalRepository.save(animal);
-        deletedRecordService.clearDeletionMarker("animal", saved.getIdExterno(), user.getId());
+        deletedRecordService.clearDeletionMarker(SyncEntityNames.ANIMAL, saved.getIdExterno());
         return toResponse(saved);
     }
 
@@ -69,7 +72,7 @@ public class AnimalService {
         Animal animal = getEntity(id);
         apply(animal, request, user);
         Animal saved = animalRepository.save(animal);
-        deletedRecordService.clearDeletionMarker("animal", saved.getIdExterno(), user.getId());
+        deletedRecordService.clearDeletionMarker(SyncEntityNames.ANIMAL, saved.getIdExterno());
         return toResponse(saved);
     }
 
@@ -99,7 +102,7 @@ public class AnimalService {
 
         apply(animal, request, user);
         Animal saved = animalRepository.save(animal);
-        deletedRecordService.clearDeletionMarker("animal", saved.getIdExterno(), user.getId());
+        deletedRecordService.clearDeletionMarker(SyncEntityNames.ANIMAL, saved.getIdExterno());
         return saved;
     }
 
@@ -110,12 +113,16 @@ public class AnimalService {
     }
 
     private void apply(Animal animal, AnimalRequest request, Usuario user) {
-        Propriedade property = request.idPropriedade() != null
-                ? propriedadeService.getEntity(request.idPropriedade())
-                : propriedadeService.getByExternalId(request.idExternoPropriedade());
+        Propriedade property = resolveProperty(request.idPropriedade(), request.idExternoPropriedade());
+        Lote lote = resolveLote(request);
+
+        if (lote != null && !lote.getPropriedade().getId().equals(property.getId())) {
+            throw new IllegalArgumentException("Lote informado nao pertence a propriedade do animal");
+        }
 
         animal.setIdExterno(request.idExterno());
         animal.setPropriedade(property);
+        animal.setLote(lote);
         animal.setUsuario(user);
         animal.setCodigo(request.codigo());
         animal.setCategoria(request.categoria());
@@ -132,11 +139,31 @@ public class AnimalService {
         }
     }
 
+    private Lote resolveLote(AnimalRequest request) {
+        if (request.idLote() != null) {
+            return loteService.getEntity(request.idLote());
+        }
+        if (request.idExternoLote() != null && !request.idExternoLote().isBlank()) {
+            return loteService.getByExternalId(request.idExternoLote());
+        }
+        return null;
+    }
+
     private Animal updateStatus(Animal animal, StatusAnimal status, Usuario user) {
         animal.setStatus(status);
         Animal saved = animalRepository.save(animal);
-        deletedRecordService.clearDeletionMarker("animal", saved.getIdExterno(), user.getId());
+        deletedRecordService.clearDeletionMarker(SyncEntityNames.ANIMAL, saved.getIdExterno());
         return saved;
+    }
+
+    private Propriedade resolveProperty(Long idPropriedade, String idExternoPropriedade) {
+        if (idPropriedade != null) {
+            return propriedadeService.getEntity(idPropriedade);
+        }
+        if (idExternoPropriedade != null && !idExternoPropriedade.isBlank()) {
+            return propriedadeService.getByExternalId(idExternoPropriedade);
+        }
+        throw new IllegalArgumentException("Animal deve informar idPropriedade ou idExternoPropriedade");
     }
 
     private StatusAnimal parseStatus(String status) {
@@ -163,6 +190,9 @@ public class AnimalService {
                 animal.getIdExterno(),
                 animal.getPropriedade().getId(),
                 animal.getPropriedade().getIdExterno(),
+                animal.getLote() != null ? animal.getLote().getId() : null,
+                animal.getLote() != null ? animal.getLote().getIdExterno() : null,
+                animal.getLote() != null ? animal.getLote().getNome() : null,
                 animal.getCodigo(),
                 animal.getCategoria(),
                 animal.getSexo(),
