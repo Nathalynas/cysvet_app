@@ -652,15 +652,8 @@ class _NavigationTileState extends State<_NavigationTile> {
     late final Color backgroundColor;
 
     if (widget.isSelected) {
-      if (widget.isDesktop) {
-        textColor = Theme.of(context).brightness == Brightness.dark
-            ? colorScheme.onPrimary
-            : colorScheme.primary;
-        backgroundColor = colorScheme.secondary;
-      } else {
-        textColor = colorScheme.onPrimary;
-        backgroundColor = colorScheme.primary;
-      }
+      textColor = colorScheme.onPrimary;
+      backgroundColor = colorScheme.primary;
     } else if (_isHovering) {
       textColor = colorScheme.onSurface;
       backgroundColor = colorScheme.surfaceContainerHighest;
