@@ -92,18 +92,18 @@ public class AnimalService {
     }
 
     @Transactional
-    public Animal upsertForSync(AnimalRequest request, Instant dataAtualizacaoCliente, Usuario user) {
+    public SyncUpsertResult<Animal> upsertForSync(AnimalRequest request, Instant dataAtualizacaoCliente, Usuario user) {
         Animal animal = animalRepository.findByIdExterno(request.idExterno())
                 .orElseGet(Animal::new);
 
         if (animal.getId() != null && dataAtualizacaoCliente != null && animal.getDataAtualizacao().isAfter(dataAtualizacaoCliente)) {
-            return animal;
+            return SyncUpsertResult.conflicted(animal);
         }
 
         apply(animal, request, user);
         Animal saved = animalRepository.save(animal);
         deletedRecordService.clearDeletionMarker(SyncEntityNames.ANIMAL, saved.getIdExterno());
-        return saved;
+        return SyncUpsertResult.applied(saved);
     }
 
     @Transactional

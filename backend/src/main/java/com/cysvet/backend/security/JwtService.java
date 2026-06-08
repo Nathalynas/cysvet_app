@@ -6,6 +6,7 @@ import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.security.Keys;
 import java.nio.charset.StandardCharsets;
+import java.time.Instant;
 import java.util.Collection;
 import java.util.Date;
 import java.util.List;
@@ -29,8 +30,12 @@ public class JwtService {
     }
 
     public String generateToken(Usuario user, Collection<? extends GrantedAuthority> authorities) {
-        Date now = new Date();
-        Date expiration = new Date(now.getTime() + expirationMs);
+        return generateToken(user, authorities, Instant.now());
+    }
+
+    public String generateToken(Usuario user, Collection<? extends GrantedAuthority> authorities, Instant issuedAt) {
+        Date now = Date.from(issuedAt);
+        Date expiration = Date.from(resolveAccessTokenExpiration(issuedAt));
         return Jwts.builder()
                 .subject(user.getEmail())
                 .claim("uid", user.getId())
@@ -40,6 +45,10 @@ public class JwtService {
                 .expiration(expiration)
                 .signWith(signingKey, SignatureAlgorithm.HS256)
                 .compact();
+    }
+
+    public Instant resolveAccessTokenExpiration(Instant issuedAt) {
+        return issuedAt.plusMillis(expirationMs);
     }
 
     public String extractUsername(String token) {

@@ -12,10 +12,12 @@ import com.cysvet.backend.dto.evento.EventoReprodutivoRequest;
 import com.cysvet.backend.dto.lote.LoteRequest;
 import com.cysvet.backend.dto.propriedade.PropriedadeRequest;
 import com.cysvet.backend.dto.sync.DeleteRequest;
+import com.cysvet.backend.dto.sync.SyncContractResponse;
 import com.cysvet.backend.dto.sync.PullSyncResponse;
 import com.cysvet.backend.dto.sync.SyncEntityNames;
 import com.cysvet.backend.dto.sync.SyncItemRequest;
 import com.cysvet.backend.dto.sync.SyncItemResponse;
+import com.cysvet.backend.dto.sync.SyncItemStatus;
 import com.cysvet.backend.dto.sync.SyncRequest;
 import com.cysvet.backend.dto.sync.SyncResponse;
 import com.cysvet.backend.dto.visita.VisitaRequest;
@@ -26,10 +28,12 @@ import com.cysvet.backend.entity.Propriedade;
 import com.cysvet.backend.entity.TipoOperacaoSincronizacao;
 import com.cysvet.backend.entity.Usuario;
 import com.cysvet.backend.entity.Visita;
+import com.cysvet.backend.entity.BaseEntity;
 import com.cysvet.backend.exception.ResourceNotFoundException;
 
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validator;
+import java.util.Map;
 import lombok.RequiredArgsConstructor;
 
 @Service
@@ -63,6 +67,7 @@ public class SyncService {
 
         return new PullSyncResponse(
                 Instant.now(),
+                buildContract(),
                 propriedadeService.listUpdatedSince(baseInstant),
                 loteService.listUpdatedSince(baseInstant),
                 animalService.listUpdatedSince(baseInstant),
@@ -76,9 +81,10 @@ public class SyncService {
         return idempotencyService.findByMutationKey(item.chaveMutacao())
                 .map(mutation -> new SyncItemResponse(
                         item.chaveMutacao(),
-                        "SYNCED",
+                        SyncItemStatus.REPLAYED,
                         mutation.getIdEntidade(),
                         extractExternalId(item),
+                        null,
                         "Operacao reaproveitada por idempotencia"
                 ))
                 .orElseGet(() -> execute(item, user));
@@ -91,71 +97,71 @@ public class SyncService {
             if (item.operationType() == TipoOperacaoSincronizacao.DELETE) {
                 return deleteProperty(item, user);
             }
-            Propriedade property = handleProperty(item, user);
-            idempotencyService.register(item.chaveMutacao(), entity, user.getId(), property.getId());
-            return new SyncItemResponse(item.chaveMutacao(), "SYNCED", property.getId(), property.getIdExterno(), "Sincronizado com sucesso");
+            SyncUpsertResult<Propriedade> property = handleProperty(item, user);
+            idempotencyService.register(item.chaveMutacao(), entity, user.getId(), property.entity().getId());
+            return buildUpsertResponse(item, property.entity(), property.applied(), property.entity().getIdExterno());
         }
 
         if (SyncEntityNames.ANIMAL.equals(entity)) {
             if (item.operationType() == TipoOperacaoSincronizacao.DELETE) {
                 return deleteAnimal(item, user);
             }
-            Animal animal = handleAnimal(item, user);
-            idempotencyService.register(item.chaveMutacao(), entity, user.getId(), animal.getId());
-            return new SyncItemResponse(item.chaveMutacao(), "SYNCED", animal.getId(), animal.getIdExterno(), "Sincronizado com sucesso");
+            SyncUpsertResult<Animal> animal = handleAnimal(item, user);
+            idempotencyService.register(item.chaveMutacao(), entity, user.getId(), animal.entity().getId());
+            return buildUpsertResponse(item, animal.entity(), animal.applied(), animal.entity().getIdExterno());
         }
 
         if (SyncEntityNames.LOT.equals(entity)) {
             if (item.operationType() == TipoOperacaoSincronizacao.DELETE) {
                 return deleteLot(item, user);
             }
-            Lote lote = handleLot(item, user);
-            idempotencyService.register(item.chaveMutacao(), entity, user.getId(), lote.getId());
-            return new SyncItemResponse(item.chaveMutacao(), "SYNCED", lote.getId(), lote.getIdExterno(), "Sincronizado com sucesso");
+            SyncUpsertResult<Lote> lote = handleLot(item, user);
+            idempotencyService.register(item.chaveMutacao(), entity, user.getId(), lote.entity().getId());
+            return buildUpsertResponse(item, lote.entity(), lote.applied(), lote.entity().getIdExterno());
         }
 
         if (SyncEntityNames.EVENT.equals(entity)) {
             if (item.operationType() == TipoOperacaoSincronizacao.DELETE) {
                 return deleteEvent(item, user);
             }
-            EventoReprodutivo event = handleEvent(item, user);
-            idempotencyService.register(item.chaveMutacao(), entity, user.getId(), event.getId());
-            return new SyncItemResponse(item.chaveMutacao(), "SYNCED", event.getId(), event.getIdExterno(), "Sincronizado com sucesso");
+            SyncUpsertResult<EventoReprodutivo> event = handleEvent(item, user);
+            idempotencyService.register(item.chaveMutacao(), entity, user.getId(), event.entity().getId());
+            return buildUpsertResponse(item, event.entity(), event.applied(), event.entity().getIdExterno());
         }
 
         if (SyncEntityNames.VISIT.equals(entity)) {
             if (item.operationType() == TipoOperacaoSincronizacao.DELETE) {
                 return deleteVisit(item, user);
             }
-            Visita visit = handleVisit(item, user);
-            idempotencyService.register(item.chaveMutacao(), entity, user.getId(), visit.getId());
-            return new SyncItemResponse(item.chaveMutacao(), "SYNCED", visit.getId(), visit.getIdExterno(), "Sincronizado com sucesso");
+            SyncUpsertResult<Visita> visit = handleVisit(item, user);
+            idempotencyService.register(item.chaveMutacao(), entity, user.getId(), visit.entity().getId());
+            return buildUpsertResponse(item, visit.entity(), visit.applied(), visit.entity().getIdExterno());
         }
 
         throw new IllegalArgumentException("Entidade de sincronizacao nao suportada: " + item.entity());
     }
 
-    private Propriedade handleProperty(SyncItemRequest item, Usuario user) {
+    private SyncUpsertResult<Propriedade> handleProperty(SyncItemRequest item, Usuario user) {
         PropriedadeRequest request = convertAndValidate(item.payload(), PropriedadeRequest.class);
         return propriedadeService.upsertForSync(request, resolveClientTimestamp(item.dataAtualizacaoCliente(), request.dataAtualizacaoCliente()), user);
     }
 
-    private Animal handleAnimal(SyncItemRequest item, Usuario user) {
+    private SyncUpsertResult<Animal> handleAnimal(SyncItemRequest item, Usuario user) {
         AnimalRequest request = convertAndValidate(item.payload(), AnimalRequest.class);
         return animalService.upsertForSync(request, resolveClientTimestamp(item.dataAtualizacaoCliente(), request.dataAtualizacaoCliente()), user);
     }
 
-    private Lote handleLot(SyncItemRequest item, Usuario user) {
+    private SyncUpsertResult<Lote> handleLot(SyncItemRequest item, Usuario user) {
         LoteRequest request = convertAndValidate(item.payload(), LoteRequest.class);
         return loteService.upsertForSync(request, resolveClientTimestamp(item.dataAtualizacaoCliente(), request.dataAtualizacaoCliente()), user);
     }
 
-    private EventoReprodutivo handleEvent(SyncItemRequest item, Usuario user) {
+    private SyncUpsertResult<EventoReprodutivo> handleEvent(SyncItemRequest item, Usuario user) {
         EventoReprodutivoRequest request = convertAndValidate(item.payload(), EventoReprodutivoRequest.class);
         return eventoReprodutivoService.upsertForSync(request, resolveClientTimestamp(item.dataAtualizacaoCliente(), request.dataAtualizacaoCliente()), user);
     }
 
-    private Visita handleVisit(SyncItemRequest item, Usuario user) {
+    private SyncUpsertResult<Visita> handleVisit(SyncItemRequest item, Usuario user) {
         VisitaRequest request = convertAndValidate(item.payload(), VisitaRequest.class);
         return visitService.upsertForSync(request, resolveClientTimestamp(item.dataAtualizacaoCliente(), request.dataAtualizacaoCliente()), user);
     }
@@ -209,7 +215,7 @@ public class SyncService {
         }
 
         idempotencyService.register(item.chaveMutacao(), SyncEntityNames.normalize(item.entity()), user.getId(), idEntidade);
-        return new SyncItemResponse(item.chaveMutacao(), "SYNCED", idEntidade, idExterno, "Sincronizado com sucesso");
+        return new SyncItemResponse(item.chaveMutacao(), SyncItemStatus.SYNCED, idEntidade, idExterno, Instant.now(), "Sincronizado com sucesso");
     }
 
     private <T> T convertAndValidate(Object payload, Class<T> type) {
@@ -238,6 +244,53 @@ public class SyncService {
             return item.payload().get("id_externo").asText();
         }
         return null;
+    }
+
+    private SyncItemResponse buildUpsertResponse(
+            SyncItemRequest item,
+            BaseEntity entity,
+            boolean applied,
+            String idExterno
+    ) {
+        if (applied) {
+            return new SyncItemResponse(
+                    item.chaveMutacao(),
+                    SyncItemStatus.SYNCED,
+                    entity.getId(),
+                    idExterno,
+                    entity.getDataAtualizacao(),
+                    "Sincronizado com sucesso"
+            );
+        }
+
+        return new SyncItemResponse(
+                item.chaveMutacao(),
+                SyncItemStatus.CONFLICT_SERVER_WINS,
+                entity.getId(),
+                idExterno,
+                entity.getDataAtualizacao(),
+                "Atualizacao ignorada porque o servidor possui versao mais recente; o cliente deve executar um pull para reconciliar"
+        );
+    }
+
+    private SyncContractResponse buildContract() {
+        return new SyncContractResponse(
+                "offline-sync-v1",
+                SyncEntityNames.createUpdateOrder(),
+                SyncEntityNames.deleteOrder(),
+                SyncEntityNames.snapshotCollections(),
+                "SERVER_WINS_WHEN_SERVER_DATA_ATUALIZACAO_IS_AFTER_CLIENT_TIMESTAMP",
+                "AFTER_PUSH_EXECUTE_INCREMENTAL_PULL_USING_LAST_SUCCESSFUL_CHECKPOINT",
+                Map.of(
+                        SyncEntityNames.PROPERTY, "SOFT_DELETE_WITH_STATUS_INATIVO",
+                        SyncEntityNames.LOT, "SOFT_DELETE_WITH_STATUS_INATIVO",
+                        SyncEntityNames.ANIMAL, "SOFT_DELETE_WITH_STATUS_INATIVO",
+                        SyncEntityNames.VISIT, "HARD_DELETE_WITH_DELETED_RECORD_TOMBSTONE",
+                        SyncEntityNames.EVENT, "HARD_DELETE_WITH_DELETED_RECORD_TOMBSTONE"
+                ),
+                "ONLINE_ONLY",
+                "ONLINE_ONLY"
+        );
     }
 
     @FunctionalInterface

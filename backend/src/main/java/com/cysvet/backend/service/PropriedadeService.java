@@ -89,13 +89,13 @@ public class PropriedadeService {
     }
 
     @Transactional
-    public Propriedade upsertForSync(PropriedadeRequest request, Instant dataAtualizacaoCliente, Usuario user) {
+    public SyncUpsertResult<Propriedade> upsertForSync(PropriedadeRequest request, Instant dataAtualizacaoCliente, Usuario user) {
         Propriedade property = farmPropertyRepository.findByIdExterno(request.idExterno())
                 .orElseGet(Propriedade::new);
         boolean isNewProperty = property.getId() == null;
 
         if (property.getId() != null && dataAtualizacaoCliente != null && property.getDataAtualizacao().isAfter(dataAtualizacaoCliente)) {
-            return property;
+            return SyncUpsertResult.conflicted(property);
         }
 
         apply(property, request, user);
@@ -104,7 +104,7 @@ public class PropriedadeService {
             loteService.ensureDefaultLotForProperty(saved, user);
         }
         deletedRecordService.clearDeletionMarker(SyncEntityNames.PROPERTY, saved.getIdExterno());
-        return saved;
+        return SyncUpsertResult.applied(saved);
     }
 
     @Transactional

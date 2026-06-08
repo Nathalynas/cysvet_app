@@ -3,6 +3,7 @@ package com.cysvet.backend.service;
 import com.cysvet.backend.dto.auth.AuthResponse;
 import com.cysvet.backend.dto.auth.EmpresaPermitidaResponse;
 import com.cysvet.backend.dto.auth.UsuarioAutenticadoResponse;
+import com.cysvet.backend.dto.auth.SessionPolicyResponse;
 import com.cysvet.backend.dto.auth.LoginRequest;
 import com.cysvet.backend.dto.auth.LogoutRequest;
 import com.cysvet.backend.dto.auth.RegisterRequest;
@@ -117,16 +118,19 @@ public class AuthService {
             throw new AccessDeniedException("Usuario sem empresa vinculada ativa");
         }
 
+        Instant issuedAt = Instant.now();
         String accessToken = jwtService.generateToken(
                 managedUser,
-                List.of(new SimpleGrantedAuthority("ROLE_" + managedUser.getPerfil().name()))
+                List.of(new SimpleGrantedAuthority("ROLE_" + managedUser.getPerfil().name())),
+                issuedAt
         );
         String refreshTokenValue = UUID.randomUUID().toString();
+        Instant refreshExpiresAt = issuedAt.plusMillis(refreshExpirationMs);
 
         TokenAtualizacao refreshToken = new TokenAtualizacao();
         refreshToken.setToken(refreshTokenValue);
         refreshToken.setUsuario(managedUser);
-        refreshToken.setExpiraEm(Instant.now().plusMillis(refreshExpirationMs));
+        refreshToken.setExpiraEm(refreshExpiresAt);
         refreshToken.setRevogado(false);
         refreshTokenRepository.saveAndFlush(refreshToken);
 
@@ -146,7 +150,13 @@ public class AuthService {
                         managedUser.getPerfil()
                 ),
                 empresaAtivaId,
-                empresas
+                empresas,
+                new SessionPolicyResponse(
+                        jwtService.resolveAccessTokenExpiration(issuedAt),
+                        refreshExpiresAt,
+                        "RESTORE_LOCAL_SESSION_ALLOWED_UNTIL_REFRESH_TOKEN_EXPIRATION",
+                        "WHEN_ACCESS_TOKEN_EXPIRES_USE_REFRESH_TOKEN_ON_NEXT_ONLINE_REVALIDATION"
+                )
         );
     }
 

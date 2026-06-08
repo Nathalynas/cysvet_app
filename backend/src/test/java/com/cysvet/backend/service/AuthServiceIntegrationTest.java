@@ -1,10 +1,13 @@
 package com.cysvet.backend.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.cysvet.backend.dto.auth.AuthResponse;
 import com.cysvet.backend.dto.auth.RegisterRequest;
+import com.cysvet.backend.dto.auth.TokenRefreshRequest;
 import com.cysvet.backend.entity.TokenAtualizacao;
 import com.cysvet.backend.entity.Usuario;
 import com.cysvet.backend.repository.TokenAtualizacaoRepository;
@@ -47,5 +50,34 @@ class AuthServiceIntegrationTest {
         assertNotNull(token.getUsuario());
         assertNotNull(token.getUsuario().getId());
         assertEquals(usuario.getId(), token.getUsuario().getId());
+        assertNotNull(response.sessionPolicy());
+        assertNotNull(response.sessionPolicy().accessTokenExpiresAt());
+        assertNotNull(response.sessionPolicy().refreshTokenExpiresAt());
+        assertTrue(response.sessionPolicy().refreshTokenExpiresAt().isAfter(response.sessionPolicy().accessTokenExpiresAt()));
+    }
+
+    @Test
+    void refreshShouldRotateTokensAndExposeOfflineSessionPolicy() {
+        AuthResponse registered = authService.register(
+                new RegisterRequest("Refresh Teste", "teste.auth.refresh@example.com", "123456")
+        );
+
+        AuthResponse refreshed = authService.refresh(new TokenRefreshRequest(registered.refreshToken()));
+
+        assertNotEquals(registered.refreshToken(), refreshed.refreshToken());
+        assertNotNull(refreshed.sessionPolicy());
+        assertEquals(
+                "RESTORE_LOCAL_SESSION_ALLOWED_UNTIL_REFRESH_TOKEN_EXPIRATION",
+                refreshed.sessionPolicy().sessionRestorePolicy()
+        );
+
+        tokenAtualizacaoRepository.findByTokenAndRevogadoFalse(registered.refreshToken())
+                .ifPresent(token -> {
+                    throw new AssertionError("Refresh token anterior deveria estar revogado");
+                });
+
+        TokenAtualizacao activeToken = tokenAtualizacaoRepository.findByTokenAndRevogadoFalse(refreshed.refreshToken())
+                .orElseThrow(() -> new AssertionError("Novo refresh token nao persistido"));
+        assertNotNull(activeToken.getExpiraEm());
     }
 }

@@ -87,18 +87,18 @@ public class LoteService {
     }
 
     @Transactional
-    public Lote upsertForSync(LoteRequest request, Instant dataAtualizacaoCliente, Usuario user) {
+    public SyncUpsertResult<Lote> upsertForSync(LoteRequest request, Instant dataAtualizacaoCliente, Usuario user) {
         Lote lote = loteRepository.findByIdExterno(request.idExterno())
                 .orElseGet(Lote::new);
 
         if (lote.getId() != null && dataAtualizacaoCliente != null && lote.getDataAtualizacao().isAfter(dataAtualizacaoCliente)) {
-            return lote;
+            return SyncUpsertResult.conflicted(lote);
         }
 
         apply(lote, request, user);
         Lote saved = loteRepository.save(lote);
         deletedRecordService.clearDeletionMarker(SyncEntityNames.LOT, saved.getIdExterno());
-        return saved;
+        return SyncUpsertResult.applied(saved);
     }
 
     @Transactional

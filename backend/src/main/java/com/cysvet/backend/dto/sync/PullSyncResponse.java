@@ -13,6 +13,8 @@ import java.util.List;
 public record PullSyncResponse(
         @Schema(description = "Horario atual do servidor.", example = "2026-05-12T18:30:00Z")
         Instant serverTime,
+        @Schema(description = "Metadados oficiais do contrato offline-first.")
+        SyncContractResponse contract,
         @Schema(description = "Propriedades atualizadas.")
         List<PropriedadeResponse> properties,
         @Schema(description = "Lotes atualizados.")

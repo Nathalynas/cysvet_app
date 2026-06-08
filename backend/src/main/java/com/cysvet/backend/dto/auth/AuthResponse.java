@@ -14,6 +14,8 @@ public record AuthResponse(
         @Schema(description = "Identificador da empresa ativa.", example = "1")
         Long empresaAtivaId,
         @Schema(description = "Empresas permitidas para o usuario autenticado.")
-        List<EmpresaPermitidaResponse> empresas
+        List<EmpresaPermitidaResponse> empresas,
+        @Schema(description = "Politica oficial de restauracao e renovacao da sessao para uso offline.")
+        SessionPolicyResponse sessionPolicy
 ) {
 }

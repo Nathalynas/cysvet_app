@@ -84,18 +84,18 @@ public class VisitaService {
     }
 
     @Transactional
-    public Visita upsertForSync(VisitaRequest request, Instant dataAtualizacaoCliente, Usuario user) {
+    public SyncUpsertResult<Visita> upsertForSync(VisitaRequest request, Instant dataAtualizacaoCliente, Usuario user) {
         Visita visit = visitRepository.findByIdExterno(request.idExterno())
                 .orElseGet(Visita::new);
 
         if (visit.getId() != null && dataAtualizacaoCliente != null && visit.getDataAtualizacao().isAfter(dataAtualizacaoCliente)) {
-            return visit;
+            return SyncUpsertResult.conflicted(visit);
         }
 
         apply(visit, request, user);
         Visita saved = visitRepository.save(visit);
         deletedRecordService.clearDeletionMarker(SyncEntityNames.VISIT, saved.getIdExterno());
-        return saved;
+        return SyncUpsertResult.applied(saved);
     }
 
     @Transactional

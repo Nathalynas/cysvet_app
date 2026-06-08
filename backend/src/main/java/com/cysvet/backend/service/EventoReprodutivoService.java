@@ -88,18 +88,18 @@ public class EventoReprodutivoService {
     }
 
     @Transactional
-    public EventoReprodutivo upsertForSync(EventoReprodutivoRequest request, Instant dataAtualizacaoCliente, Usuario user) {
+    public SyncUpsertResult<EventoReprodutivo> upsertForSync(EventoReprodutivoRequest request, Instant dataAtualizacaoCliente, Usuario user) {
         EventoReprodutivo event = eventoReprodutivoRepository.findByIdExterno(request.idExterno())
                 .orElseGet(EventoReprodutivo::new);
 
         if (event.getId() != null && dataAtualizacaoCliente != null && event.getDataAtualizacao().isAfter(dataAtualizacaoCliente)) {
-            return event;
+            return SyncUpsertResult.conflicted(event);
         }
 
         apply(event, request, user);
         EventoReprodutivo saved = eventoReprodutivoRepository.save(event);
         deletedRecordService.clearDeletionMarker(SyncEntityNames.EVENT, saved.getIdExterno());
-        return saved;
+        return SyncUpsertResult.applied(saved);
     }
 
     @Transactional

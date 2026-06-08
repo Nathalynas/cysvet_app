@@ -3,6 +3,7 @@ package com.cysvet.backend.controller;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.http.MediaType.APPLICATION_JSON;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -101,6 +102,11 @@ class SyncIntegrationTest {
         JsonNode pull = pullSnapshot(auth, null);
 
         assertNotNull(pull.path("serverTime").asText(null));
+        assertEquals("offline-sync-v1", pull.path("contract").path("schemaVersion").asText());
+        assertEquals("property", pull.path("contract").path("createUpdateOrder").path(0).asText());
+        assertEquals("lot", pull.path("contract").path("createUpdateOrder").path(1).asText());
+        assertEquals("ONLINE_ONLY", pull.path("contract").path("dashboardMode").asText());
+        assertEquals("HARD_DELETE_WITH_DELETED_RECORD_TOMBSTONE", pull.path("contract").path("deletionModes").path("visit").asText());
         assertEquals("prop-sync-full-1", findByExternalId(pull.path("properties"), "prop-sync-full-1").path("idExterno").asText());
         assertEquals("prop-sync-full-1", findByExternalId(pull.path("lots"), lot.path("idExterno").asText()).path("idExternoPropriedade").asText());
         assertEquals(lot.path("idExterno").asText(), findByExternalId(pull.path("animals"), "animal-sync-full-1").path("idExternoLote").asText());
@@ -160,7 +166,8 @@ class SyncIntegrationTest {
                         .content(syncRequest))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.items[0].idExterno").value("prop-sync-idem-1"))
-                .andExpect(jsonPath("$.items[0].status").value("SYNCED"));
+                .andExpect(jsonPath("$.items[0].status").value("SYNCED"))
+                .andExpect(jsonPath("$.items[0].serverUpdatedAt").isNotEmpty());
 
         mockMvc.perform(post("/api/sync")
                         .header("Authorization", auth.authorization())
@@ -169,7 +176,147 @@ class SyncIntegrationTest {
                         .content(syncRequest))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.items[0].idExterno").value("prop-sync-idem-1"))
+                .andExpect(jsonPath("$.items[0].status").value("REPLAYED"))
                 .andExpect(jsonPath("$.items[0].message").value("Operacao reaproveitada por idempotencia"));
+    }
+
+    @Test
+    void syncShouldReturnExplicitConflictAndAllowReconciliationPull() throws Exception {
+        AuthContext auth = registerAndAuthenticate("sync.conflict@example.com", "Admin Conflict", "123456");
+
+        createProperty(auth, """
+                {
+                  "idExterno": "prop-conflict-1",
+                  "nome": "Fazenda Atual",
+                  "nomeProprietario": "Clara"
+                }
+                """);
+
+        String conflictRequest = """
+                {
+                  "items": [
+                    {
+                      "chaveMutacao": "mut-conflict-1",
+                      "operationType": "UPDATE",
+                      "entity": "property",
+                      "dataAtualizacaoCliente": "2020-01-01T00:00:00Z",
+                      "payload": {
+                        "idExterno": "prop-conflict-1",
+                        "nome": "Fazenda Desatualizada",
+                        "nomeProprietario": "Clara"
+                      }
+                    }
+                  ]
+                }
+                """;
+
+        mockMvc.perform(post("/api/sync")
+                        .header("Authorization", auth.authorization())
+                        .header("empresaid", auth.tenantId())
+                        .contentType(APPLICATION_JSON)
+                        .content(conflictRequest))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items[0].status").value("CONFLICT_SERVER_WINS"))
+                .andExpect(jsonPath("$.items[0].message").value("Atualizacao ignorada porque o servidor possui versao mais recente; o cliente deve executar um pull para reconciliar"))
+                .andExpect(jsonPath("$.items[0].serverUpdatedAt").isNotEmpty());
+
+        JsonNode pull = pullSnapshot(auth, "2020-01-01T00:00:00Z");
+        assertEquals("Fazenda Atual", findByExternalId(pull.path("properties"), "prop-conflict-1").path("nome").asText());
+    }
+
+    @Test
+    void syncShouldCreateUpdateAndSoftDeleteLotUsingOfficialContract() throws Exception {
+        AuthContext auth = registerAndAuthenticate("sync.lot@example.com", "Admin Lot Sync", "123456");
+
+        createProperty(auth, """
+                {
+                  "idExterno": "prop-lot-sync-1",
+                  "nome": "Fazenda Lote Sync",
+                  "nomeProprietario": "Rosa"
+                }
+                """);
+
+        String createLotRequest = """
+                {
+                  "items": [
+                    {
+                      "chaveMutacao": "mut-lot-create-1",
+                      "operationType": "CREATE",
+                      "entity": "lot",
+                      "payload": {
+                        "idExterno": "lot-sync-contract-1",
+                        "idExternoPropriedade": "prop-lot-sync-1",
+                        "nome": "Lote Contract",
+                        "descricao": "Lote criado via sync"
+                      }
+                    }
+                  ]
+                }
+                """;
+
+        mockMvc.perform(post("/api/sync")
+                        .header("Authorization", auth.authorization())
+                        .header("empresaid", auth.tenantId())
+                        .contentType(APPLICATION_JSON)
+                        .content(createLotRequest))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items[0].status").value("SYNCED"))
+                .andExpect(jsonPath("$.items[0].idExterno").value("lot-sync-contract-1"));
+
+        String updateLotRequest = """
+                {
+                  "items": [
+                    {
+                      "chaveMutacao": "mut-lot-update-1",
+                      "operationType": "UPDATE",
+                      "entity": "lot",
+                      "dataAtualizacaoCliente": "2030-01-01T00:00:00Z",
+                      "payload": {
+                        "idExterno": "lot-sync-contract-1",
+                        "idExternoPropriedade": "prop-lot-sync-1",
+                        "nome": "Lote Contract",
+                        "descricao": "Descricao atualizada via sync"
+                      }
+                    }
+                  ]
+                }
+                """;
+
+        mockMvc.perform(post("/api/sync")
+                        .header("Authorization", auth.authorization())
+                        .header("empresaid", auth.tenantId())
+                        .contentType(APPLICATION_JSON)
+                        .content(updateLotRequest))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items[0].status").value("SYNCED"));
+
+        String deleteLotRequest = """
+                {
+                  "items": [
+                    {
+                      "chaveMutacao": "mut-lot-delete-1",
+                      "operationType": "DELETE",
+                      "entity": "lot",
+                      "payload": {
+                        "idExterno": "lot-sync-contract-1"
+                      }
+                    }
+                  ]
+                }
+                """;
+
+        mockMvc.perform(post("/api/sync")
+                        .header("Authorization", auth.authorization())
+                        .header("empresaid", auth.tenantId())
+                        .contentType(APPLICATION_JSON)
+                        .content(deleteLotRequest))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items[0].status").value("SYNCED"));
+
+        JsonNode pull = pullSnapshot(auth, null);
+        JsonNode lot = findByExternalId(pull.path("lots"), "lot-sync-contract-1");
+        assertEquals("Descricao atualizada via sync", lot.path("descricao").asText());
+        assertEquals("INATIVO", lot.path("status").asText());
     }
 
     @Test
