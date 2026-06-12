@@ -300,6 +300,7 @@ class _PageHeader extends StatelessWidget {
 class _AppShellSizes {
   static const double desktopMenuCollapsedWidth = 64;
   static const double menuExpandedWidth = 224;
+  static const double mobileNavigationBarRadius = 30;
   static const double headerHeight = 56;
 
   static const double menuHorizontalPadding = 12;
@@ -311,6 +312,8 @@ class _AppShellSizes {
   static const double compactMobileTileWidth = 52;
   static const double compactDesktopTileHeight = 44;
   static const double compactMobileTileHeight = 48;
+  static const double mobileNavigationBarHeight = 60;
+  static const double mobileNavigationBarMaxWidth = 300;
   static const double expandedDesktopTileHeight = 42;
   static const double mobileNavigationItemWidth = desktopMenuCollapsedWidth;
   static const double expandedContentMinWidth = 120;
@@ -335,12 +338,17 @@ class _AppShellSizes {
     menuVerticalPadding,
   );
   static const EdgeInsets mobileNavigationPadding = EdgeInsets.fromLTRB(
-    4,
-    4,
-    4,
-    4,
+    6,
+    6,
+    6,
+    6,
   );
-  static const EdgeInsets logoPadding = EdgeInsets.only(left: 16, right: 12);
+  static const EdgeInsets mobileNavigationMargin = EdgeInsets.fromLTRB(
+    12,
+    0,
+    12,
+    8,
+  );
 }
 
 class _DesktopNavigationMenu extends StatefulWidget {
@@ -521,49 +529,72 @@ class _MobileNavigationBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
+    final radius = BorderRadius.circular(
+      _AppShellSizes.mobileNavigationBarRadius,
+    );
+    final backgroundColor = colorScheme.primary.withValues(alpha: 0.94);
+    final borderColor = colorScheme.onPrimary.withValues(alpha: 0.2);
 
     return Material(
-      color: colorScheme.surface,
+      color: Colors.transparent,
       child: SafeArea(
         top: false,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              height: _AppShellSizes.dividerHeight,
-              color: colorScheme.outline,
-            ),
-            Padding(
-              padding: _AppShellSizes.mobileNavigationPadding,
-              child: Row(
-                children: [
-                  for (
-                    var index = 0;
-                    index < AppShell._mobileBottomItemCount;
-                    index++
-                  )
-                    Expanded(
-                      flex: 1,
-                      child: Center(
-                        child: SizedBox(
-                          width: _AppShellSizes.mobileNavigationItemWidth,
-                          child: Center(
-                            child: _NavigationTile(
-                              item: AppShell._items[index],
-                              isSelected: currentIndex == index,
-                              isCompact: true,
-                              onTap: () {
-                                onDestinationSelected(index);
-                              },
+        minimum: _AppShellSizes.mobileNavigationMargin,
+        child: SizedBox(
+          height: _AppShellSizes.mobileNavigationBarHeight,
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final width = constraints.maxWidth
+                  .clamp(0.0, _AppShellSizes.mobileNavigationBarMaxWidth)
+                  .toDouble();
+
+              return Center(
+                child: SizedBox(
+                  width: width,
+                  height: _AppShellSizes.mobileNavigationBarHeight,
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      color: backgroundColor,
+                      borderRadius: radius,
+                      border: Border.all(color: borderColor),
+                    ),
+                    child: Padding(
+                      padding: _AppShellSizes.mobileNavigationPadding,
+                      child: Row(
+                        children: [
+                          for (
+                            var index = 0;
+                            index < AppShell._mobileBottomItemCount;
+                            index++
+                          )
+                            Expanded(
+                              flex: 1,
+                              child: Center(
+                                child: SizedBox(
+                                  width:
+                                      _AppShellSizes.mobileNavigationItemWidth,
+                                  child: Center(
+                                    child: _NavigationTile(
+                                      item: AppShell._items[index],
+                                      isSelected: currentIndex == index,
+                                      isCompact: true,
+                                      isOnTintedSurface: true,
+                                      onTap: () {
+                                        onDestinationSelected(index);
+                                      },
+                                    ),
+                                  ),
+                                ),
+                              ),
                             ),
-                          ),
-                        ),
+                        ],
                       ),
                     ),
-                ],
-              ),
-            ),
-          ],
+                  ),
+                ),
+              );
+            },
+          ),
         ),
       ),
     );
@@ -586,11 +617,12 @@ class _MobileNavigationDrawer extends StatelessWidget {
     return Drawer(
       width: _AppShellSizes.menuExpandedWidth,
       backgroundColor: colorScheme.surface,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.only(
+      shape: RoundedRectangleBorder(
+        borderRadius: const BorderRadius.only(
           topRight: Radius.circular(24),
           bottomRight: Radius.circular(24),
         ),
+        side: BorderSide(color: colorScheme.outline),
       ),
       child: SafeArea(
         child: Stack(
@@ -627,29 +659,9 @@ class _MobileNavigationDrawer extends StatelessWidget {
               top: _AppShellSizes.logoTopOffset,
               left: 0,
               right: 0,
-              child: Padding(
-                padding: _AppShellSizes.logoPadding,
-                child: Row(
-                  children: [
-                    Image.asset(
-                      'assets/images/icon.png',
-                      width: _AppShellSizes.logoIconSize,
-                      height: _AppShellSizes.logoIconSize,
-                      fit: BoxFit.contain,
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Align(
-                        alignment: Alignment.centerLeft,
-                        child: Image.asset(
-                          'assets/images/letreiro.png',
-                          height: _AppShellSizes.logoIconSize,
-                          fit: BoxFit.contain,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
+              child: const _DesktopLogo(
+                isExpanded: true,
+                availableWidth: _AppShellSizes.menuExpandedWidth,
               ),
             ),
           ],
@@ -666,6 +678,7 @@ class _NavigationTile extends StatefulWidget {
     required this.onTap,
     this.isCompact = false,
     this.isDesktop = false,
+    this.isOnTintedSurface = false,
   });
 
   final _NavigationItem item;
@@ -673,6 +686,7 @@ class _NavigationTile extends StatefulWidget {
   final VoidCallback onTap;
   final bool isCompact;
   final bool isDesktop;
+  final bool isOnTintedSurface;
 
   @override
   State<_NavigationTile> createState() => _NavigationTileState();
@@ -683,8 +697,12 @@ class _NavigationTileState extends State<_NavigationTile> {
 
   @override
   Widget build(BuildContext context) {
-    final labelStyle = Theme.of(context).textTheme.labelMedium;
-    final colorScheme = Theme.of(context).colorScheme;
+    final theme = Theme.of(context);
+    final labelStyle = theme.textTheme.labelMedium;
+    final colorScheme = theme.colorScheme;
+    final isOnTintedSurface = widget.isOnTintedSurface;
+    final tintedTextColor = colorScheme.onPrimary.withValues(alpha: 0.82);
+    final tintedHoverColor = colorScheme.onPrimary.withValues(alpha: 0.12);
 
     late final Color textColor;
     late final Color backgroundColor;
@@ -693,10 +711,14 @@ class _NavigationTileState extends State<_NavigationTile> {
       textColor = colorScheme.onPrimary;
       backgroundColor = colorScheme.primary;
     } else if (_isHovering) {
-      textColor = colorScheme.onSurface;
-      backgroundColor = colorScheme.surfaceContainerHighest;
+      textColor = isOnTintedSurface ? tintedTextColor : colorScheme.onSurface;
+      backgroundColor = isOnTintedSurface
+          ? tintedHoverColor
+          : colorScheme.surfaceContainerHighest;
     } else {
-      textColor = colorScheme.onSurfaceVariant;
+      textColor = isOnTintedSurface
+          ? tintedTextColor
+          : colorScheme.onSurfaceVariant;
       backgroundColor = colorScheme.surfaceContainerHighest.withValues(
         alpha: 0,
       );
@@ -756,7 +778,11 @@ class _NavigationTileState extends State<_NavigationTile> {
               ),
               decoration: BoxDecoration(
                 color: backgroundColor,
-                borderRadius: BorderRadius.circular(18),
+                borderRadius: BorderRadius.circular(
+                  widget.isOnTintedSurface && widget.isCompact
+                      ? _AppShellSizes.mobileNavigationBarRadius
+                      : 18,
+                ),
               ),
               child: IconTheme(
                 data: IconThemeData(
