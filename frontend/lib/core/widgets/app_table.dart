@@ -32,6 +32,7 @@ class AppTable<T> extends StatelessWidget {
     this.borderColor,
     this.borderRadius = 20,
     this.shadow = true,
+    this.onRowTap,
   });
 
   final List<T> rows;
@@ -44,6 +45,7 @@ class AppTable<T> extends StatelessWidget {
   final Color? borderColor;
   final double borderRadius;
   final bool shadow;
+  final ValueChanged<T>? onRowTap;
 
   @override
   Widget build(BuildContext context) {
@@ -59,6 +61,7 @@ class AppTable<T> extends StatelessWidget {
             borderColor: borderColor,
             borderRadius: borderRadius,
             shadow: shadow,
+            onRowTap: onRowTap,
           );
         }
 
@@ -71,6 +74,7 @@ class AppTable<T> extends StatelessWidget {
           borderColor: borderColor,
           borderRadius: borderRadius,
           shadow: shadow,
+          onRowTap: onRowTap,
         );
       },
     );
@@ -87,6 +91,7 @@ class _AppTableGrid<T> extends StatelessWidget {
     required this.borderColor,
     required this.borderRadius,
     required this.shadow,
+    required this.onRowTap,
   });
 
   final List<T> rows;
@@ -97,6 +102,7 @@ class _AppTableGrid<T> extends StatelessWidget {
   final Color? borderColor;
   final double borderRadius;
   final bool shadow;
+  final ValueChanged<T>? onRowTap;
 
   @override
   Widget build(BuildContext context) {
@@ -141,6 +147,7 @@ class _AppTableGrid<T> extends StatelessWidget {
                         alpha: 0.28,
                       ),
                 equalColumnWidth: equalColumnWidth,
+                onTap: onRowTap,
               ),
             ],
           if (footerLabel != null) ...[
@@ -170,6 +177,7 @@ class _AppTableRow<T> extends StatelessWidget {
     this.isHeader = false,
     this.backgroundColor,
     this.equalColumnWidth = false,
+    this.onTap,
   });
 
   final List<AppTableColumn<T>> columns;
@@ -177,54 +185,69 @@ class _AppTableRow<T> extends StatelessWidget {
   final bool isHeader;
   final Color? backgroundColor;
   final bool equalColumnWidth;
+  final ValueChanged<T>? onTap;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
 
-    return ColoredBox(
-      color: backgroundColor ?? Colors.transparent,
-      child: Padding(
-        padding: EdgeInsets.symmetric(
-          horizontal: 18,
-          vertical: isHeader ? 15 : 16,
-        ),
-        child: Row(
-          children: [
-            for (var index = 0; index < columns.length; index++) ...[
-              Expanded(
-                flex: equalColumnWidth ? 1 : columns[index].flex,
-                child: Align(
-                  alignment: isHeader
-                      ? Alignment.center
-                      : columns[index].alignment,
-                  child: isHeader
-                      ? Text(
-                          columns[index].label,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          textAlign: TextAlign.center,
-                          style: theme.textTheme.labelLarge?.copyWith(
-                            color: colorScheme.onSurfaceVariant,
-                            fontWeight: FontWeight.w800,
-                            height: 1.18,
-                          ),
-                        )
-                      : DefaultTextStyle.merge(
-                          maxLines: 3,
-                          overflow: TextOverflow.ellipsis,
-                          style: theme.textTheme.bodyMedium?.copyWith(
-                            color: colorScheme.onSurface,
-                          ),
-                          child: columns[index].cellBuilder(context, item as T),
+    final content = Padding(
+      padding: EdgeInsets.symmetric(
+        horizontal: 18,
+        vertical: isHeader ? 15 : 16,
+      ),
+      child: Row(
+        children: [
+          for (var index = 0; index < columns.length; index++) ...[
+            Expanded(
+              flex: equalColumnWidth ? 1 : columns[index].flex,
+              child: Align(
+                alignment: isHeader
+                    ? Alignment.center
+                    : columns[index].alignment,
+                child: isHeader
+                    ? Text(
+                        columns[index].label,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        textAlign: TextAlign.center,
+                        style: theme.textTheme.labelLarge?.copyWith(
+                          color: colorScheme.onSurfaceVariant,
+                          fontWeight: FontWeight.w800,
+                          height: 1.18,
                         ),
-                ),
+                      )
+                    : DefaultTextStyle.merge(
+                        maxLines: 3,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          color: colorScheme.onSurface,
+                        ),
+                        child: columns[index].cellBuilder(context, item as T),
+                      ),
               ),
-              if (index < columns.length - 1) const SizedBox(width: 14),
-            ],
+            ),
+            if (index < columns.length - 1) const SizedBox(width: 14),
           ],
-        ),
+        ],
+      ),
+    );
+
+    if (isHeader || item == null || onTap == null) {
+      return ColoredBox(
+        color: backgroundColor ?? Colors.transparent,
+        child: content,
+      );
+    }
+
+    return Material(
+      color: backgroundColor ?? Colors.transparent,
+      child: InkWell(
+        hoverColor: colorScheme.primary.withValues(alpha: 0.04),
+        splashColor: colorScheme.primary.withValues(alpha: 0.08),
+        onTap: () => onTap!(item as T),
+        child: content,
       ),
     );
   }
@@ -240,6 +263,7 @@ class _AppTableCards<T> extends StatelessWidget {
     required this.borderColor,
     required this.borderRadius,
     required this.shadow,
+    required this.onRowTap,
   });
 
   final List<T> rows;
@@ -250,6 +274,7 @@ class _AppTableCards<T> extends StatelessWidget {
   final Color? borderColor;
   final double borderRadius;
   final bool shadow;
+  final ValueChanged<T>? onRowTap;
 
   @override
   Widget build(BuildContext context) {
@@ -276,40 +301,48 @@ class _AppTableCards<T> extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         for (var index = 0; index < rows.length; index++) ...[
-          AppCard(
-            padding: const EdgeInsets.all(16),
+          _TappableTableCard<T>(
+            item: rows[index],
+            onTap: onRowTap,
             borderRadius: borderRadius,
-            borderColor: borderColor,
-            shadow: shadow,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                if (titleBuilder != null) ...[
-                  titleBuilder!(context, rows[index]),
-                  const SizedBox(height: 12),
-                  Divider(color: colorScheme.outline.withValues(alpha: 0.7)),
-                  const SizedBox(height: 10),
-                ],
-                for (
-                  var columnIndex = 0;
-                  columnIndex < columns.length;
-                  columnIndex++
-                ) ...[
-                  _AppTableCardField<T>(
-                    label:
-                        columns[columnIndex].mobileLabel ??
-                        columns[columnIndex].label,
-                    child:
-                        columns[columnIndex].mobileCellBuilder?.call(
-                          context,
-                          rows[index],
-                        ) ??
-                        columns[columnIndex].cellBuilder(context, rows[index]),
-                  ),
-                  if (columnIndex < columns.length - 1)
+            child: AppCard(
+              padding: const EdgeInsets.all(16),
+              borderRadius: borderRadius,
+              borderColor: borderColor,
+              shadow: shadow,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (titleBuilder != null) ...[
+                    titleBuilder!(context, rows[index]),
                     const SizedBox(height: 12),
+                    Divider(color: colorScheme.outline.withValues(alpha: 0.7)),
+                    const SizedBox(height: 10),
+                  ],
+                  for (
+                    var columnIndex = 0;
+                    columnIndex < columns.length;
+                    columnIndex++
+                  ) ...[
+                    _AppTableCardField<T>(
+                      label:
+                          columns[columnIndex].mobileLabel ??
+                          columns[columnIndex].label,
+                      child:
+                          columns[columnIndex].mobileCellBuilder?.call(
+                            context,
+                            rows[index],
+                          ) ??
+                          columns[columnIndex].cellBuilder(
+                            context,
+                            rows[index],
+                          ),
+                    ),
+                    if (columnIndex < columns.length - 1)
+                      const SizedBox(height: 12),
+                  ],
                 ],
-              ],
+              ),
             ),
           ),
           if (index < rows.length - 1) const SizedBox(height: 12),
@@ -332,6 +365,39 @@ class _AppTableCards<T> extends StatelessWidget {
           ),
         ],
       ],
+    );
+  }
+}
+
+class _TappableTableCard<T> extends StatelessWidget {
+  const _TappableTableCard({
+    required this.item,
+    required this.child,
+    required this.borderRadius,
+    this.onTap,
+  });
+
+  final T item;
+  final Widget child;
+  final double borderRadius;
+  final ValueChanged<T>? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    if (onTap == null) {
+      return child;
+    }
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(borderRadius),
+        hoverColor: Theme.of(
+          context,
+        ).colorScheme.primary.withValues(alpha: 0.04),
+        onTap: () => onTap!(item),
+        child: child,
+      ),
     );
   }
 }

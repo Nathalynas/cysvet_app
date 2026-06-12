@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/enums/animal_status.dart';
 import '../../../core/network/api_client.dart';
+import '../domain/animal_history_event_model.dart';
 import '../domain/animal_summary_model.dart';
 
 final animalsRepositoryProvider = Provider<AnimalsRepository>((ref) {
@@ -58,6 +59,18 @@ class AnimalsRepository {
 
   Future<void> delete(int id) async {
     await _dio.delete<Object?>('/api/animals/$id');
+  }
+
+  Future<List<AnimalHistoryEventModel>> listHistoryEvents({
+    required int animalId,
+  }) async {
+    final response = await _dio.get<Object?>(
+      '/api/events',
+      queryParameters: {'idAnimal': animalId},
+    );
+
+    final items = _asList(response.data);
+    return items.map(AnimalHistoryEventModel.fromMap).toList(growable: false);
   }
 
   List<Map<String, dynamic>> _asList(Object? data) {

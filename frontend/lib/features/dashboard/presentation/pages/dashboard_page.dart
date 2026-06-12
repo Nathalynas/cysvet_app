@@ -1195,7 +1195,7 @@ class _MonthlyCalendarSection extends StatelessWidget {
       children: [
         const _SectionTitle(
           'Calendário mensal',
-          subtitle: 'Secagem, pre-parto e partos previstos por mês.',
+          subtitle: 'Secagem, pré-parto e partos previstos por mês.',
         ),
         const SizedBox(height: 10),
         _MonthlyChart(rows: rows),
