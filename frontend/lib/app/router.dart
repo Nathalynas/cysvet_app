@@ -12,6 +12,7 @@ import '../features/properties/presentation/pages/properties_page.dart';
 import '../features/splash/presentation/pages/splash_page.dart';
 import '../features/users/presentation/pages/users_page.dart';
 import '../features/visits/presentation/pages/visit_form_page.dart';
+import '../features/visits/presentation/pages/visit_report_page.dart';
 import '../features/visits/presentation/pages/visits_page.dart';
 import 'app_shell.dart';
 import 'theme.dart';
@@ -42,7 +43,8 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         return '/login';
       }
 
-      if (isAuthenticated && (location == '/login' || location == '/register')) {
+      if (isAuthenticated &&
+          (location == '/login' || location == '/register')) {
         return '/dashboard';
       }
 
@@ -85,6 +87,20 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                 state.uri.queryParameters['propriedade'] ?? '',
               ),
             ),
+          ),
+          GoRoute(
+            path: '/visitas/:visitId/detalhes',
+            builder: (context, state) {
+              final routeData = state.extra is VisitReportRouteData
+                  ? state.extra! as VisitReportRouteData
+                  : null;
+
+              return VisitReportPage(
+                visitId:
+                    int.tryParse(state.pathParameters['visitId'] ?? '') ?? 0,
+                initialData: routeData,
+              );
+            },
           ),
           GoRoute(
             path: '/visitas',

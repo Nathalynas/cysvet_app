@@ -172,60 +172,53 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   }
 
   Widget _buildDesktopLogin(BuildContext context, bool isBusy) {
-  final theme = Theme.of(context);
+    final theme = Theme.of(context);
 
-  return ConstrainedBox(
-    constraints: const BoxConstraints(maxWidth: 840),
-    child: DecoratedBox(
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surface,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: theme.shadowColor.withValues(alpha: 0.08),
-            blurRadius: 15,
-            offset: const Offset(0, 8),
+    return ConstrainedBox(
+      constraints: const BoxConstraints(maxWidth: 840),
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: theme.colorScheme.surface,
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            BoxShadow(
+              color: theme.shadowColor.withValues(alpha: 0.08),
+              blurRadius: 15,
+              offset: const Offset(0, 8),
+            ),
+          ],
+          border: Border.all(
+            color: theme.colorScheme.outline.withValues(alpha: 0.5),
           ),
-        ],
-        border: Border.all(
-          color: theme.colorScheme.outline.withValues(alpha: 0.5),
         ),
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(20),
-        child: IntrinsicHeight(
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              SizedBox(
-                width: 420,
-                child: ColoredBox(
-                  color: theme.colorScheme.surface,
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 28,
-                      vertical: 32,
-                    ),
-                    child: _buildLoginForm(
-                      context,
-                      isBusy,
-                      compact: true,
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(20),
+          child: IntrinsicHeight(
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                SizedBox(
+                  width: 420,
+                  child: ColoredBox(
+                    color: theme.colorScheme.surface,
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 28,
+                        vertical: 32,
+                      ),
+                      child: _buildLoginForm(context, isBusy, compact: true),
                     ),
                   ),
                 ),
-              ),
-              const SizedBox(
-                width: 420,
-                child: _LoginInfoPanel(),
-              ),
-            ],
+                const SizedBox(width: 420, child: _LoginInfoPanel()),
+              ],
+            ),
           ),
         ),
       ),
-    ),
-  );
-}
+    );
+  }
 
   Widget _buildLoginForm(
     BuildContext context,
@@ -251,7 +244,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                 child: Transform.scale(
                   scale: 1.3,
                   child: Image.asset(
-                    'assets/images/logo.png',
+                    AppAssets.companyLogo,
                     fit: BoxFit.contain,
                   ),
                 ),

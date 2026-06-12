@@ -68,11 +68,13 @@ class _AppShellState extends State<AppShell> {
   @override
   Widget build(BuildContext context) {
     final currentIndex = _getCurrentIndex(context);
+    final pageHeader = _getPageHeader(context, currentIndex);
     final bool isMobile = MediaQuery.of(context).size.width < MOBILE_WIDTH;
 
     if (!isMobile) {
       final content = _ShellContent(
-        title: AppShell._items[currentIndex].title,
+        title: pageHeader.title,
+        backRoute: pageHeader.backRoute,
         child: widget.child,
       );
 
@@ -121,8 +123,9 @@ class _AppShellState extends State<AppShell> {
       body: Builder(
         builder: (scaffoldContext) {
           return _ShellContent(
-            title: AppShell._items[currentIndex].title,
-            showMenuButton: true,
+            title: pageHeader.title,
+            backRoute: pageHeader.backRoute,
+            showMenuButton: pageHeader.backRoute == null,
             onMenuPressed: () {
               Scaffold.of(scaffoldContext).openDrawer();
             },
@@ -149,9 +152,29 @@ class _AppShellState extends State<AppShell> {
     return 0;
   }
 
+  _PageHeaderConfig _getPageHeader(BuildContext context, int currentIndex) {
+    final location = GoRouterState.of(context).uri.path;
+
+    if (location.startsWith('/visitas/') && location.endsWith('/detalhes')) {
+      return const _PageHeaderConfig(
+        title: 'Detalhes da visita',
+        backRoute: '/visitas',
+      );
+    }
+
+    return _PageHeaderConfig(title: AppShell._items[currentIndex].title);
+  }
+
   void _onDestinationSelected(BuildContext context, int index) {
     context.go(AppShell._items[index].route);
   }
+}
+
+class _PageHeaderConfig {
+  const _PageHeaderConfig({required this.title, this.backRoute});
+
+  final String title;
+  final String? backRoute;
 }
 
 class _NavigationItem {
@@ -176,12 +199,14 @@ class _ShellContent extends StatelessWidget {
     required this.child,
     this.showMenuButton = false,
     this.onMenuPressed,
+    this.backRoute,
   });
 
   final String title;
   final Widget child;
   final bool showMenuButton;
   final VoidCallback? onMenuPressed;
+  final String? backRoute;
 
   @override
   Widget build(BuildContext context) {
@@ -191,6 +216,7 @@ class _ShellContent extends StatelessWidget {
           title: title,
           showMenuButton: showMenuButton,
           onMenuPressed: onMenuPressed,
+          backRoute: backRoute,
         ),
         Expanded(
           child: MediaQuery.removePadding(
@@ -209,17 +235,21 @@ class _PageHeader extends StatelessWidget {
     required this.title,
     this.showMenuButton = false,
     this.onMenuPressed,
+    this.backRoute,
   });
 
   final String title;
   final bool showMenuButton;
   final VoidCallback? onMenuPressed;
+  final String? backRoute;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final titleStyle = theme.textTheme.titleLarge;
     final colorScheme = theme.colorScheme;
+    final showBackButton = backRoute != null;
+    final hasLeadingButton = showBackButton || showMenuButton;
 
     return Material(
       color: colorScheme.surface,
@@ -227,11 +257,19 @@ class _PageHeader extends StatelessWidget {
         bottom: false,
         child: Container(
           height: _AppShellSizes.headerHeight,
-          padding: EdgeInsets.only(left: showMenuButton ? 8 : 24, right: 24),
+          padding: EdgeInsets.only(left: hasLeadingButton ? 8 : 24, right: 24),
           alignment: Alignment.centerLeft,
           child: Row(
             children: [
-              if (showMenuButton) ...[
+              if (showBackButton) ...[
+                IconButton(
+                  tooltip: 'Voltar',
+                  icon: const Icon(Icons.arrow_back),
+                  color: colorScheme.primary,
+                  onPressed: () => context.go(backRoute!),
+                ),
+                const SizedBox(width: 8),
+              ] else if (showMenuButton) ...[
                 IconButton(
                   tooltip: 'Abrir menu',
                   icon: const Icon(Icons.menu),

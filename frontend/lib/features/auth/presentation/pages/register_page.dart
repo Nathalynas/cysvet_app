@@ -127,7 +127,7 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
                                   child: Transform.scale(
                                     scale: 1.3,
                                     child: Image.asset(
-                                      'assets/images/logo.png',
+                                      AppAssets.companyLogo,
                                       fit: BoxFit.contain,
                                     ),
                                   ),

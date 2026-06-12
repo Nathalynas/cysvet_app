@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
-import '../../../../app/theme.dart'; 
+import '../../../../app/theme.dart';
+import '../../../../core/constants/app_constants.dart';
 
 class SplashPage extends StatefulWidget {
   const SplashPage({super.key});
@@ -21,21 +22,24 @@ class _SplashPageState extends State<SplashPage> {
         color: theme.colorScheme.surface,
         child: SafeArea(
           child: Center(
-            child: SingleChildScrollView( 
+            child: SingleChildScrollView(
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 40),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 32,
+                  vertical: 40,
+                ),
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
-                  mainAxisSize: MainAxisSize.min, 
+                  mainAxisSize: MainAxisSize.min,
                   children: [
                     Image.asset(
-                      'assets/images/logo.png',
+                      AppAssets.companyLogo,
                       width: 260,
                       height: 260,
                       fit: BoxFit.contain,
                     ),
                     SizedBox(
-                      width: 28, 
+                      width: 28,
                       height: 28,
                       child: CircularProgressIndicator(
                         strokeWidth: 2.8,

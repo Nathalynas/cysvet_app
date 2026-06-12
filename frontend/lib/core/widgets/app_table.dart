@@ -29,6 +29,8 @@ class AppTable<T> extends StatelessWidget {
     this.emptyMessage = 'Nenhum registro encontrado.',
     this.mobileBreakpoint = 720,
     this.equalColumnWidth = false,
+    this.borderColor,
+    this.borderRadius = 20,
   });
 
   final List<T> rows;
@@ -38,6 +40,9 @@ class AppTable<T> extends StatelessWidget {
   final String emptyMessage;
   final double mobileBreakpoint;
   final bool equalColumnWidth;
+  final Color? borderColor;
+  final double borderRadius;
+
   @override
   Widget build(BuildContext context) {
     return LayoutBuilder(
@@ -49,6 +54,8 @@ class AppTable<T> extends StatelessWidget {
             titleBuilder: mobileTitleBuilder,
             footerLabel: footerLabel,
             emptyMessage: emptyMessage,
+            borderColor: borderColor,
+            borderRadius: borderRadius,
           );
         }
 
@@ -58,6 +65,8 @@ class AppTable<T> extends StatelessWidget {
           footerLabel: footerLabel,
           emptyMessage: emptyMessage,
           equalColumnWidth: equalColumnWidth,
+          borderColor: borderColor,
+          borderRadius: borderRadius,
         );
       },
     );
@@ -71,6 +80,8 @@ class _AppTableGrid<T> extends StatelessWidget {
     required this.footerLabel,
     required this.emptyMessage,
     required this.equalColumnWidth,
+    required this.borderColor,
+    required this.borderRadius,
   });
 
   final List<T> rows;
@@ -78,6 +89,8 @@ class _AppTableGrid<T> extends StatelessWidget {
   final String? footerLabel;
   final String emptyMessage;
   final bool equalColumnWidth;
+  final Color? borderColor;
+  final double borderRadius;
 
   @override
   Widget build(BuildContext context) {
@@ -86,7 +99,8 @@ class _AppTableGrid<T> extends StatelessWidget {
 
     return AppCard(
       padding: EdgeInsets.zero,
-      borderRadius: 20,
+      borderRadius: borderRadius,
+      borderColor: borderColor,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -216,6 +230,8 @@ class _AppTableCards<T> extends StatelessWidget {
     required this.titleBuilder,
     required this.footerLabel,
     required this.emptyMessage,
+    required this.borderColor,
+    required this.borderRadius,
   });
 
   final List<T> rows;
@@ -223,6 +239,8 @@ class _AppTableCards<T> extends StatelessWidget {
   final Widget Function(BuildContext context, T item)? titleBuilder;
   final String? footerLabel;
   final String emptyMessage;
+  final Color? borderColor;
+  final double borderRadius;
 
   @override
   Widget build(BuildContext context) {
@@ -230,15 +248,15 @@ class _AppTableCards<T> extends StatelessWidget {
     final colorScheme = theme.colorScheme;
 
     if (rows.isEmpty) {
-      return Card(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Text(
-            emptyMessage,
-            textAlign: TextAlign.center,
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: colorScheme.onSurfaceVariant,
-            ),
+      return AppCard(
+        padding: const EdgeInsets.all(24),
+        borderRadius: borderRadius,
+        borderColor: borderColor,
+        child: Text(
+          emptyMessage,
+          textAlign: TextAlign.center,
+          style: theme.textTheme.bodyMedium?.copyWith(
+            color: colorScheme.onSurfaceVariant,
           ),
         ),
       );
@@ -248,43 +266,39 @@ class _AppTableCards<T> extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         for (var index = 0; index < rows.length; index++) ...[
-          Card(
-            clipBehavior: Clip.antiAlias,
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  if (titleBuilder != null) ...[
-                    titleBuilder!(context, rows[index]),
-                    const SizedBox(height: 12),
-                    Divider(color: colorScheme.outline.withValues(alpha: 0.7)),
-                    const SizedBox(height: 10),
-                  ],
-                  for (
-                    var columnIndex = 0;
-                    columnIndex < columns.length;
-                    columnIndex++
-                  ) ...[
-                    _AppTableCardField<T>(
-                      label:
-                          columns[columnIndex].mobileLabel ??
-                          columns[columnIndex].label,
-                      child:
-                          columns[columnIndex].mobileCellBuilder?.call(
-                            context,
-                            rows[index],
-                          ) ??
-                          columns[columnIndex].cellBuilder(
-                            context,
-                            rows[index],
-                          ),
-                    ),
-                    if (columnIndex < columns.length - 1)
-                      const SizedBox(height: 12),
-                  ],
+          AppCard(
+            padding: const EdgeInsets.all(16),
+            borderRadius: borderRadius,
+            borderColor: borderColor,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (titleBuilder != null) ...[
+                  titleBuilder!(context, rows[index]),
+                  const SizedBox(height: 12),
+                  Divider(color: colorScheme.outline.withValues(alpha: 0.7)),
+                  const SizedBox(height: 10),
                 ],
-              ),
+                for (
+                  var columnIndex = 0;
+                  columnIndex < columns.length;
+                  columnIndex++
+                ) ...[
+                  _AppTableCardField<T>(
+                    label:
+                        columns[columnIndex].mobileLabel ??
+                        columns[columnIndex].label,
+                    child:
+                        columns[columnIndex].mobileCellBuilder?.call(
+                          context,
+                          rows[index],
+                        ) ??
+                        columns[columnIndex].cellBuilder(context, rows[index]),
+                  ),
+                  if (columnIndex < columns.length - 1)
+                    const SizedBox(height: 12),
+                ],
+              ],
             ),
           ),
           if (index < rows.length - 1) const SizedBox(height: 12),
