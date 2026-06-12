@@ -393,18 +393,68 @@ class _MetricGrid extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Wrap(
-      spacing: 12,
-      runSpacing: 12,
-      children: [for (final item in items) _MetricCard(item: item)],
+    final isMobile = MediaQuery.sizeOf(context).width < MOBILE_WIDTH;
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        const spacing = 12.0;
+
+        if (!isMobile) {
+          return Wrap(
+            spacing: spacing,
+            runSpacing: spacing,
+            children: [for (final item in items) _MetricCard(item: item)],
+          );
+        }
+
+        const itemsPerRow = 3;
+        final rows = <Widget>[];
+
+        for (
+          var rowStart = 0;
+          rowStart < items.length;
+          rowStart += itemsPerRow
+        ) {
+          if (rows.isNotEmpty) {
+            rows.add(const SizedBox(height: spacing));
+          }
+
+          rows.add(
+            IntrinsicHeight(
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  for (var column = 0; column < itemsPerRow; column++) ...[
+                    if (column > 0) const SizedBox(width: spacing),
+                    Expanded(
+                      child: rowStart + column < items.length
+                          ? _MetricCard(
+                              item: items[rowStart + column],
+                              allowTallContent: true,
+                            )
+                          : const SizedBox.shrink(),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          );
+        }
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: rows,
+        );
+      },
     );
   }
 }
 
 class _MetricCard extends StatelessWidget {
-  const _MetricCard({required this.item});
+  const _MetricCard({required this.item, this.allowTallContent = false});
 
   final _MetricItem item;
+  final bool allowTallContent;
 
   @override
   Widget build(BuildContext context) {
@@ -420,7 +470,7 @@ class _MetricCard extends StatelessWidget {
         children: [
           Text(
             item.label,
-            maxLines: 2,
+            maxLines: allowTallContent ? 3 : 2,
             overflow: TextOverflow.ellipsis,
             style: theme.textTheme.bodySmall?.copyWith(
               color: colorScheme.onSurfaceVariant,
@@ -431,7 +481,7 @@ class _MetricCard extends StatelessWidget {
           const SizedBox(height: 10),
           Text(
             item.value,
-            maxLines: 1,
+            maxLines: allowTallContent ? 2 : 1,
             overflow: TextOverflow.ellipsis,
             style: theme.textTheme.headlineSmall?.copyWith(
               color: item.color ?? colorScheme.primary,
@@ -631,15 +681,15 @@ class _ReproductiveDonutChart extends StatelessWidget {
       child: hasData
           ? LayoutBuilder(
               builder: (context, constraints) {
-                final stacked = constraints.maxWidth < 620;
+                final chartDimension = math.min(220.0, constraints.maxWidth);
                 final total = items.fold<int>(0, (sum, item) {
                   return sum + item.value;
                 });
                 final chart = SizedBox.square(
-                  dimension: stacked ? 210 : 260,
+                  dimension: chartDimension,
                   child: PieChart(
                     PieChartData(
-                      centerSpaceRadius: stacked ? 62 : 76,
+                      centerSpaceRadius: chartDimension * 0.30,
                       sectionsSpace: 2,
                       startDegreeOffset: -90,
                       pieTouchData: PieTouchData(enabled: false),
@@ -649,7 +699,7 @@ class _ReproductiveDonutChart extends StatelessWidget {
                             PieChartSectionData(
                               value: item.value.toDouble(),
                               color: item.color,
-                              radius: stacked ? 36 : 44,
+                              radius: chartDimension * 0.17,
                               title: _percentLabel(item.value, total),
                               titleStyle: Theme.of(context)
                                   .textTheme
@@ -663,20 +713,20 @@ class _ReproductiveDonutChart extends StatelessWidget {
                     ),
                   ),
                 );
-                final legend = _ChartLegend(items: items);
 
-                if (stacked) {
-                  return Column(
-                    children: [chart, const SizedBox(height: 14), legend],
-                  );
-                }
-
-                return Row(
-                  children: [
-                    chart,
-                    const SizedBox(width: 18),
-                    Expanded(child: legend),
-                  ],
+                return Align(
+                  alignment: Alignment.center,
+                  child: SizedBox(
+                    width: chartDimension,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        chart,
+                        const SizedBox(height: 14),
+                        _ChartLegend(items: items),
+                      ],
+                    ),
+                  ),
                 );
               },
             )
@@ -728,13 +778,13 @@ class _ParityDonutChart extends StatelessWidget {
       child: hasData
           ? LayoutBuilder(
               builder: (context, constraints) {
-                final compact = constraints.maxWidth < 390;
+                final chartDimension = math.min(214.0, constraints.maxWidth);
                 final total = _chartTotal(items);
                 final chart = SizedBox.square(
-                  dimension: compact ? 188 : 214,
+                  dimension: chartDimension,
                   child: PieChart(
                     PieChartData(
-                      centerSpaceRadius: compact ? 54 : 64,
+                      centerSpaceRadius: chartDimension * 0.30,
                       sectionsSpace: 2,
                       pieTouchData: PieTouchData(enabled: false),
                       sections: [
@@ -743,7 +793,7 @@ class _ParityDonutChart extends StatelessWidget {
                             PieChartSectionData(
                               value: item.value.toDouble(),
                               color: item.color,
-                              radius: compact ? 34 : 40,
+                              radius: chartDimension * 0.19,
                               title: _percentLabel(item.value, total),
                               titleStyle: Theme.of(context)
                                   .textTheme
@@ -758,23 +808,19 @@ class _ParityDonutChart extends StatelessWidget {
                   ),
                 );
 
-                if (compact) {
-                  return Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      chart,
-                      const SizedBox(height: 12),
-                      _ChartLegend(items: items),
-                    ],
-                  );
-                }
-
-                return Row(
-                  children: [
-                    chart,
-                    const SizedBox(width: 16),
-                    Expanded(child: _ChartLegend(items: items)),
-                  ],
+                return Align(
+                  alignment: Alignment.center,
+                  child: SizedBox(
+                    width: chartDimension,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        chart,
+                        const SizedBox(height: 12),
+                        _ChartLegend(items: items),
+                      ],
+                    ),
+                  ),
                 );
               },
             )
@@ -800,21 +846,32 @@ class _RateChart extends StatelessWidget {
               builder: (context, constraints) {
                 final columns = constraints.maxWidth >= 920
                     ? 4
+                    : constraints.maxWidth >= 760
+                    ? 3
                     : constraints.maxWidth >= 520
                     ? 2
                     : 1;
                 const spacing = 12.0;
                 final itemWidth =
                     (constraints.maxWidth - spacing * (columns - 1)) / columns;
+                final lastRowCount = items.length % columns;
+                final lastItemWidth = columns == 3
+                    ? itemWidth * 2 + spacing
+                    : constraints.maxWidth;
 
                 return Wrap(
                   spacing: spacing,
                   runSpacing: spacing,
                   children: [
-                    for (final item in items)
+                    for (var index = 0; index < items.length; index++)
                       SizedBox(
-                        width: itemWidth,
-                        child: _GaugeTile(item: item),
+                        width:
+                            columns > 1 &&
+                                lastRowCount == 1 &&
+                                index == items.length - 1
+                            ? lastItemWidth
+                            : itemWidth,
+                        child: _GaugeTile(item: items[index]),
                       ),
                   ],
                 );

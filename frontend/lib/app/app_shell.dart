@@ -5,6 +5,7 @@ import 'package:flutter_material_design_icons/flutter_material_design_icons.dart
 import 'package:go_router/go_router.dart';
 
 import '../core/constants/app_constants.dart';
+import '../core/widgets/app_button.dart';
 
 class AppShell extends StatefulWidget {
   const AppShell({super.key, required this.child});
@@ -262,11 +263,20 @@ class _PageHeader extends StatelessWidget {
           child: Row(
             children: [
               if (showBackButton) ...[
-                IconButton(
-                  tooltip: 'Voltar',
-                  icon: const Icon(Icons.arrow_back),
-                  color: colorScheme.primary,
-                  onPressed: () => context.go(backRoute!),
+                Tooltip(
+                  message: 'Voltar',
+                  child: AppButton(
+                    outlined: true,
+                    width: 40,
+                    height: 40,
+                    padding: EdgeInsets.zero,
+                    borderRadius: 12,
+                    color: colorScheme.primary,
+                    textColor: colorScheme.primary,
+                    borderColor: Colors.transparent,
+                    onPressed: () => context.go(backRoute!),
+                    child: const Icon(Icons.arrow_back),
+                  ),
                 ),
                 const SizedBox(width: 8),
               ] else if (showMenuButton) ...[
