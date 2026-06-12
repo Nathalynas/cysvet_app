@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/gestures.dart';
-import 'package:flutter_material_design_icons/flutter_material_design_icons.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/services.dart';
 import 'package:printing/printing.dart';
@@ -754,10 +753,7 @@ class _ProceduresSection extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const _ReportSectionTitle(
-          icon: Icons.fact_check_outlined,
-          title: 'Procedimentos Realizados',
-        ),
+        const _ReportSectionTitle(title: 'Procedimentos Realizados'),
         const SizedBox(height: 12),
         // TODO(frontend-only): Ajustar bordas das tabelas para seguir o padrao visual.
         AppTable<_ProcedureReportRow>(
@@ -818,10 +814,7 @@ class _ConfirmedAnimalsSection extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const _ReportSectionTitle(
-          icon: MdiIcons.cow,
-          title: 'Animais Confirmados na Visita',
-        ),
+        const _ReportSectionTitle(title: 'Animais Confirmados na Visita'),
         const SizedBox(height: 12),
         AppTable<_ConfirmedAnimalReportRow>(
           borderColor: _ReportTokens.border,
@@ -888,21 +881,20 @@ class _ObservationsSection extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        const _ReportSectionTitle(
-          icon: Icons.chat_bubble_outline,
-          title: 'Observações',
-        ),
-        const SizedBox(height: 12),
-        AppCard(
-          borderRadius: 16,
-          borderColor: Colors.transparent,
-          backgroundColor: _ReportTokens.sectionFill,
-          padding: const EdgeInsets.all(20),
-          shadow: false,
-          child: IntrinsicHeight(
+    return AppCard(
+      borderRadius: 18,
+      borderColor: _ReportTokens.border,
+      backgroundColor: Colors.white,
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const _ReportSectionTitle(
+            icon: Icons.chat_bubble_outline,
+            title: 'Observações',
+          ),
+          const SizedBox(height: 16),
+          IntrinsicHeight(
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
@@ -927,8 +919,8 @@ class _ObservationsSection extends StatelessWidget {
               ],
             ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }
@@ -997,9 +989,9 @@ class _ReportFooter extends StatelessWidget {
 }
 
 class _ReportSectionTitle extends StatelessWidget {
-  const _ReportSectionTitle({required this.icon, required this.title});
+  const _ReportSectionTitle({this.icon, required this.title});
 
-  final IconData icon;
+  final IconData? icon;
   final String title;
 
   @override
@@ -1008,8 +1000,10 @@ class _ReportSectionTitle extends StatelessWidget {
 
     return Row(
       children: [
-        Icon(icon, color: _ReportTokens.green, size: 24),
-        const SizedBox(width: 12),
+        if (icon != null) ...[
+          Icon(icon, color: _ReportTokens.green, size: 24),
+          const SizedBox(width: 12),
+        ],
         Expanded(
           child: Text(
             title,

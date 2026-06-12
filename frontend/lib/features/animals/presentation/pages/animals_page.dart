@@ -1161,28 +1161,34 @@ class _HerdMetricCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            width: compact ? 26 : 30,
-            height: compact ? 26 : 30,
-            decoration: BoxDecoration(
-              color: statusColors.background,
-              borderRadius: BorderRadius.circular(9),
-            ),
-            child: Icon(icon, color: foreground, size: compact ? 15 : 17),
+          Row(
+            children: [
+              Container(
+                width: compact ? 26 : 30,
+                height: compact ? 26 : 30,
+                decoration: BoxDecoration(
+                  color: statusColors.background,
+                  borderRadius: BorderRadius.circular(9),
+                ),
+                child: Icon(icon, color: foreground, size: compact ? 15 : 17),
+              ),
+              SizedBox(width: compact ? 8 : 10),
+              Expanded(
+                child: Text(
+                  title.toUpperCase(),
+                  maxLines: compact ? 2 : 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    color: colorScheme.onSurfaceVariant,
+                    fontSize: compact ? 9.5 : null,
+                    fontWeight: FontWeight.w800,
+                    height: 1.05,
+                  ),
+                ),
+              ),
+            ],
           ),
           SizedBox(height: compact ? 6 : 8),
-          Text(
-            title.toUpperCase(),
-            maxLines: compact ? 2 : 2,
-            overflow: TextOverflow.ellipsis,
-            style: theme.textTheme.labelSmall?.copyWith(
-              color: colorScheme.onSurfaceVariant,
-              fontSize: compact ? 9.5 : null,
-              fontWeight: FontWeight.w800,
-              height: 1.05,
-            ),
-          ),
-          SizedBox(height: compact ? 4 : 5),
           Text.rich(
             TextSpan(
               children: [

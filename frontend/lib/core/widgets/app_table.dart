@@ -31,6 +31,7 @@ class AppTable<T> extends StatelessWidget {
     this.equalColumnWidth = false,
     this.borderColor,
     this.borderRadius = 20,
+    this.shadow = true,
   });
 
   final List<T> rows;
@@ -42,6 +43,7 @@ class AppTable<T> extends StatelessWidget {
   final bool equalColumnWidth;
   final Color? borderColor;
   final double borderRadius;
+  final bool shadow;
 
   @override
   Widget build(BuildContext context) {
@@ -56,6 +58,7 @@ class AppTable<T> extends StatelessWidget {
             emptyMessage: emptyMessage,
             borderColor: borderColor,
             borderRadius: borderRadius,
+            shadow: shadow,
           );
         }
 
@@ -67,6 +70,7 @@ class AppTable<T> extends StatelessWidget {
           equalColumnWidth: equalColumnWidth,
           borderColor: borderColor,
           borderRadius: borderRadius,
+          shadow: shadow,
         );
       },
     );
@@ -82,6 +86,7 @@ class _AppTableGrid<T> extends StatelessWidget {
     required this.equalColumnWidth,
     required this.borderColor,
     required this.borderRadius,
+    required this.shadow,
   });
 
   final List<T> rows;
@@ -91,6 +96,7 @@ class _AppTableGrid<T> extends StatelessWidget {
   final bool equalColumnWidth;
   final Color? borderColor;
   final double borderRadius;
+  final bool shadow;
 
   @override
   Widget build(BuildContext context) {
@@ -101,6 +107,7 @@ class _AppTableGrid<T> extends StatelessWidget {
       padding: EdgeInsets.zero,
       borderRadius: borderRadius,
       borderColor: borderColor,
+      shadow: shadow,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -232,6 +239,7 @@ class _AppTableCards<T> extends StatelessWidget {
     required this.emptyMessage,
     required this.borderColor,
     required this.borderRadius,
+    required this.shadow,
   });
 
   final List<T> rows;
@@ -241,6 +249,7 @@ class _AppTableCards<T> extends StatelessWidget {
   final String emptyMessage;
   final Color? borderColor;
   final double borderRadius;
+  final bool shadow;
 
   @override
   Widget build(BuildContext context) {
@@ -252,6 +261,7 @@ class _AppTableCards<T> extends StatelessWidget {
         padding: const EdgeInsets.all(24),
         borderRadius: borderRadius,
         borderColor: borderColor,
+        shadow: shadow,
         child: Text(
           emptyMessage,
           textAlign: TextAlign.center,
@@ -270,6 +280,7 @@ class _AppTableCards<T> extends StatelessWidget {
             padding: const EdgeInsets.all(16),
             borderRadius: borderRadius,
             borderColor: borderColor,
+            shadow: shadow,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -305,12 +316,18 @@ class _AppTableCards<T> extends StatelessWidget {
         ],
         if (footerLabel != null) ...[
           const SizedBox(height: 12),
-          Text(
-            footerLabel!,
-            textAlign: TextAlign.center,
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: colorScheme.onSurfaceVariant,
-              fontWeight: FontWeight.w600,
+          AppCard(
+            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+            borderRadius: borderRadius,
+            borderColor: borderColor,
+            shadow: shadow,
+            child: Text(
+              footerLabel!,
+              textAlign: TextAlign.center,
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: colorScheme.onSurfaceVariant,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ),
         ],
