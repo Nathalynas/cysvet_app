@@ -3052,18 +3052,7 @@ String _dashIfBlank(String? value) {
 }
 
 String _formatCount(int value) {
-  final text = value.toString();
-  final buffer = StringBuffer();
-
-  for (var index = 0; index < text.length; index++) {
-    final reverseIndex = text.length - index;
-    buffer.write(text[index]);
-    if (reverseIndex > 1 && reverseIndex % 3 == 1) {
-      buffer.write('.');
-    }
-  }
-
-  return buffer.toString();
+  return formatInteger(value);
 }
 
 String _formatNullableInt(int? value) {

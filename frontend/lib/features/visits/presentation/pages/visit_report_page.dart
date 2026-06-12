@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/services.dart';
 import 'package:printing/printing.dart';
 
+import '../../../../app/theme.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/presentation/app_scaffold_messenger.dart';
 import '../../../../core/presentation/async_value_view.dart';
@@ -70,11 +71,12 @@ class VisitReportRouteData {
 class _ReportTokens {
   const _ReportTokens._();
 
-  static const green = Color(0xFF154B37);
-  static const ink = Color(0xFF1C2420);
-  static const muted = Color(0xFF637069);
-  static const border = Color(0xFFD9E0DC);
-  static const sectionFill = Color(0xFFFAFCFA);
+  static const green = AppTheme.primaryColor;
+  static const ink = AppTheme.textColor;
+  static const muted = AppTheme.mutedTextColor;
+  static const border = AppTheme.borderColor;
+  static const sectionFill = AppTheme.neutralColor;
+  static const documentSurface = Colors.white;
 
   static const documentWidth = 840.0;
   static const documentPadding = 40.0;
@@ -110,7 +112,7 @@ class VisitReportPage extends ConsumerWidget {
     return Theme(
       data: reportTheme,
       child: ColoredBox(
-        color: Colors.white,
+        color: _ReportTokens.documentSurface,
         // TODO(frontend-only): Pagina de detalhes exibindo o relatorio como documento fixo.
         child: AsyncValueView<VisitReportRouteData>(
           value: value,
@@ -349,12 +351,12 @@ class VisitReportCard extends StatelessWidget {
       width: _ReportTokens.documentWidth,
       child: DecoratedBox(
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: _ReportTokens.documentSurface,
           borderRadius: BorderRadius.circular(18),
           border: Border.all(color: _ReportTokens.border),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.06),
+              color: _ReportTokens.ink.withValues(alpha: 0.06),
               blurRadius: 18,
               offset: const Offset(0, 10),
             ),
@@ -488,7 +490,7 @@ ThemeData _buildReportTheme(ThemeData baseTheme) {
   return baseTheme.copyWith(
     colorScheme: baseTheme.colorScheme.copyWith(
       primary: _ReportTokens.green,
-      surface: Colors.white,
+      surface: _ReportTokens.documentSurface,
       surfaceContainerHighest: _ReportTokens.sectionFill,
       onSurface: _ReportTokens.ink,
       onSurfaceVariant: _ReportTokens.muted,
@@ -627,7 +629,7 @@ class _ReportStatCard extends StatelessWidget {
     return AppCard(
       borderRadius: 16,
       borderColor: _ReportTokens.border,
-      backgroundColor: Colors.white,
+      backgroundColor: _ReportTokens.documentSurface,
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 16),
       child: SizedBox(
         height: 68,
@@ -677,7 +679,7 @@ class _NextStepsSection extends StatelessWidget {
     return AppCard(
       borderRadius: 18,
       borderColor: _ReportTokens.border,
-      backgroundColor: Colors.white,
+      backgroundColor: _ReportTokens.documentSurface,
       padding: const EdgeInsets.all(20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -884,7 +886,7 @@ class _ObservationsSection extends StatelessWidget {
     return AppCard(
       borderRadius: 18,
       borderColor: _ReportTokens.border,
-      backgroundColor: Colors.white,
+      backgroundColor: _ReportTokens.documentSurface,
       padding: const EdgeInsets.all(20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1329,10 +1331,7 @@ String _reportFileName(VisitSummaryModel visit) {
   final date = visit.dataVisita;
   if (date == null) return 'relatorio-visita-${visit.id}.pdf';
 
-  final year = date.year.toString().padLeft(4, '0');
-  final month = date.month.toString().padLeft(2, '0');
-  final day = date.day.toString().padLeft(2, '0');
-  return 'relatorio-visita-$year$month$day-${visit.id}.pdf';
+  return 'relatorio-visita-${formatCompactDate(date)}-${visit.id}.pdf';
 }
 
 String _animalObservation(VisitAnimalEntryModel entry) {

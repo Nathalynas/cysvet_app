@@ -611,8 +611,7 @@ String _pregnancyRateLabel(VisitSummaryModel visit) {
   final denominator = pregnant + empty;
   if (denominator == 0) return '--';
 
-  final value = (pregnant / denominator) * 100;
-  return '${value.toStringAsFixed(1).replaceAll('.', ',')}%';
+  return formatPercent(pregnant / denominator);
 }
 
 bool _isPregnant(VisitAnimalEntryModel entry) {

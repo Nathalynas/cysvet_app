@@ -19,6 +19,29 @@ String formatDecimal(double value) {
   return value.toStringAsFixed(1);
 }
 
+String formatInteger(int value) {
+  final sign = value < 0 ? '-' : '';
+  final digits = value.abs().toString();
+  final buffer = StringBuffer();
+
+  for (var index = 0; index < digits.length; index++) {
+    final reverseIndex = digits.length - index;
+    buffer.write(digits[index]);
+    if (reverseIndex > 1 && reverseIndex % 3 == 1) {
+      buffer.write('.');
+    }
+  }
+
+  return '$sign$buffer';
+}
+
+String formatCompactDate(DateTime date) {
+  final year = date.year.toString().padLeft(4, '0');
+  final month = date.month.toString().padLeft(2, '0');
+  final day = date.day.toString().padLeft(2, '0');
+  return '$year$month$day';
+}
+
 class PhoneInputFormatter extends TextInputFormatter {
   const PhoneInputFormatter();
 

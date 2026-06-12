@@ -1191,13 +1191,18 @@ class _AnimalVisitStatusBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final foreground = reviewed ? Colors.green.shade700 : Colors.amber.shade800;
+    final colorScheme = theme.colorScheme;
+    final foreground = reviewed
+        ? colorScheme.primary
+        : colorScheme.onSurfaceVariant;
     final backgroundColor = reviewed
-        ? Colors.green.shade100
-        : Colors.amber.shade100;
+        ? colorScheme.secondary.withValues(
+            alpha: theme.brightness == Brightness.dark ? 0.28 : 0.78,
+          )
+        : colorScheme.surfaceContainerHighest;
     final borderColor = reviewed
-        ? Colors.green.shade300
-        : Colors.amber.shade300;
+        ? colorScheme.primary.withValues(alpha: 0.28)
+        : colorScheme.outline.withValues(alpha: 0.45);
     final icon = reviewed
         ? Icons.check_circle_outline_rounded
         : Icons.hourglass_bottom_rounded;

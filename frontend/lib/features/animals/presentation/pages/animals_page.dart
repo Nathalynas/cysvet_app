@@ -628,108 +628,99 @@ class _AnimalMobileCard extends StatelessWidget {
     final colorScheme = theme.colorScheme;
     final reproductiveStatus = reproductiveStatusFor(animal);
 
-    return Card(
-      elevation: 0,
-      color: colorScheme.surface,
-      margin: EdgeInsets.zero,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-        side: BorderSide(
-          color: colorScheme.outlineVariant.withValues(alpha: 0.8),
-        ),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const SizedBox(width: 10),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          _animalCodeLabel(animal.codigo),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: theme.textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.w900,
-                            color: colorScheme.onSurface,
-                          ),
+    return AppCard(
+      padding: const EdgeInsets.all(12),
+      borderRadius: 16,
+      borderColor: colorScheme.outlineVariant.withValues(alpha: 0.8),
+      shadow: false,
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        _animalCodeLabel(animal.codigo),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.w900,
+                          color: colorScheme.onSurface,
                         ),
                       ),
-                      const SizedBox(width: 8),
-                      Flexible(
-                        child: Align(
-                          alignment: Alignment.centerRight,
-                          child: _ReproductiveStatusPill(
-                            status: reproductiveStatus,
-                          ),
+                    ),
+                    const SizedBox(width: 8),
+                    Flexible(
+                      child: Align(
+                        alignment: Alignment.centerRight,
+                        child: _ReproductiveStatusPill(
+                          status: reproductiveStatus,
                         ),
                       ),
-                      const SizedBox(width: 4),
-                      _AnimalActions(
-                        animal: animal,
-                        onEdit: onEdit,
-                        onInactivate: onInactivate,
-                        onActivate: onActivate,
-                        onDelete: onDelete,
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 6),
-                  Wrap(
-                    spacing: 6,
-                    runSpacing: 6,
-                    children: [
-                      _MiniBadge(
-                        label: animal.categoria.isEmpty
-                            ? 'Categoria --'
-                            : animal.categoria,
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    propertyName.isEmpty
-                        ? 'Propriedade não informada'
-                        : propertyName,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: colorScheme.onSurfaceVariant,
-                      fontWeight: FontWeight.w600,
                     ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    'Lactação: ${animal.numeroLactacao}',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-                  if (animal.historicoReprodutivo?.trim().isNotEmpty ==
-                      true) ...[
-                    const SizedBox(height: 4),
-                    Text(
-                      animal.historicoReprodutivo!.trim(),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: colorScheme.onSurfaceVariant,
-                      ),
+                    const SizedBox(width: 4),
+                    _AnimalActions(
+                      animal: animal,
+                      onEdit: onEdit,
+                      onInactivate: onInactivate,
+                      onActivate: onActivate,
+                      onDelete: onDelete,
                     ),
                   ],
+                ),
+                const SizedBox(height: 6),
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 6,
+                  children: [
+                    _MiniBadge(
+                      label: animal.categoria.isEmpty
+                          ? 'Categoria --'
+                          : animal.categoria,
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  propertyName.isEmpty
+                      ? 'Propriedade não informada'
+                      : propertyName,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: colorScheme.onSurfaceVariant,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Lactação: ${animal.numeroLactacao}',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: colorScheme.onSurfaceVariant,
+                  ),
+                ),
+                if (animal.historicoReprodutivo?.trim().isNotEmpty == true) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    animal.historicoReprodutivo!.trim(),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: colorScheme.onSurfaceVariant,
+                    ),
+                  ),
                 ],
-              ),
+              ],
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

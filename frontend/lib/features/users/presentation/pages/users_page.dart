@@ -7,6 +7,7 @@ import '../../../../core/enums/user_status.dart';
 import '../../../../core/presentation/app_scaffold_messenger.dart';
 import '../../../../core/presentation/async_value_view.dart';
 import '../../../../core/widgets/app_button.dart';
+import '../../../../core/widgets/app_card.dart';
 import '../../../../core/widgets/app_dialog.dart';
 import '../../../../core/widgets/app_dropdown.dart';
 import '../../../../core/widgets/app_table.dart';
@@ -280,13 +281,13 @@ class _UsersMobileList extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (users.isEmpty) {
-      return const Card(
-        child: Padding(
-          padding: EdgeInsets.all(24),
-          child: Text(
-            'Nenhum usuário encontrado para os filtros atuais.',
-            textAlign: TextAlign.center,
-          ),
+      return const AppCard(
+        padding: EdgeInsets.all(24),
+        borderRadius: 16,
+        shadow: false,
+        child: Text(
+          'Nenhum usuário encontrado para os filtros atuais.',
+          textAlign: TextAlign.center,
         ),
       );
     }
@@ -337,98 +338,90 @@ class _UserMobileCard extends StatelessWidget {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
 
-    return Card(
-      elevation: 0,
-      margin: EdgeInsets.zero,
-      color: colorScheme.surface,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-        side: BorderSide(
-          color: colorScheme.outlineVariant.withValues(alpha: 0.8),
-        ),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(14),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Usuário:',
-                        style: theme.textTheme.labelSmall?.copyWith(
-                          color: colorScheme.onSurfaceVariant,
-                          fontWeight: FontWeight.w800,
-                        ),
+    return AppCard(
+      padding: const EdgeInsets.all(14),
+      borderRadius: 16,
+      borderColor: colorScheme.outlineVariant.withValues(alpha: 0.8),
+      shadow: false,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Usuário:',
+                      style: theme.textTheme.labelSmall?.copyWith(
+                        color: colorScheme.onSurfaceVariant,
+                        fontWeight: FontWeight.w800,
                       ),
-                      const SizedBox(height: 6),
-                      _UserIdentityCell(user: user),
-                    ],
-                  ),
+                    ),
+                    const SizedBox(height: 6),
+                    _UserIdentityCell(user: user),
+                  ],
                 ),
-                const SizedBox(width: 10),
-                _UserStatusBadge(user: user),
-              ],
-            ),
-            const SizedBox(height: 14),
-            Text(
-              'Perfil',
-              style: theme.textTheme.labelSmall?.copyWith(
-                color: colorScheme.onSurfaceVariant,
-                fontWeight: FontWeight.w800,
               ),
+              const SizedBox(width: 10),
+              _UserStatusBadge(user: user),
+            ],
+          ),
+          const SizedBox(height: 14),
+          Text(
+            'Perfil',
+            style: theme.textTheme.labelSmall?.copyWith(
+              color: colorScheme.onSurfaceVariant,
+              fontWeight: FontWeight.w800,
             ),
-            const SizedBox(height: 6),
-            Align(
-              alignment: Alignment.centerLeft,
-              child: _UserRoleBadge(user: user),
-            ),
-            const SizedBox(height: 14),
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Empresa:',
-                        style: theme.textTheme.labelSmall?.copyWith(
-                          color: colorScheme.onSurfaceVariant,
-                          fontWeight: FontWeight.w800,
-                        ),
+          ),
+          const SizedBox(height: 6),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: _UserRoleBadge(user: user),
+          ),
+          const SizedBox(height: 14),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Empresa:',
+                      style: theme.textTheme.labelSmall?.copyWith(
+                        color: colorScheme.onSurfaceVariant,
+                        fontWeight: FontWeight.w800,
                       ),
-                      const SizedBox(height: 6),
-                      Text(
-                        _dashIfBlank(user.companyName),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: colorScheme.onSurface,
-                          fontWeight: FontWeight.w500,
-                        ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      _dashIfBlank(user.companyName),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: colorScheme.onSurface,
+                        fontWeight: FontWeight.w500,
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
-                const SizedBox(width: 12),
-                _UserActions(
-                  user: user,
-                  alignment: WrapAlignment.end,
-                  onEdit: onEdit,
-                  onInactivate: onInactivate,
-                  onActivate: onActivate,
-                  onDelete: onDelete,
-                ),
-              ],
-            ),
-          ],
-        ),
+              ),
+              const SizedBox(width: 12),
+              _UserActions(
+                user: user,
+                alignment: WrapAlignment.end,
+                onEdit: onEdit,
+                onInactivate: onInactivate,
+                onActivate: onActivate,
+                onDelete: onDelete,
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
