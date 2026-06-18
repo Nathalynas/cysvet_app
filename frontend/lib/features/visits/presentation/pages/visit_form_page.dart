@@ -46,7 +46,6 @@ class _VisitFormPageState extends ConsumerState<VisitFormPage> {
 
   final _formKey = GlobalKey<FormState>();
   final _dataVisita = TextEditingController();
-  final _observacoes = TextEditingController();
 
   int? _propertyId;
   int? _loadedPropertyId;
@@ -73,7 +72,6 @@ class _VisitFormPageState extends ConsumerState<VisitFormPage> {
   @override
   void dispose() {
     _dataVisita.dispose();
-    _observacoes.dispose();
     super.dispose();
   }
 
@@ -128,7 +126,7 @@ class _VisitFormPageState extends ConsumerState<VisitFormPage> {
                       ),
                       const SizedBox(height: 6),
                       Text(
-                        'Vincule a propriedade e depois selecione um brinco na lista para preencher a coleta do animal.',
+                        'Vincule a propriedade e selecione o animal. A data de inseminação já vem do cadastro do animal.',
                         style: theme.textTheme.bodyMedium?.copyWith(
                           color: colorScheme.onSurfaceVariant,
                         ),
@@ -138,7 +136,6 @@ class _VisitFormPageState extends ConsumerState<VisitFormPage> {
                         propertyId: _propertyId,
                         properties: properties,
                         dataVisitaController: _dataVisita,
-                        observacoesController: _observacoes,
                         onPropertyChanged: (value) {
                           setState(() {
                             if (_propertyId != value) {
@@ -293,7 +290,6 @@ class _VisitFormPageState extends ConsumerState<VisitFormPage> {
         idPropriedade: _propertyId ?? 0,
         idExternoPropriedade: property?.idExterno ?? '',
         dataVisita: parseDateInput(_dataVisita.text),
-        observacoes: _observacoes.text.trim(),
         animais: _animalEntries
             .where((item) => _reviewedAnimalIds.contains(item.animalId))
             .toList(growable: false),
@@ -384,6 +380,7 @@ class _VisitFormPageState extends ConsumerState<VisitFormPage> {
       idadeMeses: _ageInMonths(animal.dataNascimento),
       situacaoProdutiva: _visitProductiveStatus(animal),
       situacaoReprodutiva: reproductiveStatus,
+      dataUltimaIa: animal.dataInseminacao,
       diagnostico: animal.historicoReprodutivo?.trim().isEmpty == true
           ? null
           : animal.historicoReprodutivo?.trim(),
@@ -447,6 +444,10 @@ class _VisitFormPageState extends ConsumerState<VisitFormPage> {
       return savedStatus;
     }
 
+    if (animal.dataInseminacao != null) {
+      return AnimalReproductiveStatus.inseminated;
+    }
+
     final history = (animal.historicoReprodutivo ?? '').normalize();
 
     if (history.contains('pren') || history.contains('confirm')) {
@@ -488,14 +489,12 @@ class _HeaderFields extends StatelessWidget {
     required this.propertyId,
     required this.properties,
     required this.dataVisitaController,
-    required this.observacoesController,
     required this.onPropertyChanged,
   });
 
   final int? propertyId;
   final List<PropertySummaryModel> properties;
   final TextEditingController dataVisitaController;
-  final TextEditingController observacoesController;
   final ValueChanged<int?> onPropertyChanged;
 
   @override
@@ -533,10 +532,6 @@ class _HeaderFields extends StatelessWidget {
               return null;
             },
           ),
-          AppTextField(
-            label: 'Observações gerais',
-            controller: observacoesController,
-          ),
         ];
 
         if (stacked) {
@@ -552,8 +547,6 @@ class _HeaderFields extends StatelessWidget {
             Expanded(child: fields[0]),
             const SizedBox(width: 12),
             SizedBox(width: 180, child: fields[1]),
-            const SizedBox(width: 12),
-            Expanded(child: fields[2]),
           ],
         );
       },
@@ -1295,11 +1288,10 @@ class _AnimalEditorFields extends StatelessWidget {
           title: 'Inseminação e parto',
           child: _EditorGrid(
             children: [
-              _DateInputField(
-                label: 'Data da última IA',
-                value: entry.dataUltimaIa,
-                onChanged: (value) =>
-                    onChanged(entry.copyWith(dataUltimaIa: value)),
+              AppTextField(
+                label: 'Data da inseminação do animal',
+                initialValue: formatDateInput(entry.dataUltimaIa),
+                readOnly: true,
               ),
               AppTextField(
                 label: 'Número da IA recebida',
@@ -1455,7 +1447,7 @@ class _AnimalEditorModalContentState extends State<_AnimalEditorModalContent> {
       mainAxisSize: MainAxisSize.min,
       children: [
         Text(
-          'Preencha e confirme os dados deste animal para marcar a coleta.',
+          'Preencha e confirme os dados da visita. A data de inseminação vem do cadastro do animal.',
           style: Theme.of(context).textTheme.bodySmall,
         ),
         const SizedBox(height: 16),

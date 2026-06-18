@@ -88,6 +88,13 @@ class AnimalSummaryModelMapper extends ClassMapperBase<AnimalSummaryModel> {
     opt: true,
     hook: _NullableDateTimeHook(),
   );
+  static DateTime? _$dataInseminacao(AnimalSummaryModel v) => v.dataInseminacao;
+  static const Field<AnimalSummaryModel, DateTime> _f$dataInseminacao = Field(
+    'dataInseminacao',
+    _$dataInseminacao,
+    opt: true,
+    hook: _NullableDateTimeHook(),
+  );
   static int? _$diasEmLactacao(AnimalSummaryModel v) => v.diasEmLactacao;
   static const Field<AnimalSummaryModel, int> _f$diasEmLactacao = Field(
     'diasEmLactacao',
@@ -128,6 +135,7 @@ class AnimalSummaryModelMapper extends ClassMapperBase<AnimalSummaryModel> {
     #dataNascimento: _f$dataNascimento,
     #numeroLactacao: _f$numeroLactacao,
     #dataUltimoParto: _f$dataUltimoParto,
+    #dataInseminacao: _f$dataInseminacao,
     #diasEmLactacao: _f$diasEmLactacao,
     #historicoReprodutivo: _f$historicoReprodutivo,
     #statusReprodutivo: _f$statusReprodutivo,
@@ -146,6 +154,7 @@ class AnimalSummaryModelMapper extends ClassMapperBase<AnimalSummaryModel> {
       dataNascimento: data.dec(_f$dataNascimento),
       numeroLactacao: data.dec(_f$numeroLactacao),
       dataUltimoParto: data.dec(_f$dataUltimoParto),
+      dataInseminacao: data.dec(_f$dataInseminacao),
       diasEmLactacao: data.dec(_f$diasEmLactacao),
       historicoReprodutivo: data.dec(_f$historicoReprodutivo),
       statusReprodutivo: data.dec(_f$statusReprodutivo),
@@ -235,6 +244,7 @@ abstract class AnimalSummaryModelCopyWith<
     DateTime? dataNascimento,
     int? numeroLactacao,
     DateTime? dataUltimoParto,
+    DateTime? dataInseminacao,
     int? diasEmLactacao,
     String? historicoReprodutivo,
     AnimalReproductiveStatus? statusReprodutivo,
@@ -265,6 +275,7 @@ class _AnimalSummaryModelCopyWithImpl<$R, $Out>
     Object? dataNascimento = $none,
     int? numeroLactacao,
     Object? dataUltimoParto = $none,
+    Object? dataInseminacao = $none,
     Object? diasEmLactacao = $none,
     Object? historicoReprodutivo = $none,
     Object? statusReprodutivo = $none,
@@ -282,6 +293,7 @@ class _AnimalSummaryModelCopyWithImpl<$R, $Out>
       if (dataNascimento != $none) #dataNascimento: dataNascimento,
       if (numeroLactacao != null) #numeroLactacao: numeroLactacao,
       if (dataUltimoParto != $none) #dataUltimoParto: dataUltimoParto,
+      if (dataInseminacao != $none) #dataInseminacao: dataInseminacao,
       if (diasEmLactacao != $none) #diasEmLactacao: diasEmLactacao,
       if (historicoReprodutivo != $none)
         #historicoReprodutivo: historicoReprodutivo,
@@ -304,6 +316,7 @@ class _AnimalSummaryModelCopyWithImpl<$R, $Out>
     dataNascimento: data.get(#dataNascimento, or: $value.dataNascimento),
     numeroLactacao: data.get(#numeroLactacao, or: $value.numeroLactacao),
     dataUltimoParto: data.get(#dataUltimoParto, or: $value.dataUltimoParto),
+    dataInseminacao: data.get(#dataInseminacao, or: $value.dataInseminacao),
     diasEmLactacao: data.get(#diasEmLactacao, or: $value.diasEmLactacao),
     historicoReprodutivo: data.get(
       #historicoReprodutivo,

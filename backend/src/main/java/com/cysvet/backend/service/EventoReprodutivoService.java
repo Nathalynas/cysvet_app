@@ -6,6 +6,7 @@ import com.cysvet.backend.dto.sync.SyncEntityNames;
 import com.cysvet.backend.entity.Animal;
 import com.cysvet.backend.entity.Propriedade;
 import com.cysvet.backend.entity.EventoReprodutivo;
+import com.cysvet.backend.entity.StatusReprodutivoAnimal;
 import com.cysvet.backend.entity.TipoEventoReprodutivo;
 import com.cysvet.backend.entity.Usuario;
 import com.cysvet.backend.exception.ResourceNotFoundException;
@@ -142,9 +143,32 @@ public class EventoReprodutivoService {
                 request.tipo() == TipoEventoReprodutivo.INSEMINATION ? request.dataEvento().plusDays(283) : null
         );
 
-        if (isNewEvent && request.tipo() == TipoEventoReprodutivo.CALVING) {
-            animal.setDataUltimoParto(request.dataEvento());
-            animal.setNumeroLactacao(animal.getNumeroLactacao() + 1);
+        syncAnimalReproductiveSnapshot(animal, request, isNewEvent);
+    }
+
+    private void syncAnimalReproductiveSnapshot(Animal animal, EventoReprodutivoRequest request, boolean isNewEvent) {
+        switch (request.tipo()) {
+            case INSEMINATION -> {
+                animal.setDataInseminacao(request.dataEvento());
+                animal.setStatusReprodutivo(StatusReprodutivoAnimal.INSEMINATED);
+            }
+            case PREGNANCY_DIAGNOSIS -> {
+                if (request.prenhezConfirmada() != null) {
+                    animal.setStatusReprodutivo(request.prenhezConfirmada()
+                            ? StatusReprodutivoAnimal.PREGNANT
+                            : StatusReprodutivoAnimal.EMPTY);
+                }
+            }
+            case CALVING -> {
+                animal.setDataInseminacao(null);
+                animal.setStatusReprodutivo(StatusReprodutivoAnimal.PENDING);
+                if (isNewEvent) {
+                    animal.setDataUltimoParto(request.dataEvento());
+                    animal.setNumeroLactacao(animal.getNumeroLactacao() + 1);
+                }
+            }
+            case DRY_OFF -> animal.setStatusReprodutivo(StatusReprodutivoAnimal.DRY);
+            case GESTATIONAL_LOSS -> animal.setStatusReprodutivo(StatusReprodutivoAnimal.EMPTY);
         }
     }
 

@@ -173,6 +173,7 @@ class PropertyAnimalIntegrationTest {
                   "categoria": "Bovino",
                   "sexo": "Femea",
                   "numeroLactacao": 2,
+                  "dataInseminacao": "2026-05-01",
                   "historicoReprodutivo": "Sem intercorrencias",
                   "statusReprodutivo": "pregnant",
                   "status": "ATIVO"
@@ -192,6 +193,7 @@ class PropertyAnimalIntegrationTest {
                 .andExpect(jsonPath("$[0].idLote").value(loteId))
                 .andExpect(jsonPath("$[0].nomeLote").value("Lote 1"))
                 .andExpect(jsonPath("$[0].sexo").value("Femea"))
+                .andExpect(jsonPath("$[0].dataInseminacao").value("2026-05-01"))
                 .andExpect(jsonPath("$[0].statusReprodutivo").value("pregnant"))
                 .andExpect(jsonPath("$[0].status").value("ATIVO"));
 
@@ -400,6 +402,7 @@ class PropertyAnimalIntegrationTest {
                   "categoria": "VACA",
                   "sexo": "Femea",
                   "numeroLactacao": 3,
+                  "dataInseminacao": "2025-11-10",
                   "status": "ATIVO"
                 }
                 """.formatted(propertyId));
@@ -426,7 +429,6 @@ class PropertyAnimalIntegrationTest {
                                       "situacaoProdutiva": "lactante",
                                       "situacaoReprodutiva": "inseminada",
                                       "decisao": "ST cef+pg",
-                                      "dataUltimaIa": "2025-11-10",
                                       "numeroIaRecebida": 1,
                                       "diasPrenhez": 22,
                                       "diagnostico": "pg",
@@ -451,6 +453,7 @@ class PropertyAnimalIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].idExterno").value("visit-001"))
                 .andExpect(jsonPath("$[0].animais[0].animalCodigo").value("46344"))
+                .andExpect(jsonPath("$[0].animais[0].numeroIaRecebida").value(1))
                 .andExpect(jsonPath("$[0].animais[0].decisao").value("ST cef+pg"));
 
         MvcResult report = mockMvc.perform(get("/api/reports/visit/{visitId}/pdf", visitId)

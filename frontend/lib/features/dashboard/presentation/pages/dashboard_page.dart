@@ -2855,6 +2855,10 @@ AnimalReproductiveStatus _reproductiveStatusFor(_AnimalRecord record) {
   final savedStatus = record.animal.statusReprodutivo;
   if (savedStatus != null) return savedStatus;
 
+  if (record.animal.dataInseminacao != null) {
+    return AnimalReproductiveStatus.inseminated;
+  }
+
   final text = _normalizedRecordText(record);
   if (text.contains('pren') || text.contains('confirm')) {
     return AnimalReproductiveStatus.pregnant;

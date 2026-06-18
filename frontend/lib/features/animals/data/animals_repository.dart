@@ -107,6 +107,7 @@ class AnimalsRepository {
       'dataNascimento': _toDate(animal.dataNascimento),
       'numeroLactacao': animal.numeroLactacao,
       'dataUltimoParto': _toDate(animal.dataUltimoParto),
+      'dataInseminacao': _toDate(animal.dataInseminacao),
       'historicoReprodutivo': animal.historicoReprodutivo,
       'statusReprodutivo': animal.statusReprodutivo?.apiValue,
       'status': animal.status.apiValue,

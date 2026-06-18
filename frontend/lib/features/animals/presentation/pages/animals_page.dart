@@ -434,7 +434,8 @@ List<AnimalSummaryModel> _filterAnimals(
 
     final searchable =
         '${animal.codigo} ${animal.idExterno} ${animal.categoria} ${animal.sexo ?? ''} '
-                '${animalReproductiveStatus.label} ${animal.historicoReprodutivo ?? ''}'
+                '${animalReproductiveStatus.label} ${animal.historicoReprodutivo ?? ''} '
+                '${formatDate(animal.dataInseminacao)}'
             .normalize();
 
     return matchesStatus &&
@@ -779,6 +780,17 @@ class _AnimalMobileCard extends StatelessWidget {
                         color: colorScheme.onSurfaceVariant,
                       ),
                     ),
+                    if (animal.dataInseminacao != null) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        'Inseminação: ${formatDate(animal.dataInseminacao)}',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
                     if (animal.historicoReprodutivo?.trim().isNotEmpty ==
                         true) ...[
                       const SizedBox(height: 4),
@@ -993,8 +1005,9 @@ class _LastEventCell extends StatelessWidget {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     final lastBirth = animal.dataUltimoParto;
+    final inseminationDate = animal.dataInseminacao;
 
-    if (lastBirth == null) {
+    if (lastBirth == null && inseminationDate == null) {
       return Text(
         animal.historicoReprodutivo?.trim().isNotEmpty == true
             ? 'Histórico informado'
@@ -1010,15 +1023,28 @@ class _LastEventCell extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          'Parto em ${formatDate(lastBirth)}',
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: theme.textTheme.bodyMedium?.copyWith(
-            color: colorScheme.onSurface,
-            fontWeight: FontWeight.w700,
+        if (lastBirth != null)
+          Text(
+            'Parto em ${formatDate(lastBirth)}',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: colorScheme.onSurface,
+              fontWeight: FontWeight.w700,
+            ),
           ),
-        ),
+        if (inseminationDate != null) ...[
+          if (lastBirth != null) const SizedBox(height: 4),
+          Text(
+            'IA em ${formatDate(inseminationDate)}',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: colorScheme.onSurfaceVariant,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ],
         if (animal.diasEmLactacao != null) ...[
           const SizedBox(height: 4),
           Text(
@@ -1290,6 +1316,10 @@ class _AnimalHistoryMetricGrid extends StatelessWidget {
       _HistoryInfoItem(
         label: 'Último parto',
         value: formatDate(animal.dataUltimoParto),
+      ),
+      _HistoryInfoItem(
+        label: 'Última IA',
+        value: formatDate(animal.dataInseminacao),
       ),
       _HistoryInfoItem(
         label: 'DEL',
@@ -2374,6 +2404,10 @@ AnimalReproductiveStatus reproductiveStatusFor(AnimalSummaryModel animal) {
   final savedStatus = animal.statusReprodutivo;
   if (savedStatus != null) {
     return savedStatus;
+  }
+
+  if (animal.dataInseminacao != null) {
+    return AnimalReproductiveStatus.inseminated;
   }
 
   final history = (animal.historicoReprodutivo ?? '').normalize();

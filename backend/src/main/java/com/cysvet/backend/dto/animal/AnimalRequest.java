@@ -42,6 +42,9 @@ public record AnimalRequest(
         @Schema(description = "Data do ultimo parto.", example = "2025-03-10")
         @JsonAlias("data_ultimo_parto")
         LocalDate dataUltimoParto,
+        @Schema(description = "Data da ultima inseminacao informada para o animal.", example = "2025-11-10")
+        @JsonAlias("data_inseminacao")
+        LocalDate dataInseminacao,
         @Schema(description = "Historico reprodutivo resumido do animal.")
         @JsonAlias("historico_reprodutivo")
         String historicoReprodutivo,

@@ -34,6 +34,8 @@ public record AnimalResponse(
         Integer numeroLactacao,
         @Schema(description = "Data do ultimo parto.", example = "2025-03-10")
         LocalDate dataUltimoParto,
+        @Schema(description = "Data da ultima inseminacao registrada.", example = "2025-11-10")
+        LocalDate dataInseminacao,
         @Schema(description = "Dias em lactacao calculados.", example = "63")
         Long diasEmLactacao,
         @Schema(description = "Historico reprodutivo resumido.")

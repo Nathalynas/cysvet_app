@@ -928,6 +928,12 @@ class _PropertyAnimalsTable extends StatelessWidget {
           },
         ),
         AppTableColumn<AnimalSummaryModel>(
+          label: 'Última IA',
+          flex: 2,
+          cellBuilder: (context, animal) =>
+              Text(formatDate(animal.dataInseminacao)),
+        ),
+        AppTableColumn<AnimalSummaryModel>(
           label: 'Último parto',
           flex: 2,
           cellBuilder: (context, animal) =>
@@ -1150,6 +1156,10 @@ AnimalReproductiveStatus _animalReproductiveStatusFor(
   final savedStatus = animal.statusReprodutivo;
   if (savedStatus != null) {
     return savedStatus;
+  }
+
+  if (animal.dataInseminacao != null) {
+    return AnimalReproductiveStatus.inseminated;
   }
 
   final history = (animal.historicoReprodutivo ?? '').normalize();

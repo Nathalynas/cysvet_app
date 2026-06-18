@@ -39,6 +39,9 @@ public class Animal extends TenantAwareEntity {
     @Column(name = "data_ultimo_parto")
     private LocalDate dataUltimoParto;
 
+    @Column(name = "data_inseminacao")
+    private LocalDate dataInseminacao;
+
     @Column(name = "historico_reprodutivo", length = 2000)
     private String historicoReprodutivo;
 

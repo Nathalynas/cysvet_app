@@ -24,8 +24,10 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import java.util.HashMap;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.xssf.usermodel.XSSFSheet;
@@ -116,7 +118,7 @@ public class ReportService {
 
         try (XSSFWorkbook workbook = new XSSFWorkbook(); ByteArrayOutputStream output = new ByteArrayOutputStream()) {
             XSSFSheet animalsSheet = workbook.createSheet("Animais");
-            createRow(animalsSheet, 0, "Codigo", "Categoria", "Nascimento", "Lactacao", "Ultimo Parto");
+            createRow(animalsSheet, 0, "Codigo", "Categoria", "Nascimento", "Lactacao", "Ultimo Parto", "Data Inseminacao");
             for (int index = 0; index < animals.size(); index++) {
                 Animal animal = animals.get(index);
                 createRow(
@@ -126,7 +128,8 @@ public class ReportService {
                         animal.getCategoria(),
                         animal.getDataNascimento() == null ? "" : animal.getDataNascimento().toString(),
                         String.valueOf(animal.getNumeroLactacao()),
-                        animal.getDataUltimoParto() == null ? "" : animal.getDataUltimoParto().toString()
+                        animal.getDataUltimoParto() == null ? "" : animal.getDataUltimoParto().toString(),
+                        animal.getDataInseminacao() == null ? "" : animal.getDataInseminacao().toString()
                 );
             }
 
@@ -162,7 +165,7 @@ public class ReportService {
     @Transactional(readOnly = true)
     public byte[] generateVisitPdf(Long visitId) {
         Visita visit = visitService.getEntity(visitId);
-        List<VisitaAnimalItemDto> items = visitService.toResponse(visit).animais();
+        List<VisitaAnimalItemDto> items = enrichVisitAnimalItems(visit, visitService.toResponse(visit).animais());
 
         if (items == null || items.isEmpty()) {
             return generatePdf(visit.getPropriedade().getId(), visit.getDataVisita(), visit.getDataVisita());
@@ -198,6 +201,81 @@ public class ReportService {
     public byte[] generateVisitExcel(Long visitId) {
         Visita visit = visitService.getEntity(visitId);
         return generateExcel(visit.getPropriedade().getId(), visit.getDataVisita(), visit.getDataVisita());
+    }
+
+    private List<VisitaAnimalItemDto> enrichVisitAnimalItems(Visita visit, List<VisitaAnimalItemDto> items) {
+        if (items == null || items.isEmpty()) {
+            return items;
+        }
+
+        List<Animal> animals = animalRepository.findAllByPropriedadeIdOrderByCodigoAsc(visit.getPropriedade().getId());
+        Map<Long, Animal> animalsById = new HashMap<>();
+        Map<String, Animal> animalsByExternalId = new HashMap<>();
+        Map<String, Animal> animalsByCode = new HashMap<>();
+
+        for (Animal animal : animals) {
+            animalsById.put(animal.getId(), animal);
+            if (animal.getIdExterno() != null && !animal.getIdExterno().isBlank()) {
+                animalsByExternalId.put(animal.getIdExterno().trim(), animal);
+            }
+            if (animal.getCodigo() != null && !animal.getCodigo().isBlank()) {
+                animalsByCode.put(animal.getCodigo().trim(), animal);
+            }
+        }
+
+        return items.stream()
+                .map(item -> {
+                    if (item.dataUltimaIa() != null) {
+                        return item;
+                    }
+
+                    Animal animal = resolveAnimalSnapshot(item, animalsById, animalsByExternalId, animalsByCode);
+                    if (animal == null || animal.getDataInseminacao() == null) {
+                        return item;
+                    }
+
+                    return new VisitaAnimalItemDto(
+                            item.animalId(),
+                            item.animalIdExterno(),
+                            item.animalCodigo(),
+                            item.animalCategoria(),
+                            item.idadeMeses(),
+                            item.situacaoProdutiva(),
+                            item.situacaoReprodutiva(),
+                            item.decisao(),
+                            animal.getDataInseminacao(),
+                            item.numeroIaRecebida(),
+                            item.diasPrenhez(),
+                            item.diagnostico(),
+                            item.del(),
+                            item.diasParaSecar(),
+                            item.previsaoSecagem(),
+                            item.dataPreParto(),
+                            item.previsaoParto()
+                    );
+                })
+                .toList();
+    }
+
+    private Animal resolveAnimalSnapshot(
+            VisitaAnimalItemDto item,
+            Map<Long, Animal> animalsById,
+            Map<String, Animal> animalsByExternalId,
+            Map<String, Animal> animalsByCode
+    ) {
+        if (item.animalId() != null && animalsById.containsKey(item.animalId())) {
+            return animalsById.get(item.animalId());
+        }
+        if (item.animalIdExterno() != null && !item.animalIdExterno().isBlank()) {
+            Animal animal = animalsByExternalId.get(item.animalIdExterno().trim());
+            if (animal != null) {
+                return animal;
+            }
+        }
+        if (item.animalCodigo() != null && !item.animalCodigo().isBlank()) {
+            return animalsByCode.get(item.animalCodigo().trim());
+        }
+        return null;
     }
 
     private void addCell(PdfPTable table, String value) {

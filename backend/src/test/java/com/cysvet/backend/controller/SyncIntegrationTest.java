@@ -68,7 +68,8 @@ class SyncIntegrationTest {
                   "codigo": "A-SYNC-01",
                   "categoria": "VACA",
                   "sexo": "Femea",
-                  "numeroLactacao": 2
+                  "numeroLactacao": 2,
+                  "dataInseminacao": "2026-05-19"
                 }
                 """.formatted(propertyId, lotId));
 
@@ -112,6 +113,7 @@ class SyncIntegrationTest {
         assertEquals(lot.path("idExterno").asText(), findByExternalId(pull.path("animals"), "animal-sync-full-1").path("idExternoLote").asText());
         assertEquals("prop-sync-full-1", findByExternalId(pull.path("visits"), "visit-sync-full-1").path("idExternoPropriedade").asText());
         assertEquals("animal-sync-full-1", findByExternalId(pull.path("visits"), "visit-sync-full-1").path("animais").path(0).path("animalIdExterno").asText());
+        assertEquals("2026-05-21", findByExternalId(pull.path("animals"), "animal-sync-full-1").path("dataInseminacao").asText());
         assertEquals("animal-sync-full-1", findByExternalId(pull.path("events"), "event-sync-full-1").path("idExternoAnimal").asText());
         assertFalse(hasDeletedRecord(pull.path("deletedRecords"), "visit", "visit-sync-full-1"));
     }

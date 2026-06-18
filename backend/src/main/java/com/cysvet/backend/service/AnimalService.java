@@ -130,6 +130,7 @@ public class AnimalService {
         animal.setDataNascimento(request.dataNascimento());
         animal.setNumeroLactacao(request.numeroLactacao());
         animal.setDataUltimoParto(request.dataUltimoParto());
+        animal.setDataInseminacao(request.dataInseminacao());
         animal.setHistoricoReprodutivo(request.historicoReprodutivo());
         animal.setStatusReprodutivo(request.statusReprodutivo());
         if (request.status() != null) {
@@ -199,6 +200,7 @@ public class AnimalService {
                 animal.getDataNascimento(),
                 animal.getNumeroLactacao(),
                 animal.getDataUltimoParto(),
+                animal.getDataInseminacao(),
                 diasEmLactacao,
                 animal.getHistoricoReprodutivo(),
                 animal.getStatusReprodutivo(),

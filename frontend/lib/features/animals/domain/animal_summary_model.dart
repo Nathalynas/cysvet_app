@@ -17,6 +17,7 @@ class AnimalSummaryModel with AnimalSummaryModelMappable {
     this.dataNascimento,
     this.numeroLactacao = 0,
     this.dataUltimoParto,
+    this.dataInseminacao,
     this.diasEmLactacao,
     this.historicoReprodutivo,
     this.statusReprodutivo,
@@ -35,6 +36,8 @@ class AnimalSummaryModel with AnimalSummaryModelMappable {
   final int numeroLactacao;
   @MappableField(hook: _NullableDateTimeHook())
   final DateTime? dataUltimoParto;
+  @MappableField(hook: _NullableDateTimeHook())
+  final DateTime? dataInseminacao;
   final int? diasEmLactacao;
   final String? historicoReprodutivo;
   @MappableField(hook: _AnimalReproductiveStatusHook())

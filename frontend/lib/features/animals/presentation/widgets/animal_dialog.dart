@@ -61,6 +61,8 @@ class _AnimalFormState extends ConsumerState<_AnimalForm> {
   final _especie = TextEditingController();
   final _nascimento = TextEditingController();
   final _lactacao = TextEditingController();
+  final _parto = TextEditingController();
+  final _inseminacao = TextEditingController();
   final _historico = TextEditingController();
 
   String? _sexo;
@@ -79,6 +81,8 @@ class _AnimalFormState extends ConsumerState<_AnimalForm> {
     _sexo = _normalizeSexo(animal?.sexo);
     _nascimento.text = formatDateInput(animal?.dataNascimento);
     _lactacao.text = (animal?.numeroLactacao ?? 0).toString();
+    _parto.text = formatDateInput(animal?.dataUltimoParto);
+    _inseminacao.text = formatDateInput(animal?.dataInseminacao);
     _historico.text = animal?.historicoReprodutivo ?? '';
     _propertyId = animal?.idPropriedade;
     _reproductiveStatus = _resolveReproductiveStatus(animal);
@@ -90,6 +94,8 @@ class _AnimalFormState extends ConsumerState<_AnimalForm> {
     _especie.dispose();
     _nascimento.dispose();
     _lactacao.dispose();
+    _parto.dispose();
+    _inseminacao.dispose();
     _historico.dispose();
     super.dispose();
   }
@@ -127,6 +133,8 @@ class _AnimalFormState extends ConsumerState<_AnimalForm> {
             sexo: _sexo,
             dataNascimento: parseDateInput(_nascimento.text),
             numeroLactacao: int.tryParse(_lactacao.text.trim()) ?? 0,
+            dataUltimoParto: parseDateInput(_parto.text),
+            dataInseminacao: parseDateInput(_inseminacao.text),
             historicoReprodutivo: _historico.text.trim(),
             statusReprodutivo: _reproductiveStatus,
             status: animal?.status ?? AnimalStatus.active,
@@ -203,6 +211,38 @@ class _AnimalFormState extends ConsumerState<_AnimalForm> {
           required: true,
           keyboardType: TextInputType.number,
         ),
+        AppTextField(
+          label: 'Data do parto',
+          hint: 'DD/MM/AAAA',
+          controller: _parto,
+          keyboardType: TextInputType.number,
+          inputFormatters: const [DateInputFormatter()],
+          validator: (value) {
+            if ((value ?? '').trim().isEmpty) {
+              return null;
+            }
+            if (parseDateInput(value ?? '') == null) {
+              return 'Informe uma data valida';
+            }
+            return null;
+          },
+        ),
+        AppTextField(
+          label: 'Data da inseminação',
+          hint: 'DD/MM/AAAA',
+          controller: _inseminacao,
+          keyboardType: TextInputType.number,
+          inputFormatters: const [DateInputFormatter()],
+          validator: (value) {
+            if ((value ?? '').trim().isEmpty) {
+              return null;
+            }
+            if (parseDateInput(value ?? '') == null) {
+              return 'Informe uma data valida';
+            }
+            return null;
+          },
+        ),
         AppTextField(label: 'Histórico', controller: _historico, maxLines: 3),
       ],
     );
@@ -234,10 +274,16 @@ class _AnimalFormState extends ConsumerState<_AnimalForm> {
     }
   }
 
-  AnimalReproductiveStatus _resolveReproductiveStatus(AnimalSummaryModel? animal) {
+  AnimalReproductiveStatus _resolveReproductiveStatus(
+    AnimalSummaryModel? animal,
+  ) {
     final savedStatus = animal?.statusReprodutivo;
     if (savedStatus != null) {
       return savedStatus;
+    }
+
+    if (animal?.dataInseminacao != null) {
+      return AnimalReproductiveStatus.inseminated;
     }
 
     final history = (animal?.historicoReprodutivo ?? '').normalize();
