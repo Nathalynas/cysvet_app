@@ -1,27 +1,58 @@
 @startuml
-actor "Médico Veterinário" as Vet
-participant "App Expo" as App
-database "Banco Local\nSQLite / IndexedDB" as LocalDB
-participant "Serviço de Sincronização" as Sync
-participant "API Spring Boot" as API
-database "MySQL" as MySQL
+title Sincronizacao offline-first
+skinparam dpi 180
+skinparam shadowing false
+hide footbox
 
-Vet -> App : Registrar visita/evento reprodutivo
-App -> LocalDB : Salvar registro local
-App -> LocalDB : Inserir item na sync_queue
+actor "Usuario" as User
+participant "App Flutter" as App
+database "Banco local" as LocalDB
+participant "API" as API
+participant "SyncService" as Sync
 
-App -> Sync : Verificar conectividade
+User -> App : Criar, editar ou excluir registro
+App -> LocalDB : Salvar entidade local
+App -> LocalDB : Registrar mutacao pendente
 
 alt Sem internet
-    Sync -> LocalDB : Manter registro como PENDING
-    Sync --> App : Operação concluída offline
+  App --> User : Manter item pendente
 else Com internet
-    Sync -> LocalDB : Buscar registros pendentes
-    Sync -> API : Enviar payload do registro
-    API -> MySQL : Persistir dados
-    MySQL --> API : Confirmação
-    API --> Sync : Sucesso
-    Sync -> LocalDB : Atualizar status para SYNCED
-    Sync --> App : Sincronização concluída
+  App -> LocalDB : Buscar mutacoes pendentes
+  App -> API : POST /api/sync { items[] }
+  API -> Sync : Processar itens
+
+  note right of Sync
+  Ordem oficial de envio:
+  property -> lot -> animal -> visit -> event
+
+  Regras do processamento:
+  - chave repetida -> REPLAYED
+  - item aplicado -> SYNCED
+  - conflito -> CONFLICT_SERVER_WINS
+  - hard delete -> tombstone quando aplicavel
+  end note
+
+  Sync --> API : Resultado dos itens
+  API --> App : SyncResponse
+  App -> LocalDB : Atualizar status e checkpoint
+
+  App -> API : GET /api/sync/pull?since=checkpoint
+  API -> Sync : Buscar atualizacoes
+
+  note right of Sync
+  Retorno do pull:
+  - serverTime
+  - contract
+  - properties, lots, animals
+  - visits, events
+  - deletedRecords
+  end note
+
+  Sync --> API : Snapshot incremental
+  API --> App : PullSyncResponse
+  App -> LocalDB : Reconciliar colecoes
+  App -> LocalDB : Aplicar tombstones
+  App --> User : Base local sincronizada
 end
+
 @enduml

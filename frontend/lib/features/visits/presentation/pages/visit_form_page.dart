@@ -15,66 +15,12 @@ import '../../../../core/widgets/app_dropdown.dart';
 import '../../../../core/widgets/app_text_field.dart';
 import '../../../animals/data/animals_repository.dart';
 import '../../../animals/domain/animal_summary_model.dart';
+import '../../../indicators/domain/indicador_reprodutivo_calculator.dart';
 import '../../../properties/application/properties_provider.dart';
 import '../../../properties/domain/property_summary_model.dart';
 import '../../data/visits_repository.dart';
 import '../../application/visits_provider.dart';
 import '../../domain/visit_summary_model.dart';
-
-int? diasEntre(DateTime? dataInicial, DateTime? dataFinal) {
-  if (dataInicial == null || dataFinal == null) {
-    return null;
-  }
-
-  final start = DateUtils.dateOnly(dataInicial);
-  final end = DateUtils.dateOnly(dataFinal);
-  return end.difference(start).inDays;
-}
-
-DateTime? adicionarDias(DateTime? data, int? dias) {
-  if (data == null || dias == null) {
-    return null;
-  }
-
-  return DateUtils.dateOnly(data).add(Duration(days: dias));
-}
-
-String? nomeDoMes(DateTime? data) {
-  if (data == null || data.month < 1 || data.month > 12) {
-    return null;
-  }
-
-  const months = [
-    'janeiro',
-    'fevereiro',
-    'marco',
-    'abril',
-    'maio',
-    'junho',
-    'julho',
-    'agosto',
-    'setembro',
-    'outubro',
-    'novembro',
-    'dezembro',
-  ];
-  return months[data.month - 1];
-}
-
-double? media(Iterable<num?> lista) {
-  final validValues = lista
-      .whereType<num>()
-      .where((value) => value.isFinite)
-      .map((value) => value.toDouble())
-      .toList(growable: false);
-  if (validValues.isEmpty) {
-    return null;
-  }
-
-  final total = validValues.fold<double>(0, (sum, value) => sum + value);
-  final result = total / validValues.length;
-  return result.isFinite ? result : null;
-}
 
 List<DateTime> _iaDatesFromEntry(VisitAnimalEntryModel entry) {
   final dates = <DateTime>[
@@ -129,6 +75,16 @@ class _AnimalIaHistory {
   DateTime? get firstDate => dates.isEmpty ? null : dates.first;
 
   int get suggestedNextNumber => totalIas + 1;
+}
+
+class _AnimalLastBirthSnapshot {
+  const _AnimalLastBirthSnapshot({
+    required this.lastBirthDate,
+    required this.visitDate,
+  });
+
+  final DateTime lastBirthDate;
+  final DateTime? visitDate;
 }
 
 String _animalIdentifier(VisitAnimalEntryModel entry) {
@@ -497,8 +453,18 @@ class _VisitFormPageState extends ConsumerState<VisitFormPage> {
         animals: animals,
         visits: previousVisits,
       );
+      final lastBirthByAnimalId = _buildLastBirthByAnimalId(
+        animals: animals,
+        visits: previousVisits,
+      );
       final entries = animals
-          .map((animal) => _entryFromAnimal(animal, iaHistoryByAnimalId))
+          .map(
+            (animal) => _entryFromAnimal(
+              animal,
+              iaHistoryByAnimalId: iaHistoryByAnimalId,
+              lastBirthByAnimalId: lastBirthByAnimalId,
+            ),
+          )
           .toList(growable: false);
       setState(() {
         _loadedPropertyId = propertyId;
@@ -581,6 +547,78 @@ class _VisitFormPageState extends ConsumerState<VisitFormPage> {
     }
 
     return result;
+  }
+
+  Map<int, DateTime> _buildLastBirthByAnimalId({
+    required List<AnimalSummaryModel> animals,
+    required List<VisitSummaryModel> visits,
+  }) {
+    final result = <int, _AnimalLastBirthSnapshot>{};
+
+    for (final animal in animals) {
+      final backendLastBirth = animal.dataUltimoParto;
+      if (backendLastBirth != null) {
+        result[animal.id] = _AnimalLastBirthSnapshot(
+          lastBirthDate: DateUtils.dateOnly(backendLastBirth),
+          visitDate: null,
+        );
+      }
+
+      for (final visit in visits) {
+        final visitDate = visit.dataVisita == null
+            ? null
+            : DateUtils.dateOnly(visit.dataVisita!);
+
+        for (final entry in visit.animais) {
+          if (!_visitEntryBelongsToAnimal(entry, animal)) {
+            continue;
+          }
+
+          final lastBirth = entry.dataUltimoParto;
+          if (lastBirth == null) {
+            continue;
+          }
+
+          final candidate = _AnimalLastBirthSnapshot(
+            lastBirthDate: DateUtils.dateOnly(lastBirth),
+            visitDate: visitDate,
+          );
+          final current = result[animal.id];
+          if (_shouldReplaceLastBirth(current: current, candidate: candidate)) {
+            result[animal.id] = candidate;
+          }
+        }
+      }
+    }
+
+    return {
+      for (final entry in result.entries) entry.key: entry.value.lastBirthDate,
+    };
+  }
+
+  bool _shouldReplaceLastBirth({
+    required _AnimalLastBirthSnapshot? current,
+    required _AnimalLastBirthSnapshot candidate,
+  }) {
+    if (current == null) {
+      return true;
+    }
+
+    final currentVisitDate = current.visitDate;
+    final candidateVisitDate = candidate.visitDate;
+    if (currentVisitDate == null && candidateVisitDate != null) {
+      return true;
+    }
+    if (currentVisitDate != null && candidateVisitDate != null) {
+      if (candidateVisitDate.isAfter(currentVisitDate)) {
+        return true;
+      }
+      if (candidateVisitDate.isBefore(currentVisitDate)) {
+        return false;
+      }
+    }
+
+    return candidate.lastBirthDate.isAfter(current.lastBirthDate);
   }
 
   bool _visitEntryBelongsToAnimal(
@@ -701,12 +739,15 @@ class _VisitFormPageState extends ConsumerState<VisitFormPage> {
   }
 
   VisitAnimalEntryModel _entryFromAnimal(
-    AnimalSummaryModel animal,
-    Map<int, _AnimalIaHistory> iaHistoryByAnimalId,
-  ) {
+    AnimalSummaryModel animal, {
+    required Map<int, _AnimalIaHistory> iaHistoryByAnimalId,
+    required Map<int, DateTime> lastBirthByAnimalId,
+  }) {
     final reproductiveStatus = _visitReproductiveStatus(animal);
     final iaHistory = iaHistoryByAnimalId[animal.id] ?? _AnimalIaHistory.empty;
     final iaDates = iaHistory.dates;
+    final lastBirthDate =
+        lastBirthByAnimalId[animal.id] ?? animal.dataUltimoParto;
 
     final entry = VisitAnimalEntryModel(
       animalId: animal.id,
@@ -714,9 +755,12 @@ class _VisitFormPageState extends ConsumerState<VisitFormPage> {
       animalCodigo: animal.codigo,
       animalCategoria: animal.categoria,
       dataNascimento: animal.dataNascimento,
-      dataUltimoParto: animal.dataUltimoParto,
+      dataUltimoParto: lastBirthDate,
       numeroPartos: animal.numeroLactacao > 0 ? animal.numeroLactacao : null,
-      situacaoProdutiva: _visitProductiveStatus(animal),
+      situacaoProdutiva: _visitProductiveStatus(
+        animal,
+        dataUltimoParto: lastBirthDate,
+      ),
       situacaoReprodutiva: reproductiveStatus,
       dataUltimaIa: iaHistory.lastDate,
       dataPrimeiraIa: iaDates.isEmpty ? null : iaDates[0],
@@ -733,7 +777,10 @@ class _VisitFormPageState extends ConsumerState<VisitFormPage> {
     return _applyAutomaticCalculations(entry);
   }
 
-  String? _visitProductiveStatus(AnimalSummaryModel animal) {
+  String? _visitProductiveStatus(
+    AnimalSummaryModel animal, {
+    required DateTime? dataUltimoParto,
+  }) {
     final category = animal.categoria.normalize();
 
     if (category.contains('novilha')) {
@@ -744,7 +791,7 @@ class _VisitFormPageState extends ConsumerState<VisitFormPage> {
       return AnimalProductiveSituation.dry;
     }
 
-    if (animal.numeroLactacao > 0 || animal.diasEmLactacao != null) {
+    if (animal.numeroLactacao > 0 || dataUltimoParto != null) {
       return AnimalProductiveSituation.lactating;
     }
 
@@ -887,514 +934,10 @@ class _VisitAnimalAutomaticCalculator {
     required VisitAnimalEntryModel entry,
     required DateTime? dataAtual,
   }) {
-    final situacaoProdutiva = _normalize(entry.situacaoProdutiva);
-    final situacaoReprodutiva = _normalize(entry.situacaoReprodutiva);
-    final intervalo1e2Ia = diasEntre(entry.dataPrimeiraIa, entry.dataSegundaIa);
-    final intervalo2e3Ia = diasEntre(entry.dataSegundaIa, entry.dataTerceiraIa);
-    final intervalo3e4Ia = diasEntre(entry.dataTerceiraIa, entry.dataQuartaIa);
-    final intervalo4e5Ia = diasEntre(entry.dataQuartaIa, entry.dataQuintaIa);
-    final diasPrenhez = _diasPrenhez(
-      situacaoProdutiva: situacaoProdutiva,
-      situacaoReprodutiva: situacaoReprodutiva,
-      dataUltimaIa: entry.dataUltimaIa,
+    return IndicadorReprodutivoCalculator.applyAutomaticCalculations(
+      entry: entry,
       dataAtual: dataAtual,
     );
-    final previsaoSecagem = _previsaoSecagem(
-      situacaoProdutiva: situacaoProdutiva,
-      situacaoReprodutiva: situacaoReprodutiva,
-      dataUltimaIa: entry.dataUltimaIa,
-    );
-    final dataPreParto = _dataPreParto(
-      situacaoReprodutiva: situacaoReprodutiva,
-      dataUltimaIa: entry.dataUltimaIa,
-    );
-    final previsaoParto = _previsaoParto(
-      situacaoReprodutiva: situacaoReprodutiva,
-      dataUltimaIa: entry.dataUltimaIa,
-    );
-
-    return entry.copyWith(
-      idadeMeses: _monthsBetween(entry.dataNascimento, dataAtual),
-      del: _del(
-        situacaoProdutiva: situacaoProdutiva,
-        dataUltimoParto: entry.dataUltimoParto,
-        dataAtual: dataAtual,
-      ),
-      idadePrimeiroPartoMeses: _monthsBetween(
-        entry.dataNascimento,
-        entry.dataPrimeiroParto,
-      ),
-      idadePrimeiraIa: _idadePrimeiraIa(
-        situacaoProdutiva: situacaoProdutiva,
-        dataNascimento: entry.dataNascimento,
-        dataPrimeiraIa: entry.dataPrimeiraIa,
-      ),
-      mesParto: _mesParto(entry.numeroPartos, entry.dataUltimoParto),
-      anoUltimoParto: entry.dataUltimoParto?.year,
-      iepAtual: _iepAtual(
-        numeroPartos: entry.numeroPartos,
-        dataPartoAnterior: entry.dataPartoAnterior,
-        dataUltimoParto: entry.dataUltimoParto,
-      ),
-      classificacaoPartos: _classificacaoPartos(entry.numeroPartos),
-      vacaApta: _vacaApta(situacaoReprodutiva),
-      intervalo1e2Ia: intervalo1e2Ia,
-      intervalo2e3Ia: intervalo2e3Ia,
-      intervalo3e4Ia: intervalo3e4Ia,
-      intervalo4e5Ia: intervalo4e5Ia,
-      mediaIntervaloIa: _mediaIntervaloIa(
-        numeroIaRecebida: entry.numeroIaRecebida,
-        situacaoReprodutiva: situacaoReprodutiva,
-        intervalos: [
-          intervalo1e2Ia,
-          intervalo2e3Ia,
-          intervalo3e4Ia,
-          intervalo4e5Ia,
-        ],
-      ),
-      previsaoRetornoCio: _previsaoRetornoCio(
-        situacaoReprodutiva: situacaoReprodutiva,
-        dataUltimaIa: entry.dataUltimaIa,
-      ),
-      diasPrenhez: diasPrenhez,
-      delPrimeiraIa: _delPrimeiraIa(
-        situacaoProdutiva: situacaoProdutiva,
-        situacaoReprodutiva: situacaoReprodutiva,
-        dataUltimoParto: entry.dataUltimoParto,
-        dataPrimeiraIa: entry.dataPrimeiraIa,
-      ),
-      periodoServico: _periodoServico(
-        situacaoProdutiva: situacaoProdutiva,
-        situacaoReprodutiva: situacaoReprodutiva,
-        dataUltimoParto: entry.dataUltimoParto,
-        dataUltimaIa: entry.dataUltimaIa,
-        diasPrenhez: diasPrenhez,
-      ),
-      diasParaSecar: _diasParaSecar(
-        situacaoProdutiva: situacaoProdutiva,
-        situacaoReprodutiva: situacaoReprodutiva,
-        diasPrenhez: diasPrenhez,
-      ),
-      previsaoSecagem: previsaoSecagem,
-      mesSecagem: _mesSecagem(
-        situacaoReprodutiva: situacaoReprodutiva,
-        previsaoSecagem: previsaoSecagem,
-      ),
-      diferencaSecagem: diasEntre(previsaoSecagem, entry.dataSecagemEfetiva),
-      periodoLactacao: _periodoLactacao(
-        situacaoProdutiva: situacaoProdutiva,
-        dataSecagemEfetiva: entry.dataSecagemEfetiva,
-        dataUltimoParto: entry.dataUltimoParto,
-      ),
-      dataPreParto: dataPreParto,
-      mesPreParto: _mesPreParto(
-        situacaoReprodutiva: situacaoReprodutiva,
-        dataPreParto: dataPreParto,
-      ),
-      duracaoPreParto: _duracaoPreParto(
-        situacaoProdutiva: situacaoProdutiva,
-        entradaPreParto: entry.entradaPreParto,
-        dataUltimoParto: entry.dataUltimoParto,
-      ),
-      previsaoParto: previsaoParto,
-      mesPrevistoParto: _mesPrevistoParto(
-        situacaoReprodutiva: situacaoReprodutiva,
-        previsaoParto: previsaoParto,
-      ),
-      iepProjetado: _iepProjetado(
-        situacaoProdutiva: situacaoProdutiva,
-        situacaoReprodutiva: situacaoReprodutiva,
-        previsaoParto: previsaoParto,
-        dataUltimoParto: entry.dataUltimoParto,
-      ),
-      controleLeiteiroComDesconto: _controleLeiteiroComDesconto(
-        situacaoProdutiva: situacaoProdutiva,
-        controleLeiteiro: entry.controleLeiteiro,
-      ),
-    );
-  }
-
-  static int? _del({
-    required String? situacaoProdutiva,
-    required DateTime? dataUltimoParto,
-    required DateTime? dataAtual,
-  }) {
-    if (situacaoProdutiva != AnimalProductiveSituation.lactating) {
-      return null;
-    }
-
-    return diasEntre(dataUltimoParto, dataAtual);
-  }
-
-  static double? _idadePrimeiraIa({
-    required String? situacaoProdutiva,
-    required DateTime? dataNascimento,
-    required DateTime? dataPrimeiraIa,
-  }) {
-    if (situacaoProdutiva != AnimalProductiveSituation.heifer) {
-      return null;
-    }
-
-    return _monthsBetween(dataNascimento, dataPrimeiraIa);
-  }
-
-  static String? _mesParto(int? numeroPartos, DateTime? dataUltimoParto) {
-    if (numeroPartos == null || numeroPartos < 1) {
-      return null;
-    }
-
-    return nomeDoMes(dataUltimoParto);
-  }
-
-  static double? _iepAtual({
-    required int? numeroPartos,
-    required DateTime? dataPartoAnterior,
-    required DateTime? dataUltimoParto,
-  }) {
-    if (numeroPartos == null || numeroPartos < 2) {
-      return null;
-    }
-
-    return _monthsBetween(dataPartoAnterior, dataUltimoParto);
-  }
-
-  static String? _classificacaoPartos(int? numeroPartos) {
-    if (numeroPartos == 1) {
-      return 'Primipara';
-    }
-    if (numeroPartos != null && numeroPartos >= 2) {
-      return 'Multipara';
-    }
-    return null;
-  }
-
-  static bool? _vacaApta(String? situacaoReprodutiva) {
-    const fitStatuses = {
-      AnimalReproductiveStatus.protocol,
-      AnimalReproductiveStatus.empty,
-      AnimalReproductiveStatus.released,
-      AnimalReproductiveStatus.delayed,
-      AnimalReproductiveStatus.waitingDiagnosis,
-      AnimalReproductiveStatus.inseminatedSt,
-    };
-    const unfitStatuses = {
-      AnimalReproductiveStatus.pregnant,
-      AnimalReproductiveStatus.induction,
-      AnimalReproductiveStatus.discard,
-      AnimalReproductiveStatus.pev,
-      AnimalReproductiveStatus.noAge,
-      AnimalReproductiveStatus.calf,
-    };
-
-    if (_isAnyReproductiveStatus(situacaoReprodutiva, fitStatuses)) {
-      return true;
-    }
-    if (_isAnyReproductiveStatus(situacaoReprodutiva, unfitStatuses)) {
-      return false;
-    }
-    return null;
-  }
-
-  static double? _mediaIntervaloIa({
-    required int? numeroIaRecebida,
-    required String? situacaoReprodutiva,
-    required Iterable<int?> intervalos,
-  }) {
-    const excludedStatuses = {
-      AnimalReproductiveStatus.pev,
-      AnimalReproductiveStatus.induction,
-      AnimalReproductiveStatus.noAge,
-      AnimalReproductiveStatus.discard,
-    };
-    if (numeroIaRecebida == null ||
-        numeroIaRecebida < 2 ||
-        _isAnyReproductiveStatus(situacaoReprodutiva, excludedStatuses)) {
-      return null;
-    }
-
-    return media(intervalos);
-  }
-
-  static DateTime? _previsaoRetornoCio({
-    required String? situacaoReprodutiva,
-    required DateTime? dataUltimaIa,
-  }) {
-    const excludedStatuses = {
-      AnimalReproductiveStatus.pregnant,
-      AnimalReproductiveStatus.pev,
-      AnimalReproductiveStatus.induction,
-      AnimalReproductiveStatus.discard,
-      AnimalReproductiveStatus.noAge,
-      AnimalReproductiveStatus.calf,
-      AnimalReproductiveStatus.released,
-      AnimalReproductiveStatus.delayed,
-    };
-    if (_isAnyReproductiveStatus(situacaoReprodutiva, excludedStatuses)) {
-      return null;
-    }
-
-    return adicionarDias(dataUltimaIa, 21);
-  }
-
-  static int? _diasPrenhez({
-    required String? situacaoProdutiva,
-    required String? situacaoReprodutiva,
-    required DateTime? dataUltimaIa,
-    required DateTime? dataAtual,
-  }) {
-    const excludedReproductiveStatuses = {
-      AnimalReproductiveStatus.empty,
-      AnimalReproductiveStatus.induction,
-      AnimalReproductiveStatus.discard,
-      AnimalReproductiveStatus.pev,
-      AnimalReproductiveStatus.noAge,
-      AnimalReproductiveStatus.delayed,
-      AnimalReproductiveStatus.released,
-    };
-
-    if (situacaoProdutiva == AnimalProductiveSituation.calf ||
-        _isAnyReproductiveStatus(
-          situacaoReprodutiva,
-          excludedReproductiveStatuses,
-        )) {
-      return null;
-    }
-
-    return diasEntre(dataUltimaIa, dataAtual);
-  }
-
-  static int? _delPrimeiraIa({
-    required String? situacaoProdutiva,
-    required String? situacaoReprodutiva,
-    required DateTime? dataUltimoParto,
-    required DateTime? dataPrimeiraIa,
-  }) {
-    const excludedReproductiveStatuses = {
-      AnimalReproductiveStatus.induction,
-      AnimalReproductiveStatus.discard,
-      AnimalReproductiveStatus.pev,
-      AnimalReproductiveStatus.noAge,
-      AnimalReproductiveStatus.delayed,
-      AnimalReproductiveStatus.released,
-    };
-    const excludedProductiveStatuses = {
-      AnimalProductiveSituation.heifer,
-      AnimalProductiveSituation.prepartum,
-    };
-    if (_isAnyReproductiveStatus(
-          situacaoReprodutiva,
-          excludedReproductiveStatuses,
-        ) ||
-        excludedProductiveStatuses.contains(situacaoProdutiva)) {
-      return null;
-    }
-
-    return diasEntre(dataUltimoParto, dataPrimeiraIa);
-  }
-
-  static int? _periodoServico({
-    required String? situacaoProdutiva,
-    required String? situacaoReprodutiva,
-    required DateTime? dataUltimoParto,
-    required DateTime? dataUltimaIa,
-    required int? diasPrenhez,
-  }) {
-    const excludedProductiveStatuses = {
-      AnimalProductiveSituation.heifer,
-      AnimalProductiveSituation.prepartum,
-    };
-    if (!_isPregnant(situacaoReprodutiva) ||
-        excludedProductiveStatuses.contains(situacaoProdutiva) ||
-        diasPrenhez == null) {
-      return null;
-    }
-
-    return diasEntre(dataUltimoParto, dataUltimaIa);
-  }
-
-  static int? _diasParaSecar({
-    required String? situacaoProdutiva,
-    required String? situacaoReprodutiva,
-    required int? diasPrenhez,
-  }) {
-    if (situacaoProdutiva == AnimalProductiveSituation.heifer ||
-        !_isPregnant(situacaoReprodutiva) ||
-        diasPrenhez == null) {
-      return null;
-    }
-
-    return 220 - diasPrenhez;
-  }
-
-  static DateTime? _previsaoSecagem({
-    required String? situacaoProdutiva,
-    required String? situacaoReprodutiva,
-    required DateTime? dataUltimaIa,
-  }) {
-    if (situacaoProdutiva == AnimalProductiveSituation.heifer ||
-        !_isPregnant(situacaoReprodutiva)) {
-      return null;
-    }
-
-    return adicionarDias(dataUltimaIa, 220);
-  }
-
-  static String? _mesSecagem({
-    required String? situacaoReprodutiva,
-    required DateTime? previsaoSecagem,
-  }) {
-    if (!_isPregnant(situacaoReprodutiva)) {
-      return null;
-    }
-
-    return nomeDoMes(previsaoSecagem);
-  }
-
-  static int? _periodoLactacao({
-    required String? situacaoProdutiva,
-    required DateTime? dataSecagemEfetiva,
-    required DateTime? dataUltimoParto,
-  }) {
-    if (situacaoProdutiva != AnimalProductiveSituation.dry) {
-      return null;
-    }
-
-    return diasEntre(dataUltimoParto, dataSecagemEfetiva);
-  }
-
-  static DateTime? _dataPreParto({
-    required String? situacaoReprodutiva,
-    required DateTime? dataUltimaIa,
-  }) {
-    if (!_isPregnant(situacaoReprodutiva)) {
-      return null;
-    }
-
-    return adicionarDias(dataUltimaIa, 252);
-  }
-
-  static String? _mesPreParto({
-    required String? situacaoReprodutiva,
-    required DateTime? dataPreParto,
-  }) {
-    if (!_isPregnant(situacaoReprodutiva)) {
-      return null;
-    }
-
-    return nomeDoMes(dataPreParto);
-  }
-
-  static int? _duracaoPreParto({
-    required String? situacaoProdutiva,
-    required DateTime? entradaPreParto,
-    required DateTime? dataUltimoParto,
-  }) {
-    if (situacaoProdutiva != AnimalProductiveSituation.lactating) {
-      return null;
-    }
-
-    return diasEntre(entradaPreParto, dataUltimoParto);
-  }
-
-  static DateTime? _previsaoParto({
-    required String? situacaoReprodutiva,
-    required DateTime? dataUltimaIa,
-  }) {
-    if (!_isPregnant(situacaoReprodutiva)) {
-      return null;
-    }
-
-    return adicionarDias(dataUltimaIa, 282);
-  }
-
-  static String? _mesPrevistoParto({
-    required String? situacaoReprodutiva,
-    required DateTime? previsaoParto,
-  }) {
-    if (!_isPregnant(situacaoReprodutiva)) {
-      return null;
-    }
-
-    return nomeDoMes(previsaoParto);
-  }
-
-  static double? _iepProjetado({
-    required String? situacaoProdutiva,
-    required String? situacaoReprodutiva,
-    required DateTime? previsaoParto,
-    required DateTime? dataUltimoParto,
-  }) {
-    const excludedProductiveStatuses = {
-      AnimalProductiveSituation.heifer,
-      AnimalProductiveSituation.prepartum,
-    };
-    if (excludedProductiveStatuses.contains(situacaoProdutiva) ||
-        !_isPregnant(situacaoReprodutiva)) {
-      return null;
-    }
-
-    return _monthsBetween(dataUltimoParto, previsaoParto);
-  }
-
-  static double? _controleLeiteiroComDesconto({
-    required String? situacaoProdutiva,
-    required double? controleLeiteiro,
-  }) {
-    const excludedProductiveStatuses = {
-      AnimalProductiveSituation.dry,
-      AnimalProductiveSituation.prepartum,
-      AnimalProductiveSituation.heifer,
-    };
-    if (controleLeiteiro == null ||
-        excludedProductiveStatuses.contains(situacaoProdutiva)) {
-      return null;
-    }
-
-    final result = controleLeiteiro * 0.70;
-    return result.isFinite ? result : null;
-  }
-
-  static double? _monthsBetween(DateTime? start, DateTime? end) {
-    final days = diasEntre(start, end);
-    if (days == null) {
-      return null;
-    }
-
-    final result = days / 30;
-    return result.isFinite ? result : null;
-  }
-
-  static bool _isPregnant(String? value) {
-    return _isReproductiveStatus(value, AnimalReproductiveStatus.pregnant);
-  }
-
-  static bool _isAnyReproductiveStatus(
-    String? value,
-    Set<AnimalReproductiveStatus> statuses,
-  ) {
-    return statuses.any((status) => _isReproductiveStatus(value, status));
-  }
-
-  static bool _isReproductiveStatus(
-    String? value,
-    AnimalReproductiveStatus status,
-  ) {
-    final normalized = _normalize(value);
-    if (normalized == null) {
-      return false;
-    }
-
-    if (normalized == status.apiValue.normalize() ||
-        normalized == status.label.normalize()) {
-      return true;
-    }
-
-    return status.aliases.any((alias) => normalized == alias.normalize());
-  }
-
-  static String? _normalize(String? value) {
-    final normalized = value?.trim().normalize();
-    return normalized == null || normalized.isEmpty ? null : normalized;
   }
 }
 

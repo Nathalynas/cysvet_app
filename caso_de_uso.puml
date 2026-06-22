@@ -1,35 +1,46 @@
 @startuml
 left to right direction
+skinparam packageStyle rectangle
 
-actor "Médico Veterinário" as Vet
+actor "Medico Veterinario" as Vet
 actor "Administrador" as Admin
 
-rectangle "Sistema de Gestão Reprodutiva" {
-  usecase "Fazer login" as UC1
-  usecase "Cadastrar propriedade" as UC2
-  usecase "Cadastrar animal" as UC3
-  usecase "Registrar visita técnica" as UC4
-  usecase "Registrar evento reprodutivo" as UC5
-  usecase "Consultar histórico" as UC6
-  usecase "Visualizar indicadores" as UC7
-  usecase "Gerar relatório PDF" as UC8
-  usecase "Exportar planilha" as UC9
-  usecase "Sincronizar dados" as UC10
-  usecase "Gerenciar usuários" as UC11
+rectangle "Cysvet" {
+  package "Acesso" {
+    usecase "Fazer login" as UCLogin
+    usecase "Selecionar empresa ativa" as UCCompany
+  }
+
+  package "Operacao tecnica" {
+    usecase "Consultar dashboard reprodutivo" as UCDashboard
+    usecase "Gerenciar propriedades" as UCProperties
+    usecase "Gerenciar animais" as UCAnimals
+    usecase "Consultar visitas e relatorios" as UCVisitReport
+    usecase "Registrar visita tecnica" as UCVisitCreate
+    usecase "Consultar historico do animal" as UCAnimalHistory
+    usecase "Baixar PDF da visita" as UCVisitPdf
+  }
+
+  package "Administracao" {
+    usecase "Criar conta inicial" as UCRegister
+    usecase "Gerenciar equipe da empresa" as UCTeam
+    usecase "Atualizar dados da empresa ativa" as UCCompanyUpdate
+  }
 }
 
-Vet --> UC1
-Vet --> UC2
-Vet --> UC3
-Vet --> UC4
-Vet --> UC5
-Vet --> UC6
-Vet --> UC7
-Vet --> UC8
-Vet --> UC9
-Vet --> UC10
+Vet --> UCLogin
+Vet --> UCCompany
+Vet --> UCDashboard
+Vet --> UCProperties
+Vet --> UCAnimals
+Vet --> UCVisitReport
+Vet --> UCVisitCreate
+Vet --> UCAnimalHistory
 
-Admin --> UC1
-Admin --> UC11
-Admin --> UC7
+Admin --> UCRegister
+Admin --> UCTeam
+Admin --> UCCompanyUpdate
+
+UCVisitPdf .> UCVisitReport : <<extend>>
+
 @enduml

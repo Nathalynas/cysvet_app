@@ -17,6 +17,7 @@ import 'package:flutter_riverpod/legacy.dart';
 
 import '../../../../core/presentation/async_value_view.dart';
 import '../../../../core/utils/formatters.dart';
+import '../../../indicators/domain/indicador_reprodutivo_calculator.dart';
 import '../../../properties/application/properties_provider.dart';
 import '../../../properties/domain/property_summary_model.dart';
 import '../../application/animals_csv_importer.dart';
@@ -1092,13 +1093,8 @@ class _HerdIndicators extends StatelessWidget {
     final isMobile = size.width < MOBILE_WIDTH;
 
     final statusCounts = _reproductiveStatusCounts(animals);
-    final knownStatusCount = statusCounts.entries
-        .where((entry) => entry.key != AnimalReproductiveStatus.pending)
-        .fold<int>(0, (total, entry) => total + entry.value);
-
-    final pregnancyRate = knownStatusCount == 0
-        ? null
-        : statusCounts[AnimalReproductiveStatus.pregnant]! / knownStatusCount;
+    final pregnancyRate =
+        IndicadorReprodutivoCalculator.pregnancyRateFromAnimals(animals);
 
     final pregnancyCard = _HerdMetricCard(
       title: 'Taxa de prenhez',
@@ -1398,12 +1394,6 @@ class _StatusCountTile extends StatelessWidget {
   }
 }
 
-String _valueOrDash(String? value) {
-  final text = value?.trim();
-  if (text == null || text.isEmpty) return '--';
-  return text;
-}
-
 String _propertyFilterContext({
   required int? selectedPropertyId,
   required Map<int, PropertySummaryModel> propertyById,
@@ -1430,52 +1420,13 @@ String _animalCodeLabel(String code) {
 }
 
 AnimalReproductiveStatus reproductiveStatusFor(AnimalSummaryModel animal) {
-  final savedStatus = animal.statusReprodutivo;
-  if (savedStatus != null) {
-    return savedStatus;
-  }
-
-  if (animal.dataInseminacao != null) {
-    return AnimalReproductiveStatus.inseminated;
-  }
-
-  final history = (animal.historicoReprodutivo ?? '').normalize();
-
-  if (history.contains('pren') || history.contains('confirm')) {
-    return AnimalReproductiveStatus.pregnant;
-  }
-
-  if (history.contains('insemin')) {
-    return AnimalReproductiveStatus.inseminated;
-  }
-
-  if (history.contains('seca') || history.contains('dry')) {
-    return AnimalReproductiveStatus.dry;
-  }
-
-  if (history.contains('vazia') ||
-      history.contains('empty') ||
-      history.contains('negativ') ||
-      history.contains('toque')) {
-    return AnimalReproductiveStatus.empty;
-  }
-
-  return AnimalReproductiveStatus.pending;
+  return IndicadorReprodutivoCalculator.resolveAnimalStatus(animal);
 }
 
 Map<AnimalReproductiveStatus, int> _reproductiveStatusCounts(
   List<AnimalSummaryModel> animals,
 ) {
-  final counts = {
-    for (final status in AnimalReproductiveStatus.editableValues) status: 0,
-  };
-
-  for (final animal in animals) {
-    final status = reproductiveStatusFor(animal);
-    counts[status] = (counts[status] ?? 0) + 1;
-  }
-
-  return counts;
+  return IndicadorReprodutivoCalculator.countAnimalStatuses(animals);
 }
 
 _ReproductiveStatusColors _reproductiveStatusColors(

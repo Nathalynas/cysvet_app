@@ -1,4 +1,3 @@
-import 'package:cysvet_app/core/constants/app_constants.dart';
 import 'package:cysvet_app/core/enums/animal_status.dart';
 import 'package:cysvet_app/core/widgets/app_button.dart';
 import 'package:cysvet_app/core/widgets/app_card.dart';
@@ -6,9 +5,9 @@ import 'package:cysvet_app/core/widgets/app_dialog.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_material_design_icons/flutter_material_design_icons.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_riverpod/legacy.dart';
 
 import '../../../../core/utils/formatters.dart';
+import '../../../indicators/domain/indicador_reprodutivo_calculator.dart';
 import '../../../visits/application/visits_provider.dart';
 import '../../../visits/data/visits_repository.dart';
 import '../../../visits/domain/visit_summary_model.dart';
@@ -23,37 +22,7 @@ String _animalCodeLabel(String code) {
 }
 
 AnimalReproductiveStatus reproductiveStatusFor(AnimalSummaryModel animal) {
-  final savedStatus = animal.statusReprodutivo;
-  if (savedStatus != null) {
-    return savedStatus;
-  }
-
-  if (animal.dataInseminacao != null) {
-    return AnimalReproductiveStatus.inseminated;
-  }
-
-  final history = (animal.historicoReprodutivo ?? '').normalize();
-
-  if (history.contains('pren') || history.contains('confirm')) {
-    return AnimalReproductiveStatus.pregnant;
-  }
-
-  if (history.contains('insemin')) {
-    return AnimalReproductiveStatus.inseminated;
-  }
-
-  if (history.contains('seca') || history.contains('dry')) {
-    return AnimalReproductiveStatus.dry;
-  }
-
-  if (history.contains('vazia') ||
-      history.contains('empty') ||
-      history.contains('negativ') ||
-      history.contains('toque')) {
-    return AnimalReproductiveStatus.empty;
-  }
-
-  return AnimalReproductiveStatus.pending;
+  return IndicadorReprodutivoCalculator.resolveAnimalStatus(animal);
 }
 
 final _animalHistoryProvider = FutureProvider.autoDispose
@@ -562,9 +531,6 @@ List<_HistoryDetail> _calculatedResultItems({
 }) {
   final lastBirth = _dateFromEntry(latestEntry, 'dataUltimoParto') ??
       animal.dataUltimoParto;
-  final inseminationDate = _dateFromEntry(latestEntry, 'dataUltimaIa') ??
-      _dateFromEntry(latestEntry, 'dataInseminacao') ??
-      animal.dataInseminacao;
   final dryOffForecast = _dateFromEntry(latestEntry, 'previsaoSecagem');
   final calvingForecast = _dateFromEntry(latestEntry, 'previsaoParto') ??
       _dateFromEntry(latestEntry, 'dataPrevistaParto');

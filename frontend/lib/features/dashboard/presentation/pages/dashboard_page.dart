@@ -19,6 +19,7 @@ import '../../../animals/application/animals_provider.dart';
 import '../../../animals/data/animals_repository.dart';
 import '../../../animals/domain/animal_summary_model.dart';
 import '../../../auth/application/auth_state.dart';
+import '../../../indicators/domain/indicador_reprodutivo_calculator.dart';
 import '../../../properties/application/properties_provider.dart';
 import '../../../properties/domain/property_summary_model.dart';
 import '../../../users/application/users_provider.dart';
@@ -2852,30 +2853,15 @@ bool _entryMatchesAnimal(
 }
 
 AnimalReproductiveStatus _reproductiveStatusFor(_AnimalRecord record) {
-  final savedStatus = record.animal.statusReprodutivo;
-  if (savedStatus != null) return savedStatus;
-
-  if (record.animal.dataInseminacao != null) {
-    return AnimalReproductiveStatus.inseminated;
-  }
-
-  final text = _normalizedRecordText(record);
-  if (text.contains('pren') || text.contains('confirm')) {
-    return AnimalReproductiveStatus.pregnant;
-  }
-  if (text.contains('insemin')) {
-    return AnimalReproductiveStatus.inseminated;
-  }
-  if (text.contains('seca') || text.contains('dry')) {
-    return AnimalReproductiveStatus.dry;
-  }
-  if (text.contains('vazia') ||
-      text.contains('empty') ||
-      text.contains('negativ') ||
-      text.contains('toque')) {
-    return AnimalReproductiveStatus.empty;
-  }
-  return AnimalReproductiveStatus.pending;
+  return IndicadorReprodutivoCalculator.resolveAnimalStatus(
+    record.animal,
+    extraTexts: [
+      record.latestEntry?.situacaoProdutiva,
+      record.latestEntry?.situacaoReprodutiva,
+      record.latestEntry?.decisao,
+      record.latestEntry?.diagnostico,
+    ],
+  );
 }
 
 _ProductiveStatus _productiveStatusFor(_AnimalRecord record) {
@@ -2968,33 +2954,15 @@ String _normalizedRecordText(_AnimalRecord record) {
 }
 
 double? _conceptionRate(List<_AnimalRecord> records) {
-  final known = records.where((record) {
-    final status = _reproductiveStatusFor(record);
-    return status == AnimalReproductiveStatus.pregnant ||
-        status == AnimalReproductiveStatus.empty;
-  }).toList();
-  if (known.isEmpty) return null;
-  final pregnant = known.where((record) {
-    return _reproductiveStatusFor(record) == AnimalReproductiveStatus.pregnant;
-  }).length;
-  return pregnant / known.length;
+  return IndicadorReprodutivoCalculator.pregnancyRateFromStatuses(
+    records.map(_reproductiveStatusFor),
+  );
 }
 
 double? _iaConceptionRate(List<_VisitEntryRecord> entries) {
-  final withIa = entries.where((record) {
-    return record.entry.dataUltimaIa != null ||
-        (record.entry.numeroIaRecebida ?? 0) > 0;
-  }).toList();
-  if (withIa.isEmpty) return null;
-  final positive = withIa.where((record) {
-    final text = [
-      record.entry.situacaoReprodutiva ?? '',
-      record.entry.diagnostico ?? '',
-      record.entry.decisao ?? '',
-    ].join(' ').normalize();
-    return text.contains('pren') || text.contains('positiv');
-  }).length;
-  return positive / withIa.length;
+  return IndicadorReprodutivoCalculator.iaConceptionRateFromEntries(
+    entries.map((record) => record.entry),
+  );
 }
 
 bool _animalMatchesPropertyId(AnimalSummaryModel animal, int? propertyId) {
