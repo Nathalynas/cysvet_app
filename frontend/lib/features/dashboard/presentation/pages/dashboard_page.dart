@@ -3080,9 +3080,10 @@ String _monthLabel(DateTime date) {
   return '${months[date.month - 1]}/${date.year}';
 }
 
-String _ageLabel(DateTime? birthDate, int? ageMonths, DateTime now) {
-  final months =
+String _ageLabel(DateTime? birthDate, num? ageMonths, DateTime now) {
+  final rawMonths =
       ageMonths ?? (birthDate == null ? null : _monthsBetween(birthDate, now));
+  final months = rawMonths?.round();
   if (months == null) return '--';
   if (months < 24) return '$months meses';
   final years = months ~/ 12;
@@ -3137,8 +3138,18 @@ String _recordsLabel(
 StatusBadgeType _reproductiveStatusBadgeType(AnimalReproductiveStatus status) {
   return switch (status) {
     AnimalReproductiveStatus.pregnant => StatusBadgeType.success,
-    AnimalReproductiveStatus.inseminated => StatusBadgeType.info,
+    AnimalReproductiveStatus.inseminated ||
+    AnimalReproductiveStatus.inseminatedSt ||
+    AnimalReproductiveStatus.protocol ||
+    AnimalReproductiveStatus.waitingDiagnosis => StatusBadgeType.info,
     AnimalReproductiveStatus.empty => StatusBadgeType.warning,
+    AnimalReproductiveStatus.released => StatusBadgeType.success,
+    AnimalReproductiveStatus.delayed ||
+    AnimalReproductiveStatus.induction ||
+    AnimalReproductiveStatus.discard ||
+    AnimalReproductiveStatus.pev ||
+    AnimalReproductiveStatus.noAge ||
+    AnimalReproductiveStatus.calf ||
     AnimalReproductiveStatus.dry ||
     AnimalReproductiveStatus.pending => StatusBadgeType.neutral,
   };

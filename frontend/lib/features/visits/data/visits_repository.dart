@@ -135,6 +135,14 @@ class VisitsRepository {
   }
 
   Map<String, dynamic> _toAnimalItemRequest(VisitAnimalEntryModel item) {
+    // TODO Backend: os campos de base/calculo da planilha que ainda nao
+    // existem em VisitaAnimalItemDto ficam somente no front-end por enquanto.
+    // Eles devem ser incluidos aqui quando o payload/API de visitas persistir:
+    // dataNascimento, dataPrimeiroParto, dataUltimoParto, dataPartoAnterior,
+    // numeroPartos, historico dinamico de IAs, dataPrimeiraIa..dataQuintaIa,
+    // dataSecagemEfetiva, entradaPreParto, controleLeiteiro e os indicadores
+    // calculados derivados.
+    // TODO Backend: persistir/sincronizar o historico de IA sem limite fixo.
     return {
       'animalId': item.animalId == 0 ? null : item.animalId,
       'animalIdExterno': item.animalIdExterno.isEmpty
@@ -142,7 +150,7 @@ class VisitsRepository {
           : item.animalIdExterno,
       'animalCodigo': item.animalCodigo,
       'animalCategoria': item.animalCategoria,
-      'idadeMeses': item.idadeMeses,
+      'idadeMeses': item.idadeMeses?.round(),
       'situacaoProdutiva': item.situacaoProdutiva,
       'situacaoReprodutiva': item.situacaoReprodutiva,
       'decisao': item.decisao,

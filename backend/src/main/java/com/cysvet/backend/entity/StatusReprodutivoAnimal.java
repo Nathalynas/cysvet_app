@@ -5,16 +5,28 @@ import com.fasterxml.jackson.annotation.JsonValue;
 import java.util.Arrays;
 
 public enum StatusReprodutivoAnimal {
-    PREGNANT("pregnant"),
-    EMPTY("empty"),
-    INSEMINATED("inseminated"),
-    DRY("dry"),
+    PROTOCOL("em protocolo"),
+    EMPTY("vazia", "empty"),
+    RELEASED("liberada"),
+    DELAYED("atrasada"),
+    WAITING_DIAGNOSIS("aguardando dg"),
+    INSEMINATED_ST("inseminada st"),
+    PREGNANT("prenha", "pregnant"),
+    INDUCTION("inducao", "indução"),
+    DISCARD("descarte"),
+    PEV("pev"),
+    NO_AGE("sem idade"),
+    CALF("bezerra"),
+    INSEMINATED("inseminada", "inseminated"),
+    DRY("dry", "seca"),
     PENDING("pending");
 
     private final String value;
+    private final String[] aliases;
 
-    StatusReprodutivoAnimal(String value) {
+    StatusReprodutivoAnimal(String value, String... aliases) {
         this.value = value;
+        this.aliases = aliases;
     }
 
     @JsonValue
@@ -29,8 +41,16 @@ public enum StatusReprodutivoAnimal {
         }
 
         return Arrays.stream(values())
-                .filter(item -> item.value.equalsIgnoreCase(value.trim()))
+                .filter(item -> item.matches(value.trim()))
                 .findFirst()
                 .orElseThrow(() -> new IllegalArgumentException("Status reprodutivo invalido: " + value));
+    }
+
+    private boolean matches(String candidate) {
+        if (value.equalsIgnoreCase(candidate)) {
+            return true;
+        }
+
+        return Arrays.stream(aliases).anyMatch(alias -> alias.equalsIgnoreCase(candidate));
     }
 }

@@ -30,22 +30,60 @@ enum AnimalStatusFilter {
 }
 
 enum AnimalReproductiveStatus {
-  pregnant('pregnant', 'Prenha'),
-  empty('empty', 'Vazia'),
-  inseminated('inseminated', 'Inseminada'),
-  dry('dry', 'Seca'),
+  protocol('em protocolo', 'Em protocolo'),
+  empty('vazia', 'Vazia', aliases: ['empty']),
+  released('liberada', 'Liberada'),
+  delayed('atrasada', 'Atrasada'),
+  waitingDiagnosis('aguardando dg', 'Aguardando DG'),
+  inseminatedSt('inseminada st', 'Inseminada ST'),
+  pregnant('prenha', 'Prenha', aliases: ['pregnant']),
+  induction('inducao', 'Indução', aliases: ['indução']),
+  discard('descarte', 'Descarte'),
+  pev('pev', 'PEV'),
+  noAge('sem idade', 'Sem idade'),
+  calf('bezerra', 'Bezerra'),
+  inseminated('inseminada', 'Inseminada', aliases: ['inseminated']),
+  dry('dry', 'Seca', aliases: ['seca']),
   pending('pending', 'Pendente');
 
-  const AnimalReproductiveStatus(this.apiValue, this.label);
+  const AnimalReproductiveStatus(
+    this.apiValue,
+    this.label, {
+    this.aliases = const [],
+  });
 
   final String apiValue;
   final String label;
+  final List<String> aliases;
+
+  static const spreadsheetValues = [
+    protocol,
+    empty,
+    released,
+    delayed,
+    waitingDiagnosis,
+    inseminatedSt,
+    pregnant,
+    induction,
+    discard,
+    pev,
+    noAge,
+    calf,
+  ];
+
+  static const editableValues = [
+    ...spreadsheetValues,
+    inseminated,
+    dry,
+    pending,
+  ];
 
   static AnimalReproductiveStatus fromApiValue(String? value) {
-    return AnimalReproductiveStatus.values.firstWhere(
-      (item) => item.apiValue == value,
-      orElse: () => AnimalReproductiveStatus.pending,
-    );
+    final normalized = value?.trim().toLowerCase();
+    return AnimalReproductiveStatus.values.firstWhere((item) {
+      return item.apiValue == normalized ||
+          item.aliases.any((alias) => alias.toLowerCase() == normalized);
+    }, orElse: () => AnimalReproductiveStatus.pending);
   }
 }
 
@@ -54,9 +92,42 @@ extension AnimalReproductiveStatusIcon on AnimalReproductiveStatus {
     return switch (this) {
       AnimalReproductiveStatus.pregnant => Icons.check_circle_outline,
       AnimalReproductiveStatus.empty => Icons.radio_button_unchecked,
-      AnimalReproductiveStatus.inseminated => Icons.science_outlined,
+      AnimalReproductiveStatus.inseminated ||
+      AnimalReproductiveStatus.inseminatedSt ||
+      AnimalReproductiveStatus.protocol ||
+      AnimalReproductiveStatus.waitingDiagnosis => Icons.science_outlined,
       AnimalReproductiveStatus.dry => Icons.water_drop_outlined,
+      AnimalReproductiveStatus.released => Icons.check_circle_outline,
+      AnimalReproductiveStatus.delayed => Icons.event_busy_outlined,
+      AnimalReproductiveStatus.induction => Icons.medical_services_outlined,
+      AnimalReproductiveStatus.discard => Icons.block_outlined,
+      AnimalReproductiveStatus.pev => Icons.hourglass_empty_outlined,
+      AnimalReproductiveStatus.noAge ||
+      AnimalReproductiveStatus.calf ||
       AnimalReproductiveStatus.pending => Icons.schedule_outlined,
+    };
+  }
+}
+
+class AnimalProductiveSituation {
+  const AnimalProductiveSituation._();
+
+  static const lactating = 'lactante';
+  static const dry = 'seca';
+  static const heifer = 'novilha';
+  static const prepartum = 'pre parto';
+  static const calf = 'bezerra';
+
+  static const values = [lactating, dry, heifer, prepartum, calf];
+
+  static String label(String value) {
+    return switch (value) {
+      lactating => 'Lactante',
+      dry => 'Seca',
+      heifer => 'Novilha',
+      prepartum => 'Pre parto',
+      calf => 'Bezerra',
+      _ => value,
     };
   }
 }

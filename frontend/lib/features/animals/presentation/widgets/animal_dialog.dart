@@ -201,7 +201,7 @@ class _AnimalFormState extends ConsumerState<_AnimalForm> {
               _reproductiveStatus = value;
             });
           },
-          options: AnimalReproductiveStatus.values
+          options: AnimalReproductiveStatus.editableValues
               .map((item) => AppDropdownOption(label: item.label, value: item))
               .toList(growable: false),
         ),

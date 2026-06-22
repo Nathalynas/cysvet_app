@@ -1145,8 +1145,19 @@ bool _isAnimalInReproduction(AnimalSummaryModel animal) {
   return switch (status) {
     AnimalReproductiveStatus.pregnant ||
     AnimalReproductiveStatus.empty ||
-    AnimalReproductiveStatus.inseminated => true,
-    AnimalReproductiveStatus.dry || AnimalReproductiveStatus.pending => false,
+    AnimalReproductiveStatus.inseminated ||
+    AnimalReproductiveStatus.inseminatedSt ||
+    AnimalReproductiveStatus.protocol ||
+    AnimalReproductiveStatus.waitingDiagnosis ||
+    AnimalReproductiveStatus.released ||
+    AnimalReproductiveStatus.delayed => true,
+    AnimalReproductiveStatus.dry ||
+    AnimalReproductiveStatus.induction ||
+    AnimalReproductiveStatus.discard ||
+    AnimalReproductiveStatus.pev ||
+    AnimalReproductiveStatus.noAge ||
+    AnimalReproductiveStatus.calf ||
+    AnimalReproductiveStatus.pending => false,
   };
 }
 
@@ -1198,8 +1209,18 @@ StatusBadgeType _animalStatusBadgeType(AnimalStatus status) {
 StatusBadgeType _reproductiveStatusBadgeType(AnimalReproductiveStatus status) {
   return switch (status) {
     AnimalReproductiveStatus.pregnant => StatusBadgeType.success,
-    AnimalReproductiveStatus.inseminated => StatusBadgeType.info,
+    AnimalReproductiveStatus.inseminated ||
+    AnimalReproductiveStatus.inseminatedSt ||
+    AnimalReproductiveStatus.protocol ||
+    AnimalReproductiveStatus.waitingDiagnosis => StatusBadgeType.info,
     AnimalReproductiveStatus.empty => StatusBadgeType.warning,
+    AnimalReproductiveStatus.released => StatusBadgeType.success,
+    AnimalReproductiveStatus.delayed ||
+    AnimalReproductiveStatus.induction ||
+    AnimalReproductiveStatus.discard ||
+    AnimalReproductiveStatus.pev ||
+    AnimalReproductiveStatus.noAge ||
+    AnimalReproductiveStatus.calf ||
     AnimalReproductiveStatus.dry ||
     AnimalReproductiveStatus.pending => StatusBadgeType.neutral,
   };

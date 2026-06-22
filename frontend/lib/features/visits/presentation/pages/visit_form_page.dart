@@ -17,8 +17,215 @@ import '../../../animals/data/animals_repository.dart';
 import '../../../animals/domain/animal_summary_model.dart';
 import '../../../properties/application/properties_provider.dart';
 import '../../../properties/domain/property_summary_model.dart';
+import '../../data/visits_repository.dart';
 import '../../application/visits_provider.dart';
 import '../../domain/visit_summary_model.dart';
+
+int? diasEntre(DateTime? dataInicial, DateTime? dataFinal) {
+  if (dataInicial == null || dataFinal == null) {
+    return null;
+  }
+
+  final start = DateUtils.dateOnly(dataInicial);
+  final end = DateUtils.dateOnly(dataFinal);
+  return end.difference(start).inDays;
+}
+
+DateTime? adicionarDias(DateTime? data, int? dias) {
+  if (data == null || dias == null) {
+    return null;
+  }
+
+  return DateUtils.dateOnly(data).add(Duration(days: dias));
+}
+
+String? nomeDoMes(DateTime? data) {
+  if (data == null || data.month < 1 || data.month > 12) {
+    return null;
+  }
+
+  const months = [
+    'janeiro',
+    'fevereiro',
+    'marco',
+    'abril',
+    'maio',
+    'junho',
+    'julho',
+    'agosto',
+    'setembro',
+    'outubro',
+    'novembro',
+    'dezembro',
+  ];
+  return months[data.month - 1];
+}
+
+double? media(Iterable<num?> lista) {
+  final validValues = lista
+      .whereType<num>()
+      .where((value) => value.isFinite)
+      .map((value) => value.toDouble())
+      .toList(growable: false);
+  if (validValues.isEmpty) {
+    return null;
+  }
+
+  final total = validValues.fold<double>(0, (sum, value) => sum + value);
+  final result = total / validValues.length;
+  return result.isFinite ? result : null;
+}
+
+List<DateTime> _iaDatesFromEntry(VisitAnimalEntryModel entry) {
+  final dates = <DateTime>[
+    if (entry.dataPrimeiraIa != null) DateUtils.dateOnly(entry.dataPrimeiraIa!),
+    if (entry.dataSegundaIa != null) DateUtils.dateOnly(entry.dataSegundaIa!),
+    if (entry.dataTerceiraIa != null) DateUtils.dateOnly(entry.dataTerceiraIa!),
+    if (entry.dataQuartaIa != null) DateUtils.dateOnly(entry.dataQuartaIa!),
+    if (entry.dataQuintaIa != null) DateUtils.dateOnly(entry.dataQuintaIa!),
+    if (entry.dataUltimaIa != null) DateUtils.dateOnly(entry.dataUltimaIa!),
+  ];
+
+  dates.sort();
+  return dates;
+}
+
+class _AnimalIaHistory {
+  const _AnimalIaHistory({required this.dates, required this.totalIas});
+
+  factory _AnimalIaHistory.fromDatesAndCount({
+    required Iterable<DateTime> dates,
+    required int totalIas,
+  }) {
+    final uniqueDates = <DateTime>[];
+    final seen = <String>{};
+
+    for (final rawDate in dates) {
+      final date = DateUtils.dateOnly(rawDate);
+      final key = '${date.year}-${date.month}-${date.day}';
+      if (seen.add(key)) {
+        uniqueDates.add(date);
+      }
+    }
+
+    uniqueDates.sort();
+    final resolvedTotal = totalIas > uniqueDates.length
+        ? totalIas
+        : uniqueDates.length;
+
+    return _AnimalIaHistory(
+      dates: List.unmodifiable(uniqueDates),
+      totalIas: resolvedTotal,
+    );
+  }
+
+  static const empty = _AnimalIaHistory(dates: [], totalIas: 0);
+
+  final List<DateTime> dates;
+  final int totalIas;
+
+  DateTime? get lastDate => dates.isEmpty ? null : dates.last;
+
+  DateTime? get firstDate => dates.isEmpty ? null : dates.first;
+
+  int get suggestedNextNumber => totalIas + 1;
+}
+
+String _animalIdentifier(VisitAnimalEntryModel entry) {
+  final code = entry.animalCodigo.trim();
+  if (code.isNotEmpty) {
+    return code;
+  }
+
+  if (entry.animalId != 0) {
+    return 'Animal ${entry.animalId}';
+  }
+
+  return 'Animal sem identificação';
+}
+
+bool _hasVisitIa(VisitAnimalEntryModel entry, _AnimalIaHistory iaHistory) {
+  final number = entry.numeroIaRecebida;
+  return entry.dataUltimaIa != null &&
+      number != null &&
+      number > iaHistory.totalIas;
+}
+
+VisitAnimalEntryModel _entryWithVisitIaDate({
+  required VisitAnimalEntryModel entry,
+  required _AnimalIaHistory iaHistory,
+  required DateTime? value,
+}) {
+  if (value == null) {
+    return _entryWithHistoricalIas(entry: entry, iaHistory: iaHistory);
+  }
+
+  final currentNumber = entry.numeroIaRecebida;
+  final visitIaNumber =
+      currentNumber != null && currentNumber > iaHistory.totalIas
+      ? currentNumber
+      : iaHistory.suggestedNextNumber;
+  final visitIaDate = DateUtils.dateOnly(value);
+
+  return _entryWithIaDates(
+    entry: entry.copyWith(
+      dataUltimaIa: visitIaDate,
+      numeroIaRecebida: visitIaNumber,
+    ),
+    dates: [...iaHistory.dates, visitIaDate],
+  );
+}
+
+VisitAnimalEntryModel _entryWithVisitIaNumber({
+  required VisitAnimalEntryModel entry,
+  required _AnimalIaHistory iaHistory,
+  required String value,
+}) {
+  if (!_hasVisitIa(entry, iaHistory)) {
+    return entry;
+  }
+
+  final parsed = int.tryParse(value.trim());
+  if (parsed == null || parsed <= iaHistory.totalIas) {
+    return entry;
+  }
+
+  return entry.copyWith(numeroIaRecebida: parsed);
+}
+
+VisitAnimalEntryModel _entryWithHistoricalIas({
+  required VisitAnimalEntryModel entry,
+  required _AnimalIaHistory iaHistory,
+}) {
+  return _entryWithIaDates(
+    entry: entry.copyWith(
+      dataUltimaIa: iaHistory.lastDate,
+      numeroIaRecebida: iaHistory.totalIas == 0 ? null : iaHistory.totalIas,
+    ),
+    dates: iaHistory.dates,
+  );
+}
+
+VisitAnimalEntryModel _entryWithIaDates({
+  required VisitAnimalEntryModel entry,
+  required Iterable<DateTime> dates,
+}) {
+  final sortedDates = _AnimalIaHistory.fromDatesAndCount(
+    dates: dates,
+    totalIas: 0,
+  ).dates;
+
+  return entry.copyWith(
+    dataPrimeiraIa: sortedDates.isNotEmpty ? sortedDates[0] : null,
+    dataSegundaIa: sortedDates.length > 1 ? sortedDates[1] : null,
+    dataTerceiraIa: sortedDates.length > 2 ? sortedDates[2] : null,
+    dataQuartaIa: sortedDates.length > 3 ? sortedDates[3] : null,
+    dataQuintaIa: sortedDates.length > 4 ? sortedDates[4] : null,
+  );
+}
+
+typedef _VisitEntryCalculator =
+    VisitAnimalEntryModel Function(VisitAnimalEntryModel entry);
 
 class VisitFormPage extends ConsumerStatefulWidget {
   const VisitFormPage({super.key, this.initialPropertyId});
@@ -32,16 +239,45 @@ class VisitFormPage extends ConsumerStatefulWidget {
 class _VisitFormPageState extends ConsumerState<VisitFormPage> {
   static const _situacaoProdutivaOptions = [
     AppDropdownOption<String>(label: 'Nao informado', value: null),
-    AppDropdownOption<String>(label: 'Lactante', value: 'lactante'),
-    AppDropdownOption<String>(label: 'Seca', value: 'seca'),
-    AppDropdownOption<String>(label: 'Novilha', value: 'novilha'),
+    AppDropdownOption<String>(
+      label: 'Lactante',
+      value: AnimalProductiveSituation.lactating,
+    ),
+    AppDropdownOption<String>(
+      label: 'Seca',
+      value: AnimalProductiveSituation.dry,
+    ),
+    AppDropdownOption<String>(
+      label: 'Novilha',
+      value: AnimalProductiveSituation.heifer,
+    ),
+    AppDropdownOption<String>(
+      label: 'Pré-parto',
+      value: AnimalProductiveSituation.prepartum,
+    ),
+    AppDropdownOption<String>(
+      label: 'Bezerra',
+      value: AnimalProductiveSituation.calf,
+    ),
   ];
 
   static const _situacaoReprodutivaOptions = [
-    AppDropdownOption<String>(label: 'Nao informado', value: null),
-    AppDropdownOption<String>(label: 'Prenha', value: 'prenha'),
-    AppDropdownOption<String>(label: 'Inseminada', value: 'inseminada'),
+    AppDropdownOption<String>(label: 'Não informado', value: null),
+    AppDropdownOption<String>(label: 'Em protocolo', value: 'em protocolo'),
     AppDropdownOption<String>(label: 'Vazia', value: 'vazia'),
+    AppDropdownOption<String>(label: 'Liberada', value: 'liberada'),
+    AppDropdownOption<String>(label: 'Atrasada', value: 'atrasada'),
+    AppDropdownOption<String>(label: 'Aguardando DG', value: 'aguardando dg'),
+    AppDropdownOption<String>(label: 'Inseminada ST', value: 'inseminada st'),
+    AppDropdownOption<String>(label: 'Prenha', value: 'prenha'),
+    AppDropdownOption<String>(label: 'Indução', value: 'inducao'),
+    AppDropdownOption<String>(label: 'Descarte', value: 'descarte'),
+    AppDropdownOption<String>(label: 'PEV', value: 'pev'),
+    AppDropdownOption<String>(label: 'Sem idade', value: 'sem idade'),
+    AppDropdownOption<String>(label: 'Bezerra', value: 'bezerra'),
+    AppDropdownOption<String>(label: 'Inseminada', value: 'inseminada'),
+    AppDropdownOption<String>(label: 'Seca', value: 'seca'),
+    AppDropdownOption<String>(label: 'Pendente', value: 'pending'),
   ];
 
   final _formKey = GlobalKey<FormState>();
@@ -53,6 +289,7 @@ class _VisitFormPageState extends ConsumerState<VisitFormPage> {
   bool _isLoadingAnimals = false;
   String? _animalsError;
   List<VisitAnimalEntryModel> _animalEntries = const [];
+  Map<int, _AnimalIaHistory> _iaHistoryByAnimalId = const {};
   Set<int> _reviewedAnimalIds = const {};
 
   @override
@@ -126,7 +363,7 @@ class _VisitFormPageState extends ConsumerState<VisitFormPage> {
                       ),
                       const SizedBox(height: 6),
                       Text(
-                        'Vincule a propriedade e selecione o animal. A data de inseminação já vem do cadastro do animal.',
+                        'Vincule a propriedade, selecione o animal e preencha os dados da visita.',
                         style: theme.textTheme.bodyMedium?.copyWith(
                           color: colorScheme.onSurfaceVariant,
                         ),
@@ -136,6 +373,7 @@ class _VisitFormPageState extends ConsumerState<VisitFormPage> {
                         propertyId: _propertyId,
                         properties: properties,
                         dataVisitaController: _dataVisita,
+                        onVisitDateChanged: (_) => _recalculateAnimalEntries(),
                         onPropertyChanged: (value) {
                           setState(() {
                             if (_propertyId != value) {
@@ -156,7 +394,7 @@ class _VisitFormPageState extends ConsumerState<VisitFormPage> {
                             label: selectedProperty?.nome ?? 'Sem propriedade',
                           ),
                           _SummaryChip(
-                            icon: Icons.pets_outlined,
+                            icon: MdiIcons.cow,
                             label: '${_animalEntries.length} animais',
                           ),
                           _SummaryChip(
@@ -189,6 +427,7 @@ class _VisitFormPageState extends ConsumerState<VisitFormPage> {
                 else
                   _AnimalCollectionLayout(
                     entries: _animalEntries,
+                    iaHistoryByAnimalId: _iaHistoryByAnimalId,
                     reviewedAnimalIds: _reviewedAnimalIds,
                     selectedAnimalId: _selectedAnimalId,
                     selectedEntry: selectedEntry,
@@ -198,6 +437,7 @@ class _VisitFormPageState extends ConsumerState<VisitFormPage> {
                       });
                     },
                     onChanged: _updateAnimalEntry,
+                    applyAutomaticCalculations: _applyAutomaticCalculations,
                     onConfirmAnimal: _confirmAnimal,
                     onOpenAnimal: _editAnimalInModal,
                   ),
@@ -248,14 +488,22 @@ class _VisitFormPageState extends ConsumerState<VisitFormPage> {
       final animals = await ref
           .read(animalsRepositoryProvider)
           .list(propertyId: propertyId);
+      final previousVisits = await _loadPreviousVisitsForProperty(propertyId);
       if (!mounted) {
         return;
       }
 
-      final entries = animals.map(_entryFromAnimal).toList(growable: false);
+      final iaHistoryByAnimalId = _buildIaHistoryByAnimalId(
+        animals: animals,
+        visits: previousVisits,
+      );
+      final entries = animals
+          .map((animal) => _entryFromAnimal(animal, iaHistoryByAnimalId))
+          .toList(growable: false);
       setState(() {
         _loadedPropertyId = propertyId;
         _animalEntries = entries;
+        _iaHistoryByAnimalId = iaHistoryByAnimalId;
         _selectedAnimalId = entries.isEmpty ? null : entries.first.animalId;
       });
     } catch (error) {
@@ -274,6 +522,82 @@ class _VisitFormPageState extends ConsumerState<VisitFormPage> {
         });
       }
     }
+  }
+
+  Future<List<VisitSummaryModel>> _loadPreviousVisitsForProperty(
+    int propertyId,
+  ) async {
+    final localVisits = ref
+        .read(localVisitsProvider)
+        .values
+        .where((visit) => visit.idPropriedade == propertyId)
+        .toList(growable: false);
+
+    try {
+      final remoteVisits = await ref
+          .read(visitsRepositoryProvider)
+          .list(propertyId: propertyId);
+      return {
+        for (final visit in remoteVisits) visit.id: visit,
+        for (final visit in localVisits) visit.id: visit,
+      }.values.toList(growable: false);
+    } catch (error) {
+      return localVisits;
+    }
+  }
+
+  Map<int, _AnimalIaHistory> _buildIaHistoryByAnimalId({
+    required List<AnimalSummaryModel> animals,
+    required List<VisitSummaryModel> visits,
+  }) {
+    final result = <int, _AnimalIaHistory>{};
+
+    for (final animal in animals) {
+      final dates = <DateTime>[
+        if (animal.dataInseminacao != null)
+          DateUtils.dateOnly(animal.dataInseminacao!),
+      ];
+      var totalIas = dates.isEmpty ? 0 : 1;
+
+      for (final visit in visits) {
+        for (final entry in visit.animais) {
+          if (!_visitEntryBelongsToAnimal(entry, animal)) {
+            continue;
+          }
+
+          dates.addAll(_iaDatesFromEntry(entry));
+          final entryIaCount = entry.numeroIaRecebida;
+          if (entryIaCount != null && entryIaCount > totalIas) {
+            totalIas = entryIaCount;
+          }
+        }
+      }
+
+      final history = _AnimalIaHistory.fromDatesAndCount(
+        dates: dates,
+        totalIas: totalIas,
+      );
+      result[animal.id] = history;
+    }
+
+    return result;
+  }
+
+  bool _visitEntryBelongsToAnimal(
+    VisitAnimalEntryModel entry,
+    AnimalSummaryModel animal,
+  ) {
+    if (animal.id > 0 && entry.animalId == animal.id) {
+      return true;
+    }
+
+    final externalId = animal.idExterno.trim();
+    if (externalId.isNotEmpty && entry.animalIdExterno.trim() == externalId) {
+      return true;
+    }
+
+    final code = animal.codigo.trim();
+    return code.isNotEmpty && entry.animalCodigo.trim() == code;
   }
 
   Future<void> _saveVisit() async {
@@ -310,15 +634,17 @@ class _VisitFormPageState extends ConsumerState<VisitFormPage> {
     _selectedAnimalId = null;
     _animalsError = null;
     _animalEntries = const [];
+    _iaHistoryByAnimalId = const {};
     _reviewedAnimalIds = const {};
   }
 
   void _updateAnimalEntry(VisitAnimalEntryModel updated) {
+    final calculated = _applyAutomaticCalculations(updated);
     setState(() {
       _animalEntries = _animalEntries
           .map((entry) {
-            if (entry.animalId == updated.animalId) {
-              return updated;
+            if (entry.animalId == calculated.animalId) {
+              return calculated;
             }
             return entry;
           })
@@ -341,7 +667,12 @@ class _VisitFormPageState extends ConsumerState<VisitFormPage> {
       width: 760,
       useInternalScroll: true,
       fullscreenOnMobile: true,
-      content: _AnimalEditorModalContent(entry: entry),
+      content: _AnimalEditorModalContent(
+        entry: entry,
+        iaHistory:
+            _iaHistoryByAnimalId[entry.animalId] ?? _AnimalIaHistory.empty,
+        applyAutomaticCalculations: _applyAutomaticCalculations,
+      ),
     );
 
     if (!mounted || updated == null) {
@@ -369,38 +700,52 @@ class _VisitFormPageState extends ConsumerState<VisitFormPage> {
     return null;
   }
 
-  VisitAnimalEntryModel _entryFromAnimal(AnimalSummaryModel animal) {
+  VisitAnimalEntryModel _entryFromAnimal(
+    AnimalSummaryModel animal,
+    Map<int, _AnimalIaHistory> iaHistoryByAnimalId,
+  ) {
     final reproductiveStatus = _visitReproductiveStatus(animal);
+    final iaHistory = iaHistoryByAnimalId[animal.id] ?? _AnimalIaHistory.empty;
+    final iaDates = iaHistory.dates;
 
-    return VisitAnimalEntryModel(
+    final entry = VisitAnimalEntryModel(
       animalId: animal.id,
       animalIdExterno: animal.idExterno,
       animalCodigo: animal.codigo,
       animalCategoria: animal.categoria,
-      idadeMeses: _ageInMonths(animal.dataNascimento),
+      dataNascimento: animal.dataNascimento,
+      dataUltimoParto: animal.dataUltimoParto,
+      numeroPartos: animal.numeroLactacao > 0 ? animal.numeroLactacao : null,
       situacaoProdutiva: _visitProductiveStatus(animal),
       situacaoReprodutiva: reproductiveStatus,
-      dataUltimaIa: animal.dataInseminacao,
+      dataUltimaIa: iaHistory.lastDate,
+      dataPrimeiraIa: iaDates.isEmpty ? null : iaDates[0],
+      dataSegundaIa: iaDates.length > 1 ? iaDates[1] : null,
+      dataTerceiraIa: iaDates.length > 2 ? iaDates[2] : null,
+      dataQuartaIa: iaDates.length > 3 ? iaDates[3] : null,
+      dataQuintaIa: iaDates.length > 4 ? iaDates[4] : null,
+      numeroIaRecebida: iaHistory.totalIas == 0 ? null : iaHistory.totalIas,
       diagnostico: animal.historicoReprodutivo?.trim().isEmpty == true
           ? null
           : animal.historicoReprodutivo?.trim(),
-      del: animal.diasEmLactacao,
     );
+
+    return _applyAutomaticCalculations(entry);
   }
 
   String? _visitProductiveStatus(AnimalSummaryModel animal) {
     final category = animal.categoria.normalize();
 
     if (category.contains('novilha')) {
-      return 'novilha';
+      return AnimalProductiveSituation.heifer;
     }
 
     if (_resolvedReproductiveStatus(animal) == AnimalReproductiveStatus.dry) {
-      return 'seca';
+      return AnimalProductiveSituation.dry;
     }
 
     if (animal.numeroLactacao > 0 || animal.diasEmLactacao != null) {
-      return 'lactante';
+      return AnimalProductiveSituation.lactating;
     }
 
     return null;
@@ -409,31 +754,45 @@ class _VisitFormPageState extends ConsumerState<VisitFormPage> {
   String? _visitReproductiveStatus(AnimalSummaryModel animal) {
     final resolved = _resolvedReproductiveStatus(animal);
 
-    switch (resolved) {
-      case AnimalReproductiveStatus.pregnant:
-        return 'prenha';
-      case AnimalReproductiveStatus.empty:
-        return 'vazia';
-      case AnimalReproductiveStatus.inseminated:
-        return 'inseminada';
-      case AnimalReproductiveStatus.pending:
-        final history = (animal.historicoReprodutivo ?? '').normalize();
-        if (history.contains('aguardando dg')) {
-          return 'aguardando dg';
-        }
-        if (history.contains('pev')) {
-          return 'pev';
-        }
-        if (history.contains('liberad')) {
-          return 'liberada';
-        }
-        if (history.contains('descarte')) {
-          return 'descarte';
-        }
-        return null;
-      case AnimalReproductiveStatus.dry:
-        return null;
+    if (resolved == AnimalReproductiveStatus.dry) {
+      return null;
     }
+    if (resolved != AnimalReproductiveStatus.pending) {
+      return resolved.apiValue;
+    }
+
+    final history = (animal.historicoReprodutivo ?? '').normalize();
+    if (history.contains('em protocolo') || history.contains('protocolo')) {
+      return AnimalReproductiveStatus.protocol.apiValue;
+    }
+    if (history.contains('aguardando dg')) {
+      return AnimalReproductiveStatus.waitingDiagnosis.apiValue;
+    }
+    if (history.contains('inseminada st') || history.contains('ia st')) {
+      return AnimalReproductiveStatus.inseminatedSt.apiValue;
+    }
+    if (history.contains('pev')) {
+      return AnimalReproductiveStatus.pev.apiValue;
+    }
+    if (history.contains('liberad')) {
+      return AnimalReproductiveStatus.released.apiValue;
+    }
+    if (history.contains('atrasad')) {
+      return AnimalReproductiveStatus.delayed.apiValue;
+    }
+    if (history.contains('inducao') || history.contains('induz')) {
+      return AnimalReproductiveStatus.induction.apiValue;
+    }
+    if (history.contains('descarte')) {
+      return AnimalReproductiveStatus.discard.apiValue;
+    }
+    if (history.contains('sem idade')) {
+      return AnimalReproductiveStatus.noAge.apiValue;
+    }
+    if (history.contains('bezerra')) {
+      return AnimalReproductiveStatus.calf.apiValue;
+    }
+    return null;
   }
 
   AnimalReproductiveStatus _resolvedReproductiveStatus(
@@ -450,6 +809,15 @@ class _VisitFormPageState extends ConsumerState<VisitFormPage> {
 
     final history = (animal.historicoReprodutivo ?? '').normalize();
 
+    if (history.contains('em protocolo') || history.contains('protocolo')) {
+      return AnimalReproductiveStatus.protocol;
+    }
+    if (history.contains('aguardando dg')) {
+      return AnimalReproductiveStatus.waitingDiagnosis;
+    }
+    if (history.contains('inseminada st') || history.contains('ia st')) {
+      return AnimalReproductiveStatus.inseminatedSt;
+    }
     if (history.contains('pren') || history.contains('confirm')) {
       return AnimalReproductiveStatus.pregnant;
     }
@@ -458,6 +826,27 @@ class _VisitFormPageState extends ConsumerState<VisitFormPage> {
     }
     if (history.contains('seca') || history.contains('dry')) {
       return AnimalReproductiveStatus.dry;
+    }
+    if (history.contains('liberad')) {
+      return AnimalReproductiveStatus.released;
+    }
+    if (history.contains('atrasad')) {
+      return AnimalReproductiveStatus.delayed;
+    }
+    if (history.contains('inducao') || history.contains('induz')) {
+      return AnimalReproductiveStatus.induction;
+    }
+    if (history.contains('descarte')) {
+      return AnimalReproductiveStatus.discard;
+    }
+    if (history.contains('pev')) {
+      return AnimalReproductiveStatus.pev;
+    }
+    if (history.contains('sem idade')) {
+      return AnimalReproductiveStatus.noAge;
+    }
+    if (history.contains('bezerra')) {
+      return AnimalReproductiveStatus.calf;
     }
     if (history.contains('vazia') ||
         history.contains('empty') ||
@@ -469,18 +858,543 @@ class _VisitFormPageState extends ConsumerState<VisitFormPage> {
     return AnimalReproductiveStatus.pending;
   }
 
-  int? _ageInMonths(DateTime? birthDate) {
-    if (birthDate == null) {
+  void _recalculateAnimalEntries() {
+    if (_animalEntries.isEmpty) {
+      return;
+    }
+
+    setState(() {
+      _animalEntries = _animalEntries
+          .map(_applyAutomaticCalculations)
+          .toList(growable: false);
+    });
+  }
+
+  VisitAnimalEntryModel _applyAutomaticCalculations(
+    VisitAnimalEntryModel entry,
+  ) {
+    return _VisitAnimalAutomaticCalculator.calculate(
+      entry: entry,
+      dataAtual: parseDateInput(_dataVisita.text),
+    );
+  }
+}
+
+class _VisitAnimalAutomaticCalculator {
+  const _VisitAnimalAutomaticCalculator._();
+
+  static VisitAnimalEntryModel calculate({
+    required VisitAnimalEntryModel entry,
+    required DateTime? dataAtual,
+  }) {
+    final situacaoProdutiva = _normalize(entry.situacaoProdutiva);
+    final situacaoReprodutiva = _normalize(entry.situacaoReprodutiva);
+    final intervalo1e2Ia = diasEntre(entry.dataPrimeiraIa, entry.dataSegundaIa);
+    final intervalo2e3Ia = diasEntre(entry.dataSegundaIa, entry.dataTerceiraIa);
+    final intervalo3e4Ia = diasEntre(entry.dataTerceiraIa, entry.dataQuartaIa);
+    final intervalo4e5Ia = diasEntre(entry.dataQuartaIa, entry.dataQuintaIa);
+    final diasPrenhez = _diasPrenhez(
+      situacaoProdutiva: situacaoProdutiva,
+      situacaoReprodutiva: situacaoReprodutiva,
+      dataUltimaIa: entry.dataUltimaIa,
+      dataAtual: dataAtual,
+    );
+    final previsaoSecagem = _previsaoSecagem(
+      situacaoProdutiva: situacaoProdutiva,
+      situacaoReprodutiva: situacaoReprodutiva,
+      dataUltimaIa: entry.dataUltimaIa,
+    );
+    final dataPreParto = _dataPreParto(
+      situacaoReprodutiva: situacaoReprodutiva,
+      dataUltimaIa: entry.dataUltimaIa,
+    );
+    final previsaoParto = _previsaoParto(
+      situacaoReprodutiva: situacaoReprodutiva,
+      dataUltimaIa: entry.dataUltimaIa,
+    );
+
+    return entry.copyWith(
+      idadeMeses: _monthsBetween(entry.dataNascimento, dataAtual),
+      del: _del(
+        situacaoProdutiva: situacaoProdutiva,
+        dataUltimoParto: entry.dataUltimoParto,
+        dataAtual: dataAtual,
+      ),
+      idadePrimeiroPartoMeses: _monthsBetween(
+        entry.dataNascimento,
+        entry.dataPrimeiroParto,
+      ),
+      idadePrimeiraIa: _idadePrimeiraIa(
+        situacaoProdutiva: situacaoProdutiva,
+        dataNascimento: entry.dataNascimento,
+        dataPrimeiraIa: entry.dataPrimeiraIa,
+      ),
+      mesParto: _mesParto(entry.numeroPartos, entry.dataUltimoParto),
+      anoUltimoParto: entry.dataUltimoParto?.year,
+      iepAtual: _iepAtual(
+        numeroPartos: entry.numeroPartos,
+        dataPartoAnterior: entry.dataPartoAnterior,
+        dataUltimoParto: entry.dataUltimoParto,
+      ),
+      classificacaoPartos: _classificacaoPartos(entry.numeroPartos),
+      vacaApta: _vacaApta(situacaoReprodutiva),
+      intervalo1e2Ia: intervalo1e2Ia,
+      intervalo2e3Ia: intervalo2e3Ia,
+      intervalo3e4Ia: intervalo3e4Ia,
+      intervalo4e5Ia: intervalo4e5Ia,
+      mediaIntervaloIa: _mediaIntervaloIa(
+        numeroIaRecebida: entry.numeroIaRecebida,
+        situacaoReprodutiva: situacaoReprodutiva,
+        intervalos: [
+          intervalo1e2Ia,
+          intervalo2e3Ia,
+          intervalo3e4Ia,
+          intervalo4e5Ia,
+        ],
+      ),
+      previsaoRetornoCio: _previsaoRetornoCio(
+        situacaoReprodutiva: situacaoReprodutiva,
+        dataUltimaIa: entry.dataUltimaIa,
+      ),
+      diasPrenhez: diasPrenhez,
+      delPrimeiraIa: _delPrimeiraIa(
+        situacaoProdutiva: situacaoProdutiva,
+        situacaoReprodutiva: situacaoReprodutiva,
+        dataUltimoParto: entry.dataUltimoParto,
+        dataPrimeiraIa: entry.dataPrimeiraIa,
+      ),
+      periodoServico: _periodoServico(
+        situacaoProdutiva: situacaoProdutiva,
+        situacaoReprodutiva: situacaoReprodutiva,
+        dataUltimoParto: entry.dataUltimoParto,
+        dataUltimaIa: entry.dataUltimaIa,
+        diasPrenhez: diasPrenhez,
+      ),
+      diasParaSecar: _diasParaSecar(
+        situacaoProdutiva: situacaoProdutiva,
+        situacaoReprodutiva: situacaoReprodutiva,
+        diasPrenhez: diasPrenhez,
+      ),
+      previsaoSecagem: previsaoSecagem,
+      mesSecagem: _mesSecagem(
+        situacaoReprodutiva: situacaoReprodutiva,
+        previsaoSecagem: previsaoSecagem,
+      ),
+      diferencaSecagem: diasEntre(previsaoSecagem, entry.dataSecagemEfetiva),
+      periodoLactacao: _periodoLactacao(
+        situacaoProdutiva: situacaoProdutiva,
+        dataSecagemEfetiva: entry.dataSecagemEfetiva,
+        dataUltimoParto: entry.dataUltimoParto,
+      ),
+      dataPreParto: dataPreParto,
+      mesPreParto: _mesPreParto(
+        situacaoReprodutiva: situacaoReprodutiva,
+        dataPreParto: dataPreParto,
+      ),
+      duracaoPreParto: _duracaoPreParto(
+        situacaoProdutiva: situacaoProdutiva,
+        entradaPreParto: entry.entradaPreParto,
+        dataUltimoParto: entry.dataUltimoParto,
+      ),
+      previsaoParto: previsaoParto,
+      mesPrevistoParto: _mesPrevistoParto(
+        situacaoReprodutiva: situacaoReprodutiva,
+        previsaoParto: previsaoParto,
+      ),
+      iepProjetado: _iepProjetado(
+        situacaoProdutiva: situacaoProdutiva,
+        situacaoReprodutiva: situacaoReprodutiva,
+        previsaoParto: previsaoParto,
+        dataUltimoParto: entry.dataUltimoParto,
+      ),
+      controleLeiteiroComDesconto: _controleLeiteiroComDesconto(
+        situacaoProdutiva: situacaoProdutiva,
+        controleLeiteiro: entry.controleLeiteiro,
+      ),
+    );
+  }
+
+  static int? _del({
+    required String? situacaoProdutiva,
+    required DateTime? dataUltimoParto,
+    required DateTime? dataAtual,
+  }) {
+    if (situacaoProdutiva != AnimalProductiveSituation.lactating) {
       return null;
     }
 
-    final now = DateTime.now();
-    var months =
-        (now.year - birthDate.year) * 12 + (now.month - birthDate.month);
-    if (now.day < birthDate.day) {
-      months -= 1;
+    return diasEntre(dataUltimoParto, dataAtual);
+  }
+
+  static double? _idadePrimeiraIa({
+    required String? situacaoProdutiva,
+    required DateTime? dataNascimento,
+    required DateTime? dataPrimeiraIa,
+  }) {
+    if (situacaoProdutiva != AnimalProductiveSituation.heifer) {
+      return null;
     }
-    return months < 0 ? 0 : months;
+
+    return _monthsBetween(dataNascimento, dataPrimeiraIa);
+  }
+
+  static String? _mesParto(int? numeroPartos, DateTime? dataUltimoParto) {
+    if (numeroPartos == null || numeroPartos < 1) {
+      return null;
+    }
+
+    return nomeDoMes(dataUltimoParto);
+  }
+
+  static double? _iepAtual({
+    required int? numeroPartos,
+    required DateTime? dataPartoAnterior,
+    required DateTime? dataUltimoParto,
+  }) {
+    if (numeroPartos == null || numeroPartos < 2) {
+      return null;
+    }
+
+    return _monthsBetween(dataPartoAnterior, dataUltimoParto);
+  }
+
+  static String? _classificacaoPartos(int? numeroPartos) {
+    if (numeroPartos == 1) {
+      return 'Primipara';
+    }
+    if (numeroPartos != null && numeroPartos >= 2) {
+      return 'Multipara';
+    }
+    return null;
+  }
+
+  static bool? _vacaApta(String? situacaoReprodutiva) {
+    const fitStatuses = {
+      AnimalReproductiveStatus.protocol,
+      AnimalReproductiveStatus.empty,
+      AnimalReproductiveStatus.released,
+      AnimalReproductiveStatus.delayed,
+      AnimalReproductiveStatus.waitingDiagnosis,
+      AnimalReproductiveStatus.inseminatedSt,
+    };
+    const unfitStatuses = {
+      AnimalReproductiveStatus.pregnant,
+      AnimalReproductiveStatus.induction,
+      AnimalReproductiveStatus.discard,
+      AnimalReproductiveStatus.pev,
+      AnimalReproductiveStatus.noAge,
+      AnimalReproductiveStatus.calf,
+    };
+
+    if (_isAnyReproductiveStatus(situacaoReprodutiva, fitStatuses)) {
+      return true;
+    }
+    if (_isAnyReproductiveStatus(situacaoReprodutiva, unfitStatuses)) {
+      return false;
+    }
+    return null;
+  }
+
+  static double? _mediaIntervaloIa({
+    required int? numeroIaRecebida,
+    required String? situacaoReprodutiva,
+    required Iterable<int?> intervalos,
+  }) {
+    const excludedStatuses = {
+      AnimalReproductiveStatus.pev,
+      AnimalReproductiveStatus.induction,
+      AnimalReproductiveStatus.noAge,
+      AnimalReproductiveStatus.discard,
+    };
+    if (numeroIaRecebida == null ||
+        numeroIaRecebida < 2 ||
+        _isAnyReproductiveStatus(situacaoReprodutiva, excludedStatuses)) {
+      return null;
+    }
+
+    return media(intervalos);
+  }
+
+  static DateTime? _previsaoRetornoCio({
+    required String? situacaoReprodutiva,
+    required DateTime? dataUltimaIa,
+  }) {
+    const excludedStatuses = {
+      AnimalReproductiveStatus.pregnant,
+      AnimalReproductiveStatus.pev,
+      AnimalReproductiveStatus.induction,
+      AnimalReproductiveStatus.discard,
+      AnimalReproductiveStatus.noAge,
+      AnimalReproductiveStatus.calf,
+      AnimalReproductiveStatus.released,
+      AnimalReproductiveStatus.delayed,
+    };
+    if (_isAnyReproductiveStatus(situacaoReprodutiva, excludedStatuses)) {
+      return null;
+    }
+
+    return adicionarDias(dataUltimaIa, 21);
+  }
+
+  static int? _diasPrenhez({
+    required String? situacaoProdutiva,
+    required String? situacaoReprodutiva,
+    required DateTime? dataUltimaIa,
+    required DateTime? dataAtual,
+  }) {
+    const excludedReproductiveStatuses = {
+      AnimalReproductiveStatus.empty,
+      AnimalReproductiveStatus.induction,
+      AnimalReproductiveStatus.discard,
+      AnimalReproductiveStatus.pev,
+      AnimalReproductiveStatus.noAge,
+      AnimalReproductiveStatus.delayed,
+      AnimalReproductiveStatus.released,
+    };
+
+    if (situacaoProdutiva == AnimalProductiveSituation.calf ||
+        _isAnyReproductiveStatus(
+          situacaoReprodutiva,
+          excludedReproductiveStatuses,
+        )) {
+      return null;
+    }
+
+    return diasEntre(dataUltimaIa, dataAtual);
+  }
+
+  static int? _delPrimeiraIa({
+    required String? situacaoProdutiva,
+    required String? situacaoReprodutiva,
+    required DateTime? dataUltimoParto,
+    required DateTime? dataPrimeiraIa,
+  }) {
+    const excludedReproductiveStatuses = {
+      AnimalReproductiveStatus.induction,
+      AnimalReproductiveStatus.discard,
+      AnimalReproductiveStatus.pev,
+      AnimalReproductiveStatus.noAge,
+      AnimalReproductiveStatus.delayed,
+      AnimalReproductiveStatus.released,
+    };
+    const excludedProductiveStatuses = {
+      AnimalProductiveSituation.heifer,
+      AnimalProductiveSituation.prepartum,
+    };
+    if (_isAnyReproductiveStatus(
+          situacaoReprodutiva,
+          excludedReproductiveStatuses,
+        ) ||
+        excludedProductiveStatuses.contains(situacaoProdutiva)) {
+      return null;
+    }
+
+    return diasEntre(dataUltimoParto, dataPrimeiraIa);
+  }
+
+  static int? _periodoServico({
+    required String? situacaoProdutiva,
+    required String? situacaoReprodutiva,
+    required DateTime? dataUltimoParto,
+    required DateTime? dataUltimaIa,
+    required int? diasPrenhez,
+  }) {
+    const excludedProductiveStatuses = {
+      AnimalProductiveSituation.heifer,
+      AnimalProductiveSituation.prepartum,
+    };
+    if (!_isPregnant(situacaoReprodutiva) ||
+        excludedProductiveStatuses.contains(situacaoProdutiva) ||
+        diasPrenhez == null) {
+      return null;
+    }
+
+    return diasEntre(dataUltimoParto, dataUltimaIa);
+  }
+
+  static int? _diasParaSecar({
+    required String? situacaoProdutiva,
+    required String? situacaoReprodutiva,
+    required int? diasPrenhez,
+  }) {
+    if (situacaoProdutiva == AnimalProductiveSituation.heifer ||
+        !_isPregnant(situacaoReprodutiva) ||
+        diasPrenhez == null) {
+      return null;
+    }
+
+    return 220 - diasPrenhez;
+  }
+
+  static DateTime? _previsaoSecagem({
+    required String? situacaoProdutiva,
+    required String? situacaoReprodutiva,
+    required DateTime? dataUltimaIa,
+  }) {
+    if (situacaoProdutiva == AnimalProductiveSituation.heifer ||
+        !_isPregnant(situacaoReprodutiva)) {
+      return null;
+    }
+
+    return adicionarDias(dataUltimaIa, 220);
+  }
+
+  static String? _mesSecagem({
+    required String? situacaoReprodutiva,
+    required DateTime? previsaoSecagem,
+  }) {
+    if (!_isPregnant(situacaoReprodutiva)) {
+      return null;
+    }
+
+    return nomeDoMes(previsaoSecagem);
+  }
+
+  static int? _periodoLactacao({
+    required String? situacaoProdutiva,
+    required DateTime? dataSecagemEfetiva,
+    required DateTime? dataUltimoParto,
+  }) {
+    if (situacaoProdutiva != AnimalProductiveSituation.dry) {
+      return null;
+    }
+
+    return diasEntre(dataUltimoParto, dataSecagemEfetiva);
+  }
+
+  static DateTime? _dataPreParto({
+    required String? situacaoReprodutiva,
+    required DateTime? dataUltimaIa,
+  }) {
+    if (!_isPregnant(situacaoReprodutiva)) {
+      return null;
+    }
+
+    return adicionarDias(dataUltimaIa, 252);
+  }
+
+  static String? _mesPreParto({
+    required String? situacaoReprodutiva,
+    required DateTime? dataPreParto,
+  }) {
+    if (!_isPregnant(situacaoReprodutiva)) {
+      return null;
+    }
+
+    return nomeDoMes(dataPreParto);
+  }
+
+  static int? _duracaoPreParto({
+    required String? situacaoProdutiva,
+    required DateTime? entradaPreParto,
+    required DateTime? dataUltimoParto,
+  }) {
+    if (situacaoProdutiva != AnimalProductiveSituation.lactating) {
+      return null;
+    }
+
+    return diasEntre(entradaPreParto, dataUltimoParto);
+  }
+
+  static DateTime? _previsaoParto({
+    required String? situacaoReprodutiva,
+    required DateTime? dataUltimaIa,
+  }) {
+    if (!_isPregnant(situacaoReprodutiva)) {
+      return null;
+    }
+
+    return adicionarDias(dataUltimaIa, 282);
+  }
+
+  static String? _mesPrevistoParto({
+    required String? situacaoReprodutiva,
+    required DateTime? previsaoParto,
+  }) {
+    if (!_isPregnant(situacaoReprodutiva)) {
+      return null;
+    }
+
+    return nomeDoMes(previsaoParto);
+  }
+
+  static double? _iepProjetado({
+    required String? situacaoProdutiva,
+    required String? situacaoReprodutiva,
+    required DateTime? previsaoParto,
+    required DateTime? dataUltimoParto,
+  }) {
+    const excludedProductiveStatuses = {
+      AnimalProductiveSituation.heifer,
+      AnimalProductiveSituation.prepartum,
+    };
+    if (excludedProductiveStatuses.contains(situacaoProdutiva) ||
+        !_isPregnant(situacaoReprodutiva)) {
+      return null;
+    }
+
+    return _monthsBetween(dataUltimoParto, previsaoParto);
+  }
+
+  static double? _controleLeiteiroComDesconto({
+    required String? situacaoProdutiva,
+    required double? controleLeiteiro,
+  }) {
+    const excludedProductiveStatuses = {
+      AnimalProductiveSituation.dry,
+      AnimalProductiveSituation.prepartum,
+      AnimalProductiveSituation.heifer,
+    };
+    if (controleLeiteiro == null ||
+        excludedProductiveStatuses.contains(situacaoProdutiva)) {
+      return null;
+    }
+
+    final result = controleLeiteiro * 0.70;
+    return result.isFinite ? result : null;
+  }
+
+  static double? _monthsBetween(DateTime? start, DateTime? end) {
+    final days = diasEntre(start, end);
+    if (days == null) {
+      return null;
+    }
+
+    final result = days / 30;
+    return result.isFinite ? result : null;
+  }
+
+  static bool _isPregnant(String? value) {
+    return _isReproductiveStatus(value, AnimalReproductiveStatus.pregnant);
+  }
+
+  static bool _isAnyReproductiveStatus(
+    String? value,
+    Set<AnimalReproductiveStatus> statuses,
+  ) {
+    return statuses.any((status) => _isReproductiveStatus(value, status));
+  }
+
+  static bool _isReproductiveStatus(
+    String? value,
+    AnimalReproductiveStatus status,
+  ) {
+    final normalized = _normalize(value);
+    if (normalized == null) {
+      return false;
+    }
+
+    if (normalized == status.apiValue.normalize() ||
+        normalized == status.label.normalize()) {
+      return true;
+    }
+
+    return status.aliases.any((alias) => normalized == alias.normalize());
+  }
+
+  static String? _normalize(String? value) {
+    final normalized = value?.trim().normalize();
+    return normalized == null || normalized.isEmpty ? null : normalized;
   }
 }
 
@@ -489,12 +1403,14 @@ class _HeaderFields extends StatelessWidget {
     required this.propertyId,
     required this.properties,
     required this.dataVisitaController,
+    required this.onVisitDateChanged,
     required this.onPropertyChanged,
   });
 
   final int? propertyId;
   final List<PropertySummaryModel> properties;
   final TextEditingController dataVisitaController;
+  final ValueChanged<String> onVisitDateChanged;
   final ValueChanged<int?> onPropertyChanged;
 
   @override
@@ -525,6 +1441,7 @@ class _HeaderFields extends StatelessWidget {
             required: true,
             keyboardType: TextInputType.number,
             inputFormatters: const [DateInputFormatter()],
+            onChanged: onVisitDateChanged,
             validator: (value) {
               if (parseDateInput(value ?? '') == null) {
                 return 'Informe uma data válida';
@@ -627,21 +1544,25 @@ class _VisitActionsBar extends StatelessWidget {
 class _AnimalCollectionLayout extends StatefulWidget {
   const _AnimalCollectionLayout({
     required this.entries,
+    required this.iaHistoryByAnimalId,
     required this.reviewedAnimalIds,
     required this.selectedAnimalId,
     required this.selectedEntry,
     required this.onSelectAnimal,
     required this.onChanged,
+    required this.applyAutomaticCalculations,
     required this.onConfirmAnimal,
     required this.onOpenAnimal,
   });
 
   final List<VisitAnimalEntryModel> entries;
+  final Map<int, _AnimalIaHistory> iaHistoryByAnimalId;
   final Set<int> reviewedAnimalIds;
   final int? selectedAnimalId;
   final VisitAnimalEntryModel? selectedEntry;
   final ValueChanged<int> onSelectAnimal;
   final ValueChanged<VisitAnimalEntryModel> onChanged;
+  final _VisitEntryCalculator applyAutomaticCalculations;
   final ValueChanged<int> onConfirmAnimal;
   final ValueChanged<VisitAnimalEntryModel> onOpenAnimal;
 
@@ -671,7 +1592,12 @@ class _AnimalCollectionLayoutState extends State<_AnimalCollectionLayout> {
           key: _editorKey,
           child: _AnimalEditorPane(
             entry: widget.selectedEntry,
+            iaHistory: widget.selectedEntry == null
+                ? _AnimalIaHistory.empty
+                : widget.iaHistoryByAnimalId[widget.selectedEntry!.animalId] ??
+                      _AnimalIaHistory.empty,
             onChanged: widget.onChanged,
+            applyAutomaticCalculations: widget.applyAutomaticCalculations,
             onConfirmAnimal: widget.onConfirmAnimal,
             reviewed:
                 widget.selectedEntry != null &&
@@ -1029,13 +1955,17 @@ class _AnimalListItem extends StatelessWidget {
 class _AnimalEditorPane extends StatelessWidget {
   const _AnimalEditorPane({
     required this.entry,
+    required this.iaHistory,
     required this.onChanged,
+    required this.applyAutomaticCalculations,
     required this.onConfirmAnimal,
     required this.reviewed,
   });
 
   final VisitAnimalEntryModel? entry;
+  final _AnimalIaHistory iaHistory;
   final ValueChanged<VisitAnimalEntryModel> onChanged;
+  final _VisitEntryCalculator applyAutomaticCalculations;
   final ValueChanged<int> onConfirmAnimal;
   final bool reviewed;
 
@@ -1058,7 +1988,12 @@ class _AnimalEditorPane extends StatelessWidget {
         children: [
           _AnimalEditorHeader(entry: selectedEntry, reviewed: reviewed),
           const SizedBox(height: 18),
-          _AnimalEditorFields(entry: selectedEntry, onChanged: onChanged),
+          _AnimalEditorFields(
+            entry: selectedEntry,
+            iaHistory: iaHistory,
+            onChanged: onChanged,
+            applyAutomaticCalculations: applyAutomaticCalculations,
+          ),
           const SizedBox(height: 14),
           Align(
             alignment: Alignment.centerRight,
@@ -1230,40 +2165,129 @@ class _AnimalVisitStatusBadge extends StatelessWidget {
 }
 
 class _AnimalEditorFields extends StatelessWidget {
-  const _AnimalEditorFields({required this.entry, required this.onChanged});
+  const _AnimalEditorFields({
+    required this.entry,
+    required this.iaHistory,
+    required this.onChanged,
+    required this.applyAutomaticCalculations,
+  });
 
   final VisitAnimalEntryModel entry;
+  final _AnimalIaHistory iaHistory;
   final ValueChanged<VisitAnimalEntryModel> onChanged;
+  final _VisitEntryCalculator applyAutomaticCalculations;
 
   @override
   Widget build(BuildContext context) {
+    void emitChanged(VisitAnimalEntryModel value) {
+      onChanged(applyAutomaticCalculations(value));
+    }
+
+    final hasVisitIa = _hasVisitIa(entry, iaHistory);
+    final visitIaDate = hasVisitIa ? entry.dataUltimaIa : null;
+    final visitIaNumber = hasVisitIa
+        ? entry.numeroIaRecebida
+        : iaHistory.suggestedNextNumber;
+    final animalIdentifier = _animalIdentifier(entry);
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         _EditorSection(
-          title: 'Informações reprodutivas',
+          title: 'Dados do animal',
           child: _EditorGrid(
             children: [
+              AppTextField(
+                key: ValueKey('animal-id-${entry.animalId}-$animalIdentifier'),
+                label: 'Identificação / número',
+                initialValue: animalIdentifier,
+                readOnly: true,
+              ),
               AppDropdown<String>(
                 value: entry.situacaoProdutiva,
                 labelText: 'Situação produtiva',
                 onChanged: (value) =>
-                    onChanged(entry.copyWith(situacaoProdutiva: value)),
+                    emitChanged(entry.copyWith(situacaoProdutiva: value)),
                 options: _VisitFormPageState._situacaoProdutivaOptions,
               ),
               AppDropdown<String>(
                 value: entry.situacaoReprodutiva,
                 labelText: 'Situação reprodutiva',
                 onChanged: (value) =>
-                    onChanged(entry.copyWith(situacaoReprodutiva: value)),
+                    emitChanged(entry.copyWith(situacaoReprodutiva: value)),
                 options: _VisitFormPageState._situacaoReprodutivaOptions,
+              ),
+              _DateInputField(
+                label: 'Data último parto',
+                value: entry.dataUltimoParto,
+                onChanged: (value) =>
+                    emitChanged(entry.copyWith(dataUltimoParto: value)),
               ),
               AppTextField(
                 label: 'Decisão',
                 initialValue: entry.decisao ?? '',
-                onChanged: (value) => onChanged(
+                onChanged: (value) => emitChanged(
                   entry.copyWith(
                     decisao: value.trim().isEmpty ? null : value.trim(),
+                  ),
+                ),
+              ),
+              AppTextField(
+                label: 'Diagnóstico',
+                initialValue: entry.diagnostico ?? '',
+                onChanged: (value) => emitChanged(
+                  entry.copyWith(
+                    diagnostico: value.trim().isEmpty ? null : value.trim(),
+                  ),
+                ),
+              ),
+              _calculatedText('Idade (meses)', _formatDouble(entry.idadeMeses)),
+              _calculatedText('DEL', _formatInt(entry.del)),
+              _calculatedText('Dias prenhez', _formatInt(entry.diasPrenhez)),
+              _calculatedText('Dias p/ secar', _formatInt(entry.diasParaSecar)),
+              _calculatedText(
+                'Previsão parto',
+                formatDateInput(entry.previsaoParto),
+              ),
+              _calculatedText(
+                'Última IA (histórico)',
+                formatDateInput(iaHistory.lastDate),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 22),
+        _EditorSection(
+          title: 'Inseminação Artificial',
+          child: _EditorGrid(
+            children: [
+              _DateInputField(
+                key: ValueKey(
+                  'visit-ia-date-${entry.animalId}-$hasVisitIa-$visitIaDate',
+                ),
+                label: 'Data da nova IA',
+                value: visitIaDate,
+                onChanged: (value) => emitChanged(
+                  _entryWithVisitIaDate(
+                    entry: entry,
+                    iaHistory: iaHistory,
+                    value: value,
+                  ),
+                ),
+              ),
+              AppTextField(
+                key: ValueKey(
+                  'visit-ia-number-${entry.animalId}-$hasVisitIa-$visitIaNumber',
+                ),
+                label: 'Número da IA da visita',
+                initialValue: _formatInt(visitIaNumber),
+                keyboardType: TextInputType.number,
+                readOnly: !hasVisitIa,
+                onChanged: (value) => emitChanged(
+                  _entryWithVisitIaNumber(
+                    entry: entry,
+                    iaHistory: iaHistory,
+                    value: value,
                   ),
                 ),
               ),
@@ -1272,73 +2296,20 @@ class _AnimalEditorFields extends StatelessWidget {
         ),
         const SizedBox(height: 22),
         _EditorSection(
-          title: 'Diagnóstico',
-          child: AppTextField(
-            label: 'Diagnóstico / Histórico',
-            initialValue: entry.diagnostico ?? '',
-            onChanged: (value) => onChanged(
-              entry.copyWith(
-                diagnostico: value.trim().isEmpty ? null : value.trim(),
-              ),
-            ),
-          ),
-        ),
-        const SizedBox(height: 22),
-        _EditorSection(
-          title: 'Inseminação e parto',
+          title: 'Secagem e pré-parto',
           child: _EditorGrid(
             children: [
-              AppTextField(
-                label: 'Data da inseminação do animal',
-                initialValue: formatDateInput(entry.dataUltimaIa),
-                readOnly: true,
-              ),
-              AppTextField(
-                label: 'Número da IA recebida',
-                initialValue: _formatInt(entry.numeroIaRecebida),
-                keyboardType: TextInputType.number,
-                onChanged: (value) => onChanged(
-                  entry.copyWith(numeroIaRecebida: _parseInt(value)),
-                ),
-              ),
-              AppTextField(
-                label: 'Dias prenhez',
-                initialValue: _formatInt(entry.diasPrenhez),
-                keyboardType: TextInputType.number,
+              _DateInputField(
+                label: 'Secagem efetiva',
+                value: entry.dataSecagemEfetiva,
                 onChanged: (value) =>
-                    onChanged(entry.copyWith(diasPrenhez: _parseInt(value))),
-              ),
-              AppTextField(
-                label: 'DEL',
-                initialValue: _formatInt(entry.del),
-                keyboardType: TextInputType.number,
-                onChanged: (value) =>
-                    onChanged(entry.copyWith(del: _parseInt(value))),
-              ),
-              AppTextField(
-                label: 'Dias p/ secar',
-                initialValue: _formatInt(entry.diasParaSecar),
-                keyboardType: TextInputType.number,
-                onChanged: (value) =>
-                    onChanged(entry.copyWith(diasParaSecar: _parseInt(value))),
+                    emitChanged(entry.copyWith(dataSecagemEfetiva: value)),
               ),
               _DateInputField(
-                label: 'Previsão secagem',
-                value: entry.previsaoSecagem,
+                label: 'Entrada pré-parto',
+                value: entry.entradaPreParto,
                 onChanged: (value) =>
-                    onChanged(entry.copyWith(previsaoSecagem: value)),
-              ),
-              _DateInputField(
-                label: 'Data pré-parto',
-                value: entry.dataPreParto,
-                onChanged: (value) =>
-                    onChanged(entry.copyWith(dataPreParto: value)),
-              ),
-              _DateInputField(
-                label: 'Previsão parto',
-                value: entry.previsaoParto,
-                onChanged: (value) =>
-                    onChanged(entry.copyWith(previsaoParto: value)),
+                    emitChanged(entry.copyWith(entradaPreParto: value)),
               ),
             ],
           ),
@@ -1349,7 +2320,20 @@ class _AnimalEditorFields extends StatelessWidget {
 
   static String _formatInt(int? value) => value?.toString() ?? '';
 
-  static int? _parseInt(String value) => int.tryParse(value.trim());
+  static String _formatDouble(double? value) {
+    if (value == null || !value.isFinite) return '';
+    if (value == value.roundToDouble()) return value.toStringAsFixed(0);
+    return value.toStringAsFixed(1);
+  }
+
+  Widget _calculatedText(String label, String value) {
+    return AppTextField(
+      key: ValueKey('visit-calc-${entry.animalId}-$label-$value'),
+      label: label,
+      initialValue: value,
+      readOnly: true,
+    );
+  }
 }
 
 class _EditorSection extends StatelessWidget {
@@ -1422,9 +2406,15 @@ class _EditorGrid extends StatelessWidget {
 }
 
 class _AnimalEditorModalContent extends StatefulWidget {
-  const _AnimalEditorModalContent({required this.entry});
+  const _AnimalEditorModalContent({
+    required this.entry,
+    required this.iaHistory,
+    required this.applyAutomaticCalculations,
+  });
 
   final VisitAnimalEntryModel entry;
+  final _AnimalIaHistory iaHistory;
+  final _VisitEntryCalculator applyAutomaticCalculations;
 
   @override
   State<_AnimalEditorModalContent> createState() =>
@@ -1437,7 +2427,7 @@ class _AnimalEditorModalContentState extends State<_AnimalEditorModalContent> {
   @override
   void initState() {
     super.initState();
-    _draft = widget.entry;
+    _draft = widget.applyAutomaticCalculations(widget.entry);
   }
 
   @override
@@ -1447,14 +2437,16 @@ class _AnimalEditorModalContentState extends State<_AnimalEditorModalContent> {
       mainAxisSize: MainAxisSize.min,
       children: [
         Text(
-          'Preencha e confirme os dados da visita. A data de inseminação vem do cadastro do animal.',
+          'Preencha e confirme os dados da visita.',
           style: Theme.of(context).textTheme.bodySmall,
         ),
         const SizedBox(height: 16),
         _AnimalEditorFields(
           entry: _draft,
+          iaHistory: widget.iaHistory,
+          applyAutomaticCalculations: widget.applyAutomaticCalculations,
           onChanged: (value) => setState(() {
-            _draft = value;
+            _draft = widget.applyAutomaticCalculations(value);
           }),
         ),
         const SizedBox(height: 16),
@@ -1483,14 +2475,15 @@ class _AnimalEditorModalContentState extends State<_AnimalEditorModalContent> {
 
 class _DateInputField extends StatelessWidget {
   const _DateInputField({
+    super.key,
     required this.label,
     required this.value,
-    required this.onChanged,
+    this.onChanged,
   });
 
   final String label;
   final DateTime? value;
-  final ValueChanged<DateTime?> onChanged;
+  final ValueChanged<DateTime?>? onChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -1500,7 +2493,9 @@ class _DateInputField extends StatelessWidget {
       initialValue: formatDateInput(value),
       keyboardType: TextInputType.number,
       inputFormatters: const [DateInputFormatter()],
-      onChanged: (text) => onChanged(parseDateInput(text)),
+      onChanged: onChanged == null
+          ? null
+          : (text) => onChanged!(parseDateInput(text)),
     );
   }
 }
