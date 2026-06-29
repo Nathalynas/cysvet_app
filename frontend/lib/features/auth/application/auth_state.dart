@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../data/auth_repository.dart';
@@ -73,6 +74,8 @@ class AuthController {
 }
 
 class AuthSessionNotifier extends Notifier<AuthSessionModel?> {
+  static const _minimumWebSplashDuration = Duration(milliseconds: 900);
+
   bool _restoreScheduled = false;
 
   @override
@@ -125,6 +128,8 @@ class AuthSessionNotifier extends Notifier<AuthSessionModel?> {
   }
 
   Future<void> _restoreSession() async {
+    final startedAt = DateTime.now();
+
     try {
       final restoredSession = await ref.read(authSessionStorageProvider).read();
       if (restoredSession == null) {
@@ -164,8 +169,22 @@ class AuthSessionNotifier extends Notifier<AuthSessionModel?> {
 
       await setSession(session);
     } finally {
+      await _waitForWebSplash(startedAt);
       ref.read(authBootstrapProvider.notifier).markReady();
     }
+  }
+
+  Future<void> _waitForWebSplash(DateTime startedAt) async {
+    if (!kIsWeb) {
+      return;
+    }
+
+    final elapsed = DateTime.now().difference(startedAt);
+    if (elapsed >= _minimumWebSplashDuration) {
+      return;
+    }
+
+    await Future.delayed(_minimumWebSplashDuration - elapsed);
   }
 
   AuthSessionModel? _normalizeSession(
