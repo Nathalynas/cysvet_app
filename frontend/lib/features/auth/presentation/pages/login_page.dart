@@ -176,6 +176,15 @@ class _LoginPageState extends ConsumerState<LoginPage> {
               horizontal: 12,
               vertical: 10,
             ),
+            suffixIconConstraints: const BoxConstraints.tightFor(
+              width: 38,
+              height: 38,
+            ),
+            suffixIcon: const Icon(
+              Icons.email_outlined,
+              size: 17,
+              color: AppTheme.mutedTextColor,
+            ),
             validator: _validateEmail,
           ),
           const SizedBox(height: 13),
@@ -482,9 +491,7 @@ class _HeroPanel extends StatelessWidget {
               fit: BoxFit.cover,
               alignment: Alignment.centerLeft,
             ),
-            Container(
-              color: AppTheme.primaryColor.withValues(alpha: 0.35),
-            ),
+            Container(color: AppTheme.primaryColor.withValues(alpha: 0.35)),
             const _HeroGradientOverlay(),
             const _HeroContent(),
           ],
@@ -627,9 +634,7 @@ class _MobileHeaderImage extends StatelessWidget {
           fit: BoxFit.cover,
           alignment: const Alignment(0, 0.35),
         ),
-        Container(
-          color: AppTheme.primaryColor.withValues(alpha: 0.35),
-        ),
+        Container(color: AppTheme.primaryColor.withValues(alpha: 0.35)),
         DecoratedBox(
           decoration: BoxDecoration(
             gradient: LinearGradient(

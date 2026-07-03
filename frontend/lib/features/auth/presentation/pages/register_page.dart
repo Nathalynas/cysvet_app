@@ -1,3 +1,4 @@
+import 'package:cysvet_app/app/theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -75,7 +76,7 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
     final colorScheme = theme.colorScheme;
 
     return Scaffold(
-      backgroundColor: colorScheme.surfaceBright,
+      backgroundColor: AppTheme.primaryColor,
       body: SafeArea(
         child: LayoutBuilder(
           builder: (context, constraints) {
@@ -135,7 +136,7 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
                               ),
                               const SizedBox(height: 16),
                               Text(
-                                'Criar conta',
+                                'Cadastro',
                                 style: theme.textTheme.titleMedium?.copyWith(
                                   color: colorScheme.onSurface,
                                   fontWeight: FontWeight.w800,
@@ -144,7 +145,7 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
                               ),
                               const SizedBox(height: 6),
                               Text(
-                                'Cadastre o primeiro administrador da empresa.',
+                                'Cadastre o administrador da empresa.',
                                 style: theme.textTheme.bodySmall?.copyWith(
                                   color: colorScheme.onSurfaceVariant,
                                   height: 1.3,
@@ -190,6 +191,16 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
                                   vertical: 10,
                                 ),
                                 validator: _validateEmail,
+                                suffixIconConstraints:
+                                    const BoxConstraints.tightFor(
+                                      width: 38,
+                                      height: 38,
+                                    ),
+                                suffixIcon: const Icon(
+                                  Icons.email_outlined,
+                                  size: 17,
+                                  color: AppTheme.mutedTextColor,
+                                ),
                               ),
                               const SizedBox(height: 16),
                               AppTextField(
