@@ -21,7 +21,7 @@ class AppTheme {
   static const Color tertiary = Color(0xFF177930);
   static const Color secondaryColor = Color(0xFFD8F3DC);
   static const Color tertiaryColor = Color.fromARGB(255, 253, 251, 248);
-  static const Color neutralColor = Color.fromARGB(255, 250, 250, 250);
+  static const Color neutralColor = Color.fromARGB(255, 246, 251, 246);
 
   static const Color backgroundColor = neutralColor;
   static const Color cardColor = tertiaryColor;

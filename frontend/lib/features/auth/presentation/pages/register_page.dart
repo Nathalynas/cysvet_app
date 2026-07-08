@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/network/api_error.dart';
 import '../../../../core/widgets/app_button.dart';
+import '../../../../core/widgets/app_card.dart';
 import '../../../../core/widgets/app_text_field.dart';
 import '../../application/auth_state.dart';
 
@@ -94,97 +95,93 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
                 child: Center(
                   child: ConstrainedBox(
                     constraints: const BoxConstraints(maxWidth: 460),
-                    child: DecoratedBox(
-                      decoration: BoxDecoration(
-                        color: colorScheme.surface,
-                        borderRadius: BorderRadius.circular(20),
-                        boxShadow: [
-                          BoxShadow(
-                            color: theme.shadowColor.withValues(alpha: 0.08),
-                            blurRadius: 15,
-                            offset: const Offset(0, 8),
-                          ),
-                        ],
-                        border: Border.all(
-                          color: colorScheme.outline.withValues(alpha: 0.5),
-                        ),
+                    child: AppCard(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 34,
+                        vertical: 30,
                       ),
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 28,
-                          vertical: 32,
-                        ),
+                      borderRadius: 24,
+                      backgroundColor: AppTheme.cardColor,
+                      borderColor: Colors.transparent,
+                      shadow: true,
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 350),
                         child: Form(
                           key: _formKey,
                           child: Column(
                             mainAxisSize: MainAxisSize.min,
                             crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
-                              Align(
-                                alignment: Alignment.center,
-                                child: SizedBox(
-                                  width: 220,
-                                  height: 82,
-                                  child: Transform.scale(
-                                    scale: 1.3,
-                                    child: Image.asset(
-                                      AppAssets.companyLogo,
-                                      fit: BoxFit.contain,
-                                    ),
-                                  ),
+                              Center(
+                                child: Image.asset(
+                                  AppAssets.companyLogo,
+                                  width: 260,
+                                  fit: BoxFit.contain,
                                 ),
                               ),
-                              const SizedBox(height: 16),
+                              const SizedBox(height: 30),
                               Text(
                                 'Cadastro',
                                 style: theme.textTheme.titleMedium?.copyWith(
-                                  color: colorScheme.onSurface,
+                                  color: AppTheme.primaryColor,
+                                  fontSize: 16,
                                   fontWeight: FontWeight.w800,
-                                  fontSize: 18,
+                                  height: 1.1,
                                 ),
                               ),
-                              const SizedBox(height: 6),
+                              const SizedBox(height: 5),
                               Text(
                                 'Cadastre o administrador da empresa.',
                                 style: theme.textTheme.bodySmall?.copyWith(
-                                  color: colorScheme.onSurfaceVariant,
+                                  color: AppTheme.mutedTextColor,
+                                  fontSize: 10.5,
                                   height: 1.3,
                                 ),
                               ),
-                              const SizedBox(height: 20),
+                              const SizedBox(height: 18),
                               AppTextField(
                                 controller: _nameController,
                                 enabled: !isBusy,
                                 required: true,
                                 label: 'Nome',
                                 textInputAction: TextInputAction.next,
-                                fillColor: colorScheme.surfaceContainerHighest,
-                                borderColor: colorScheme.outline.withValues(
+                                fillColor: Colors.white,
+                                borderColor: AppTheme.borderColor.withValues(
                                   alpha: 0.7,
                                 ),
-                                focusedBorderColor: colorScheme.primary,
-                                borderRadius: 8,
+                                focusedBorderColor: AppTheme.primaryColor,
+                                borderRadius: 7,
                                 isDense: true,
                                 contentPadding: const EdgeInsets.symmetric(
                                   horizontal: 12,
                                   vertical: 10,
                                 ),
                                 validator: _validateName,
+                                suffixIconConstraints:
+                                    const BoxConstraints.tightFor(
+                                      width: 38,
+                                      height: 38,
+                                    ),
+                                suffixIcon: const Icon(
+                                  Icons.person_outline,
+                                  size: 17,
+                                  color: AppTheme.mutedTextColor,
+                                ),
                               ),
-                              const SizedBox(height: 16),
+                              const SizedBox(height: 13),
                               AppTextField(
                                 controller: _emailController,
                                 enabled: !isBusy,
                                 required: true,
-                                label: 'Email',
+                                label: 'E-mail',
                                 keyboardType: TextInputType.emailAddress,
                                 textInputAction: TextInputAction.next,
-                                fillColor: colorScheme.surfaceContainerHighest,
-                                borderColor: colorScheme.outline.withValues(
+                                fillColor: Colors.white,
+                                borderColor: AppTheme.borderColor.withValues(
                                   alpha: 0.7,
                                 ),
-                                focusedBorderColor: colorScheme.primary,
-                                borderRadius: 8,
+                                focusedBorderColor: AppTheme.primaryColor,
+                                borderRadius: 7,
                                 isDense: true,
                                 contentPadding: const EdgeInsets.symmetric(
                                   horizontal: 12,
@@ -202,7 +199,7 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
                                   color: AppTheme.mutedTextColor,
                                 ),
                               ),
-                              const SizedBox(height: 16),
+                              const SizedBox(height: 13),
                               AppTextField(
                                 controller: _passwordController,
                                 required: true,
@@ -210,12 +207,12 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
                                 label: 'Senha',
                                 obscureText: !_showPassword,
                                 textInputAction: TextInputAction.next,
-                                fillColor: colorScheme.surfaceContainerHighest,
-                                borderColor: colorScheme.outline.withValues(
+                                fillColor: Colors.white,
+                                borderColor: AppTheme.borderColor.withValues(
                                   alpha: 0.7,
                                 ),
-                                focusedBorderColor: colorScheme.primary,
-                                borderRadius: 8,
+                                focusedBorderColor: AppTheme.primaryColor,
+                                borderRadius: 7,
                                 isDense: true,
                                 contentPadding: const EdgeInsets.symmetric(
                                   horizontal: 12,
@@ -223,8 +220,8 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
                                 ),
                                 suffixIconConstraints:
                                     const BoxConstraints.tightFor(
-                                      width: 40,
-                                      height: 40,
+                                      width: 38,
+                                      height: 38,
                                     ),
                                 suffixIcon: IconButton(
                                   tooltip: _showPassword
@@ -234,7 +231,8 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
                                     _showPassword
                                         ? Icons.visibility_off
                                         : Icons.visibility,
-                                    size: 18,
+                                    size: 17,
+                                    color: AppTheme.mutedTextColor,
                                   ),
                                   visualDensity: VisualDensity.compact,
                                   padding: EdgeInsets.zero,
@@ -248,7 +246,7 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
                                 ),
                                 validator: _validatePassword,
                               ),
-                              const SizedBox(height: 16),
+                              const SizedBox(height: 13),
                               AppTextField(
                                 controller: _confirmPasswordController,
                                 required: true,
@@ -256,12 +254,12 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
                                 label: 'Confirmar senha',
                                 obscureText: !_showConfirmPassword,
                                 textInputAction: TextInputAction.done,
-                                fillColor: colorScheme.surfaceContainerHighest,
-                                borderColor: colorScheme.outline.withValues(
+                                fillColor: Colors.white,
+                                borderColor: AppTheme.borderColor.withValues(
                                   alpha: 0.7,
                                 ),
-                                focusedBorderColor: colorScheme.primary,
-                                borderRadius: 8,
+                                focusedBorderColor: AppTheme.primaryColor,
+                                borderRadius: 7,
                                 isDense: true,
                                 contentPadding: const EdgeInsets.symmetric(
                                   horizontal: 12,
@@ -269,8 +267,8 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
                                 ),
                                 suffixIconConstraints:
                                     const BoxConstraints.tightFor(
-                                      width: 40,
-                                      height: 40,
+                                      width: 38,
+                                      height: 38,
                                     ),
                                 suffixIcon: IconButton(
                                   tooltip: _showConfirmPassword
@@ -280,7 +278,8 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
                                     _showConfirmPassword
                                         ? Icons.visibility_off
                                         : Icons.visibility,
-                                    size: 18,
+                                    size: 17,
+                                    color: AppTheme.mutedTextColor,
                                   ),
                                   visualDensity: VisualDensity.compact,
                                   padding: EdgeInsets.zero,
@@ -296,27 +295,27 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
                                 validator: _validateConfirmPassword,
                                 onSubmitted: (_) => _submit(),
                               ),
-                              const SizedBox(height: 20),
+                              const SizedBox(height: 16),
                               AppButton(
                                 text: 'Criar conta',
                                 trailingIcon: const Icon(
                                   Icons.person_add_alt_1,
-                                  size: 16,
+                                  size: 15,
                                 ),
                                 loading: isBusy,
                                 disabled: isBusy,
                                 expanded: true,
-                                height: 40,
+                                height: 36,
                                 borderRadius: 9,
                                 onPressed: _submit,
                               ),
-                              const SizedBox(height: 12),
+                              const SizedBox(height: 11),
                               AppButton(
                                 text: 'Voltar para login',
                                 outlined: true,
                                 disabled: isBusy,
                                 expanded: true,
-                                height: 40,
+                                height: 36,
                                 borderRadius: 9,
                                 onPressed: () => context.go('/login'),
                               ),

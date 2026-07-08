@@ -26,6 +26,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
 
   bool _keepConnected = false;
   bool _showPassword = false;
+  bool _forgotPasswordHovered = false;
 
   bool get isMobile => MediaQuery.sizeOf(context).width < MOBILE_WIDTH;
 
@@ -75,12 +76,12 @@ class _LoginPageState extends ConsumerState<LoginPage> {
       await AppDialog.show<void>(
         context: context,
         title: 'Recuperar senha',
-        subtitle: 'Informe o email cadastrado para iniciar a recuperação.',
+        subtitle: 'Informe o e-mail cadastrado para iniciar a recuperação.',
         content: Form(
           key: dialogFormKey,
           child: AppTextField(
             controller: emailController,
-            label: 'Email',
+            label: 'E-mail',
             keyboardType: TextInputType.emailAddress,
             textInputAction: TextInputAction.done,
             validator: _validateEmail,
@@ -117,7 +118,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     final form = _buildLoginForm(context, isBusy);
 
     return Scaffold(
-      backgroundColor: isMobile ? AppTheme.primaryColor : AppTheme.neutralColor,
+      backgroundColor: isMobile ? AppTheme.primaryColor : AppTheme.backgroundColor,
       body: isMobile
           ? _MobileLoginLayout(form: form)
           : _DesktopLoginLayout(form: form),
@@ -164,7 +165,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
             controller: _emailController,
             enabled: !isBusy,
             required: true,
-            label: 'Email',
+            label: 'E-mail',
             keyboardType: TextInputType.emailAddress,
             textInputAction: TextInputAction.next,
             fillColor: Colors.white,
@@ -274,7 +275,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
 
     final optionTextStyle = theme.textTheme.labelMedium?.copyWith(
       color: AppTheme.mutedTextColor,
-      fontSize: 10.5,
+      fontSize: 12,
       fontWeight: FontWeight.w500,
     );
 
@@ -283,17 +284,46 @@ class _LoginPageState extends ConsumerState<LoginPage> {
       children: [
         Align(
           alignment: Alignment.centerRight,
-          child: AppButton(
-            text: 'Esqueceu a senha?',
-            outlined: true,
-            padding: EdgeInsets.zero,
-            color: Colors.transparent,
-            textColor: AppTheme.primaryColor,
-            borderColor: Colors.transparent,
-            fontWeight: FontWeight.w700,
-            height: 24,
-            borderRadius: 0,
-            onPressed: isBusy ? null : _openForgotPasswordDialog,
+          child: MouseRegion(
+            cursor: isBusy
+                ? SystemMouseCursors.basic
+                : SystemMouseCursors.click,
+            onEnter: (_) {
+              if (!isBusy) {
+                setState(() {
+                  _forgotPasswordHovered = true;
+                });
+              }
+            },
+            onExit: (_) {
+              if (!isBusy) {
+                setState(() {
+                  _forgotPasswordHovered = false;
+                });
+              }
+            },
+            child: GestureDetector(
+              behavior: HitTestBehavior.translucent,
+              onTap: isBusy ? null : _openForgotPasswordDialog,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 4),
+                child: Text(
+                  'Esqueceu a senha?',
+                  style: theme.textTheme.labelMedium?.copyWith(
+                    color: isBusy
+                        ? AppTheme.mutedTextColor
+                        : AppTheme.primaryColor,
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.w700,
+                    decoration: _forgotPasswordHovered
+                        ? TextDecoration.underline
+                        : TextDecoration.none,
+                    decorationColor: AppTheme.primaryColor,
+                    decorationThickness: 1.4,
+                  ),
+                ),
+              ),
+            ),
           ),
         ),
         const SizedBox(height: 7),
