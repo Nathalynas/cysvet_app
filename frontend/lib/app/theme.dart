@@ -21,7 +21,7 @@ class AppTheme {
   static const Color tertiary = Color(0xFF177930);
   static const Color secondaryColor = Color(0xFFD8F3DC);
   static const Color tertiaryColor = Color.fromARGB(255, 253, 251, 248);
-  static const Color neutralColor = Color.fromARGB(255, 246, 251, 246);
+  static const Color neutralColor = Color.fromARGB(255, 248, 251, 248);
 
   static const Color backgroundColor = neutralColor;
   static const Color cardColor = tertiaryColor;
@@ -54,25 +54,25 @@ class AppTheme {
   );
 
   static ThemeData get darkTheme => _buildTheme(
-    palette: const _AppPalette(
-      brightness: Brightness.dark,
-      primary: primaryColor,
-      onPrimary: Colors.white,
-      secondary: Color(0xFF1B4332),
-      onSecondary: Color(0xFFE5F6EA),
-      tertiary: Color(0xFF18211C),
-      neutral: Color(0xFF101512),
-      background: Color(0xFF101512),
-      card: Color(0xFF18211C),
-      text: Color(0xFFE7ECE8),
-      bodyText: Color(0xFFC8D0CB),
-      mutedText: Color(0xFF94A09A),
-      border: Color(0xFF38443D),
-      danger: Color(0xFFFFB4AB),
-      onDanger: Color(0xFF690005),
-      shadow: Color(0x99000000),
-    ),
-  );
+  palette: const _AppPalette(
+    brightness: Brightness.dark,
+    primary: Color(0xFF177930),
+    onPrimary: Color(0xFF001F08),
+    secondary: Color(0xFF1B4332),
+    onSecondary: Color(0xFFE5F6EA),
+    tertiary: Color(0xFF111411),
+    neutral: Color(0xFF090C09),
+    background: Color(0xFF0B0E0B),
+    card: Color(0xFF050705) ,
+    text: Color(0xFFEAF0EA),
+    bodyText: Color(0xFFC9D3CB),
+    mutedText: Color(0xFF8F9B93),
+    border: Color(0xFF2A332C),
+    danger: Color(0xFFFFB4AB),
+    onDanger: Color(0xFF690005),
+    shadow: Color(0xCC000000),
+  ),
+);
 
   static ThemeData _buildTheme({required _AppPalette palette}) {
     final colorScheme =

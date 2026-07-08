@@ -2,20 +2,26 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_material_design_icons/flutter_material_design_icons.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../core/constants/app_constants.dart';
 import '../core/widgets/app_button.dart';
+import '../features/auth/application/auth_state.dart';
 
-class AppShell extends StatefulWidget {
+class AppShell extends ConsumerWidget {
   const AppShell({super.key, required this.child});
 
   final Widget child;
 
+  static const double _desktopMenuWidth = 214;
+  static const double _mobileDrawerWidth = 232;
+  static const int _mobileBottomItemCount = 4;
+
   static const _items = [
     _NavigationItem(
       route: '/dashboard',
-      label: 'Inicio',
+      label: 'Dashboard',
       title: 'Dashboard',
       icon: Icons.dashboard_outlined,
       selectedIcon: Icons.dashboard,
@@ -57,54 +63,38 @@ class AppShell extends StatefulWidget {
     ),
   ];
 
-  static const int _mobileBottomItemCount = 4;
-
   @override
-  State<AppShell> createState() => _AppShellState();
-}
-
-class _AppShellState extends State<AppShell> {
-  bool _menuIsExpanded = false;
-
-  @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final currentIndex = _getCurrentIndex(context);
     final pageHeader = _getPageHeader(context, currentIndex);
-    final bool isMobile = MediaQuery.of(context).size.width < MOBILE_WIDTH;
+    final session = ref.watch(authSessionProvider);
+    final isMobile = MediaQuery.of(context).size.width < MOBILE_WIDTH;
 
     if (!isMobile) {
-      final content = _ShellContent(
-        title: pageHeader.title,
-        backRoute: pageHeader.backRoute,
-        child: widget.child,
-      );
-
       return Scaffold(
-        body: Row(
+        body: Column(
           children: [
-            _DesktopNavigationMenu(
-              currentIndex: currentIndex,
-              onDestinationSelected: (index) {
-                _onDestinationSelected(context, index);
-              },
-              onHoverChanged: (isExpanded) {
-                setState(() => _menuIsExpanded = isExpanded);
-              },
+            _MainHeader(
+              session: session,
+              showMenuButton: false,
+              onMenuPressed: null,
             ),
             Expanded(
-              child: Stack(
+              child: Row(
                 children: [
-                  content,
-                  if (_menuIsExpanded)
-                    Positioned(
-                      left: 0,
-                      top: 0,
-                      right: 0,
-                      child: Container(
-                        height: _AppShellSizes.headerHeight,
-                        color: Colors.transparent,
-                      ),
+                  _DesktopNavigationMenu(
+                    currentIndex: currentIndex,
+                    onDestinationSelected: (index) {
+                      _onDestinationSelected(context, index);
+                    },
+                  ),
+                  Expanded(
+                    child: _ShellContent(
+                      title: pageHeader.title,
+                      backRoute: pageHeader.backRoute,
+                      child: child,
                     ),
+                  ),
                 ],
               ),
             ),
@@ -123,14 +113,24 @@ class _AppShellState extends State<AppShell> {
       ),
       body: Builder(
         builder: (scaffoldContext) {
-          return _ShellContent(
-            title: pageHeader.title,
-            backRoute: pageHeader.backRoute,
-            showMenuButton: pageHeader.backRoute == null,
-            onMenuPressed: () {
-              Scaffold.of(scaffoldContext).openDrawer();
-            },
-            child: widget.child,
+          return Column(
+            children: [
+              _MainHeader(
+                session: session,
+                showMenuButton: pageHeader.backRoute == null,
+                onMenuPressed: () {
+                  Scaffold.of(scaffoldContext).openDrawer();
+                },
+                backRoute: pageHeader.backRoute,
+              ),
+              Expanded(
+                child: _ShellContent(
+                  title: pageHeader.title,
+                  backRoute: pageHeader.backRoute,
+                  child: child,
+                ),
+              ),
+            ],
           );
         },
       ),
@@ -146,8 +146,10 @@ class _AppShellState extends State<AppShell> {
   int _getCurrentIndex(BuildContext context) {
     final location = GoRouterState.of(context).uri.toString();
 
-    for (var index = 1; index < AppShell._items.length; index++) {
-      if (location.startsWith(AppShell._items[index].route)) return index;
+    for (var index = 1; index < _items.length; index++) {
+      if (location.startsWith(_items[index].route)) {
+        return index;
+      }
     }
 
     return 0;
@@ -156,6 +158,13 @@ class _AppShellState extends State<AppShell> {
   _PageHeaderConfig _getPageHeader(BuildContext context, int currentIndex) {
     final location = GoRouterState.of(context).uri.path;
 
+    if (location.startsWith('/visitas/nova')) {
+      return const _PageHeaderConfig(
+        title: 'Nova visita',
+        backRoute: '/visitas',
+      );
+    }
+
     if (location.startsWith('/visitas/') && location.endsWith('/detalhes')) {
       return const _PageHeaderConfig(
         title: 'Detalhes da visita',
@@ -163,11 +172,11 @@ class _AppShellState extends State<AppShell> {
       );
     }
 
-    return _PageHeaderConfig(title: AppShell._items[currentIndex].title);
+    return _PageHeaderConfig(title: _items[currentIndex].title);
   }
 
   void _onDestinationSelected(BuildContext context, int index) {
-    context.go(AppShell._items[index].route);
+    context.go(_items[index].route);
   }
 }
 
@@ -194,31 +203,251 @@ class _NavigationItem {
   final IconData selectedIcon;
 }
 
+class _MainHeader extends ConsumerWidget {
+  const _MainHeader({
+    required this.session,
+    required this.showMenuButton,
+    required this.onMenuPressed,
+    this.backRoute,
+  });
+
+  final dynamic session;
+  final bool showMenuButton;
+  final VoidCallback? onMenuPressed;
+  final String? backRoute;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final isMobile = MediaQuery.of(context).size.width < MOBILE_WIDTH;
+
+    final logoAsset = Theme.of(context).brightness == Brightness.dark
+        ? 'assets/images/logo_branco.png'
+        : 'assets/images/logo.png';
+
+    dynamic activeCompany;
+
+    if (session != null) {
+      for (final company in session.companies) {
+        if (company.id == session.activeCompanyId) {
+          activeCompany = company;
+          break;
+        }
+      }
+    }
+
+    final companyName = activeCompany?.name ?? 'Empresa não informada';
+    final userName = session?.user.name ?? '';
+    final userEmail = session?.user.email ?? '';
+
+    return Material(
+      color: colorScheme.surface,
+      elevation: 0,
+      surfaceTintColor: Colors.transparent,
+      child: Container(
+        decoration: BoxDecoration(
+          color: colorScheme.surface,
+          border: Border(
+            bottom: BorderSide(
+              color: colorScheme.outline.withValues(alpha: 0.45),
+              width: 1,
+            ),
+          ),
+        ),
+        child: SafeArea(
+          bottom: false,
+          child: SizedBox(
+            height: 64,
+            child: Padding(
+              padding: EdgeInsets.only(
+                left: isMobile ? 8 : 16,
+                right: isMobile ? 12 : 20,
+              ),
+              child: isMobile
+                  ? Stack(
+                      alignment: Alignment.center,
+                      children: [
+                        Align(
+                          alignment: Alignment.centerLeft,
+                          child: _HeaderNavigationButton(
+                            backRoute: backRoute,
+                            showMenuButton: showMenuButton,
+                            onMenuPressed: onMenuPressed,
+                          ),
+                        ),
+                        Image.asset(
+                          logoAsset,
+                          height: 38,
+                          fit: BoxFit.contain,
+                          filterQuality: FilterQuality.medium,
+                        ),
+                        Align(
+                          alignment: Alignment.centerRight,
+                          child: _UserAvatarMenu(
+                            userName: userName,
+                            userEmail: userEmail,
+                            onProfile: () => context.go('/configuracoes'),
+                            onCompany: () => context.go('/configuracoes'),
+                            onLogout: () async {
+                              await ref.read(authControllerProvider).logout();
+
+                              if (!context.mounted) {
+                                return;
+                              }
+
+                              context.go('/login');
+                            },
+                          ),
+                        ),
+                      ],
+                    )
+                  : Row(
+                      children: [
+                        SizedBox(
+                          width: 155,
+                          child: Image.asset(
+                            logoAsset,
+                            height: 44,
+                            fit: BoxFit.contain,
+                            alignment: Alignment.centerLeft,
+                            filterQuality: FilterQuality.medium,
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        SizedBox(
+                          height: 36,
+                          child: VerticalDivider(
+                            width: 1,
+                            thickness: 1,
+                            color: Colors.grey.shade300,
+                          ),
+                        ),
+                        const SizedBox(width: 20),
+                        Expanded(
+                          child: _HeaderUserCompanyInfo(
+                            companyName: companyName,
+                            userName: userName,
+                          ),
+                        ),
+                        _UserAvatarMenu(
+                          userName: userName,
+                          userEmail: userEmail,
+                          onProfile: () => context.go('/configuracoes'),
+                          onCompany: () => context.go('/configuracoes'),
+                          onLogout: () async {
+                            await ref.read(authControllerProvider).logout();
+
+                            if (!context.mounted) {
+                              return;
+                            }
+
+                            context.go('/login');
+                          },
+                        ),
+                      ],
+                    ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _HeaderNavigationButton extends StatelessWidget {
+  const _HeaderNavigationButton({
+    required this.backRoute,
+    required this.showMenuButton,
+    required this.onMenuPressed,
+  });
+
+  final String? backRoute;
+  final bool showMenuButton;
+  final VoidCallback? onMenuPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    if (backRoute != null) {
+      return IconButton(
+        tooltip: 'Voltar',
+        icon: const Icon(Icons.arrow_back),
+        color: colorScheme.primary,
+        onPressed: () => context.go(backRoute!),
+      );
+    }
+
+    if (showMenuButton) {
+      return IconButton(
+        tooltip: 'Abrir menu',
+        icon: const Icon(Icons.menu),
+        color: colorScheme.primary,
+        onPressed: onMenuPressed,
+      );
+    }
+
+    return const SizedBox(width: 48);
+  }
+}
+
+class _HeaderUserCompanyInfo extends StatelessWidget {
+  const _HeaderUserCompanyInfo({
+    required this.companyName,
+    required this.userName,
+  });
+
+  final String companyName;
+  final String userName;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          companyName,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: TextStyle(
+            color: Theme.of(context).colorScheme.onSurface,
+            fontWeight: FontWeight.w600,
+            fontSize: 16,
+          ),
+        ),
+        const SizedBox(height: 2),
+        Text(
+          userName,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: TextStyle(
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
+            fontWeight: FontWeight.w500,
+            fontSize: 13,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
 class _ShellContent extends StatelessWidget {
   const _ShellContent({
     required this.title,
     required this.child,
-    this.showMenuButton = false,
-    this.onMenuPressed,
     this.backRoute,
   });
 
   final String title;
   final Widget child;
-  final bool showMenuButton;
-  final VoidCallback? onMenuPressed;
   final String? backRoute;
 
   @override
   Widget build(BuildContext context) {
     return Column(
       children: [
-        _PageHeader(
-          title: title,
-          showMenuButton: showMenuButton,
-          onMenuPressed: onMenuPressed,
-          backRoute: backRoute,
-        ),
+        _PageTitle(title: title, backRoute: backRoute),
         Expanded(
           child: MediaQuery.removePadding(
             context: context,
@@ -231,72 +460,166 @@ class _ShellContent extends StatelessWidget {
   }
 }
 
-class _PageHeader extends StatelessWidget {
-  const _PageHeader({
-    required this.title,
-    this.showMenuButton = false,
-    this.onMenuPressed,
-    this.backRoute,
-  });
+class _PageTitle extends StatelessWidget {
+  const _PageTitle({required this.title, this.backRoute});
 
   final String title;
-  final bool showMenuButton;
-  final VoidCallback? onMenuPressed;
   final String? backRoute;
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final titleStyle = theme.textTheme.titleLarge;
-    final colorScheme = theme.colorScheme;
-    final showBackButton = backRoute != null;
-    final hasLeadingButton = showBackButton || showMenuButton;
+    final isMobile = MediaQuery.of(context).size.width < MOBILE_WIDTH;
 
-    return Material(
-      color: colorScheme.surface,
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.fromLTRB(
+        isMobile ? 16 : 30,
+        isMobile ? 16 : 24,
+        isMobile ? 16 : 30,
+        isMobile ? 10 : 12,
+      ),
+      child: Row(
+        children: [
+          if (backRoute != null && !isMobile) ...[
+            Tooltip(
+              message: 'Voltar',
+              child: AppButton(
+                outlined: true,
+                width: 40,
+                height: 40,
+                padding: EdgeInsets.zero,
+                borderRadius: 12,
+                color: Theme.of(context).colorScheme.primary,
+                textColor: Theme.of(context).colorScheme.primary,
+                borderColor: Colors.transparent,
+                onPressed: () => context.go(backRoute!),
+                child: const Icon(Icons.arrow_back),
+              ),
+            ),
+            const SizedBox(width: 12),
+          ],
+          Expanded(
+            child: Text(
+              title,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: Theme.of(context).colorScheme.onSurface,
+                fontWeight: FontWeight.w800,
+                fontSize: isMobile ? 21 : 22,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _DesktopNavigationMenu extends StatelessWidget {
+  const _DesktopNavigationMenu({
+    required this.currentIndex,
+    required this.onDestinationSelected,
+  });
+
+  final int currentIndex;
+  final ValueChanged<int> onDestinationSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    return _NavigationMenuSurface(
+      currentIndex: currentIndex,
+      onDestinationSelected: onDestinationSelected,
+      isDrawer: false,
+    );
+  }
+}
+
+class _MobileNavigationDrawer extends StatelessWidget {
+  const _MobileNavigationDrawer({
+    required this.currentIndex,
+    required this.onDestinationSelected,
+  });
+
+  final int currentIndex;
+  final ValueChanged<int> onDestinationSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    return Drawer(
+      width: AppShell._mobileDrawerWidth,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
+      backgroundColor: Theme.of(context).colorScheme.surface,
+      child: _NavigationMenuSurface(
+        currentIndex: currentIndex,
+        onDestinationSelected: (index) {
+          Navigator.of(context).pop();
+          onDestinationSelected(index);
+        },
+        isDrawer: true,
+      ),
+    );
+  }
+}
+
+class _NavigationMenuSurface extends StatelessWidget {
+  const _NavigationMenuSurface({
+    required this.currentIndex,
+    required this.onDestinationSelected,
+    required this.isDrawer,
+  });
+
+  final int currentIndex;
+  final ValueChanged<int> onDestinationSelected;
+  final bool isDrawer;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return Container(
+      width: isDrawer
+          ? AppShell._mobileDrawerWidth
+          : AppShell._desktopMenuWidth,
+      decoration: BoxDecoration(
+        color: colorScheme.surface,
+        border: Border(
+          right: BorderSide(
+            color: colorScheme.outline.withValues(alpha: 0.45),
+            width: 1,
+          ),
+        ),
+      ),
       child: SafeArea(
+        top: isDrawer,
         bottom: false,
-        child: Container(
-          height: _AppShellSizes.headerHeight,
-          padding: EdgeInsets.only(left: hasLeadingButton ? 8 : 24, right: 24),
-          alignment: Alignment.centerLeft,
-          child: Row(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              if (showBackButton) ...[
-                Tooltip(
-                  message: 'Voltar',
-                  child: AppButton(
-                    outlined: true,
-                    width: 40,
-                    height: 40,
-                    padding: EdgeInsets.zero,
-                    borderRadius: 12,
-                    color: colorScheme.primary,
-                    textColor: colorScheme.primary,
-                    borderColor: Colors.transparent,
-                    onPressed: () => context.go(backRoute!),
-                    child: const Icon(Icons.arrow_back),
-                  ),
+              if (isDrawer) ...[
+                const _SidebarLogo(),
+                Container(
+                  height: 1,
+                  margin: const EdgeInsets.only(bottom: 14),
+                  color: Colors.black.withValues(alpha: 0.10),
                 ),
-                const SizedBox(width: 8),
-              ] else if (showMenuButton) ...[
-                IconButton(
-                  tooltip: 'Abrir menu',
-                  icon: const Icon(Icons.menu),
-                  color: colorScheme.primary,
-                  onPressed: onMenuPressed,
-                ),
-                const SizedBox(width: 8),
               ],
               Expanded(
-                child: Text(
-                  title,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: titleStyle?.copyWith(
-                    color: colorScheme.primary,
-                    fontWeight: FontWeight.w700,
-                  ),
+                child: ListView(
+                  padding: EdgeInsets.zero,
+                  children: [
+                    for (var index = 0; index < AppShell._items.length; index++)
+                      _NavigationTile(
+                        item: AppShell._items[index],
+                        isSelected: currentIndex == index,
+                        isCompact: false,
+                        isBottomNavigation: false,
+                        onTap: () {
+                          onDestinationSelected(index);
+                        },
+                      ),
+                  ],
                 ),
               ),
             ],
@@ -307,221 +630,29 @@ class _PageHeader extends StatelessWidget {
   }
 }
 
-class _AppShellSizes {
-  static const double desktopMenuCollapsedWidth = 64;
-  static const double menuExpandedWidth = 224;
-  static const double mobileNavigationBarRadius = 30;
-  static const double headerHeight = 56;
-
-  static const double menuHorizontalPadding = 12;
-  static const double menuCompactHorizontalPadding = 8;
-  static const double menuVerticalPadding = 16;
-  static const double dividerHeight = 1;
-
-  static const double compactDesktopTileWidth = 44;
-  static const double compactMobileTileWidth = 52;
-  static const double compactDesktopTileHeight = 44;
-  static const double compactMobileTileHeight = 48;
-  static const double mobileNavigationBarHeight = 60;
-  static const double mobileNavigationBarMaxWidth = 300;
-  static const double expandedDesktopTileHeight = 42;
-  static const double mobileNavigationItemWidth = desktopMenuCollapsedWidth;
-  static const double expandedContentMinWidth = 120;
-  static const double logoIconSize = 40;
-  static const double logoWordmarkWidth = 140;
-  static const double logoWordmarkHeight = 36;
-  static const double logoTopOffset = (headerHeight - logoIconSize) / 2;
-  static const double logoDividerGap = 14;
-  static const double logoDividerTopSpacing =
-      logoTopOffset + logoIconSize + logoDividerGap - menuVerticalPadding;
-
-  static const EdgeInsets menuPadding = EdgeInsets.fromLTRB(
-    menuHorizontalPadding,
-    menuVerticalPadding,
-    menuHorizontalPadding,
-    menuVerticalPadding,
-  );
-  static const EdgeInsets compactMenuPadding = EdgeInsets.fromLTRB(
-    menuCompactHorizontalPadding,
-    menuVerticalPadding,
-    menuCompactHorizontalPadding,
-    menuVerticalPadding,
-  );
-  static const EdgeInsets mobileNavigationPadding = EdgeInsets.fromLTRB(
-    6,
-    6,
-    6,
-    6,
-  );
-  static const EdgeInsets mobileNavigationMargin = EdgeInsets.fromLTRB(
-    12,
-    0,
-    12,
-    8,
-  );
-}
-
-class _DesktopNavigationMenu extends StatefulWidget {
-  const _DesktopNavigationMenu({
-    required this.currentIndex,
-    required this.onDestinationSelected,
-    required this.onHoverChanged,
-  });
-
-  final int currentIndex;
-  final ValueChanged<int> onDestinationSelected;
-  final ValueChanged<bool> onHoverChanged;
-
-  @override
-  State<_DesktopNavigationMenu> createState() => _DesktopNavigationMenuState();
-}
-
-class _DesktopNavigationMenuState extends State<_DesktopNavigationMenu> {
-  bool _isHovering = false;
-
-  @override
-  void didUpdateWidget(_DesktopNavigationMenu oldWidget) {
-    super.didUpdateWidget(oldWidget);
-  }
-
-  void _updateHover(bool hovering) {
-    if (_isHovering != hovering) {
-      setState(() => _isHovering = hovering);
-      widget.onHoverChanged(hovering);
-    }
-  }
+class _SidebarLogo extends StatelessWidget {
+  const _SidebarLogo();
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
+    final logoAsset = Theme.of(context).brightness == Brightness.dark
+        ? 'assets/images/logo_branco.png'
+        : 'assets/images/logo.png';
 
-    return MouseRegion(
-      onEnter: (_) => _updateHover(true),
-      onExit: (_) => _updateHover(false),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 300),
-        curve: Curves.easeInOut,
-        width: _isHovering
-            ? _AppShellSizes.menuExpandedWidth
-            : _AppShellSizes.desktopMenuCollapsedWidth,
-        color: colorScheme.surface,
-        child: SafeArea(
-          child: LayoutBuilder(
-            builder: (context, constraints) {
-              final width = constraints.maxWidth;
-              final isExpandedLayout =
-                  _isHovering &&
-                  width >= _AppShellSizes.expandedContentMinWidth;
-
-              return Stack(
-                children: [
-                  Padding(
-                    padding: isExpandedLayout
-                        ? _AppShellSizes.menuPadding
-                        : _AppShellSizes.compactMenuPadding,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const SizedBox(
-                          height: _AppShellSizes.logoDividerTopSpacing,
-                        ),
-                        Container(
-                          height: _AppShellSizes.dividerHeight,
-                          color: colorScheme.outline,
-                          margin: const EdgeInsets.only(
-                            bottom: _AppShellSizes.logoDividerGap,
-                          ),
-                        ),
-                        for (
-                          var index = 0;
-                          index < AppShell._items.length;
-                          index++
-                        )
-                          _NavigationTile(
-                            item: AppShell._items[index],
-                            isSelected: widget.currentIndex == index,
-                            isCompact: !isExpandedLayout,
-                            isDesktop: true,
-                            onTap: () {
-                              widget.onDestinationSelected(index);
-                            },
-                          ),
-                      ],
-                    ),
-                  ),
-                  Positioned(
-                    top: _AppShellSizes.logoTopOffset,
-                    left: 0,
-                    right: 0,
-                    child: _DesktopLogo(
-                      isExpanded: _isHovering,
-                      availableWidth: width,
-                    ),
-                  ),
-                  Positioned(
-                    right: 0,
-                    top: 0,
-                    bottom: 0,
-                    child: Container(width: 1, color: colorScheme.outline),
-                  ),
-                ],
-              );
-            },
+    return Padding(
+      padding: const EdgeInsets.only(left: 16, right: 16, bottom: 16),
+      child: SizedBox(
+        height: 52,
+        width: double.infinity,
+        child: Align(
+          alignment: Alignment.centerLeft,
+          child: Image.asset(
+            logoAsset,
+            width: 178,
+            fit: BoxFit.contain,
+            filterQuality: FilterQuality.medium,
           ),
         ),
-      ),
-    );
-  }
-}
-
-class _DesktopLogo extends StatelessWidget {
-  const _DesktopLogo({required this.isExpanded, required this.availableWidth});
-
-  final bool isExpanded;
-  final double availableWidth;
-
-  @override
-  Widget build(BuildContext context) {
-    final leftPadding = isExpanded ? 16.0 : 0.0;
-    final rightPadding = isExpanded ? 12.0 : 0.0;
-    final wordmarkWidth = isExpanded
-        ? (availableWidth -
-                  leftPadding -
-                  rightPadding -
-                  _AppShellSizes.logoIconSize)
-              .clamp(0.0, _AppShellSizes.logoWordmarkWidth)
-              .toDouble()
-        : 0.0;
-
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 300),
-      curve: Curves.easeInOut,
-      alignment: isExpanded ? Alignment.centerLeft : Alignment.center,
-      padding: EdgeInsets.only(left: leftPadding, right: rightPadding),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Image.asset(
-            'assets/images/icon.png',
-            width: _AppShellSizes.logoIconSize,
-            height: _AppShellSizes.logoIconSize,
-            fit: BoxFit.contain,
-          ),
-          SizedBox(
-            width: wordmarkWidth,
-            child: ClipRect(
-              child: Align(
-                alignment: Alignment.centerLeft,
-                widthFactor: 1,
-                child: Image.asset(
-                  'assets/images/letreiro.png',
-                  height: _AppShellSizes.logoWordmarkHeight,
-                  fit: BoxFit.contain,
-                ),
-              ),
-            ),
-          ),
-        ],
       ),
     );
   }
@@ -539,142 +670,43 @@ class _MobileNavigationBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    final radius = BorderRadius.circular(
-      _AppShellSizes.mobileNavigationBarRadius,
-    );
-    final backgroundColor = colorScheme.primary.withValues(alpha: 0.94);
-    final borderColor = colorScheme.onPrimary.withValues(alpha: 0.2);
-
     return Material(
-      color: Colors.transparent,
+      color: colorScheme.surface,
       child: SafeArea(
         top: false,
-        minimum: _AppShellSizes.mobileNavigationMargin,
-        child: SizedBox(
-          height: _AppShellSizes.mobileNavigationBarHeight,
-          child: LayoutBuilder(
-            builder: (context, constraints) {
-              final width = constraints.maxWidth
-                  .clamp(0.0, _AppShellSizes.mobileNavigationBarMaxWidth)
-                  .toDouble();
-
-              return Center(
-                child: SizedBox(
-                  width: width,
-                  height: _AppShellSizes.mobileNavigationBarHeight,
-                  child: DecoratedBox(
-                    decoration: BoxDecoration(
-                      color: backgroundColor,
-                      borderRadius: radius,
-                      border: Border.all(color: borderColor),
-                    ),
-                    child: Padding(
-                      padding: _AppShellSizes.mobileNavigationPadding,
-                      child: Row(
-                        children: [
-                          for (
-                            var index = 0;
-                            index < AppShell._mobileBottomItemCount;
-                            index++
-                          )
-                            Expanded(
-                              flex: 1,
-                              child: Center(
-                                child: SizedBox(
-                                  width:
-                                      _AppShellSizes.mobileNavigationItemWidth,
-                                  child: Center(
-                                    child: _NavigationTile(
-                                      item: AppShell._items[index],
-                                      isSelected: currentIndex == index,
-                                      isCompact: true,
-                                      isOnTintedSurface: true,
-                                      onTap: () {
-                                        onDestinationSelected(index);
-                                      },
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              );
-            },
+        child: Container(
+          height: 64,
+          decoration: BoxDecoration(
+            color: colorScheme.surface,
+            border: Border(
+              top: BorderSide(
+                color: colorScheme.outline.withValues(alpha: 0.45),
+              ),
+            ),
           ),
-        ),
-      ),
-    );
-  }
-}
-
-class _MobileNavigationDrawer extends StatelessWidget {
-  const _MobileNavigationDrawer({
-    required this.currentIndex,
-    required this.onDestinationSelected,
-  });
-
-  final int currentIndex;
-  final ValueChanged<int> onDestinationSelected;
-
-  @override
-  Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-
-    return Drawer(
-      width: _AppShellSizes.menuExpandedWidth,
-      backgroundColor: colorScheme.surface,
-      shape: RoundedRectangleBorder(
-        borderRadius: const BorderRadius.only(
-          topRight: Radius.circular(24),
-          bottomRight: Radius.circular(24),
-        ),
-        side: BorderSide(color: colorScheme.outline),
-      ),
-      child: SafeArea(
-        child: Stack(
-          children: [
-            Padding(
-              padding: _AppShellSizes.menuPadding,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const SizedBox(height: _AppShellSizes.logoDividerTopSpacing),
-                  Container(
-                    height: _AppShellSizes.dividerHeight,
-                    color: colorScheme.outline,
-                    margin: const EdgeInsets.only(
-                      bottom: _AppShellSizes.logoDividerGap,
-                    ),
-                  ),
-                  for (var index = 0; index < AppShell._items.length; index++)
-                    _NavigationTile(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(8, 6, 8, 6),
+            child: Row(
+              children: [
+                for (
+                  var index = 0;
+                  index < AppShell._mobileBottomItemCount;
+                  index++
+                )
+                  Expanded(
+                    child: _NavigationTile(
                       item: AppShell._items[index],
                       isSelected: currentIndex == index,
-                      isCompact: false,
-                      isDesktop: true,
+                      isCompact: true,
+                      isBottomNavigation: true,
                       onTap: () {
-                        Navigator.of(context).pop();
                         onDestinationSelected(index);
                       },
                     ),
-                ],
-              ),
+                  ),
+              ],
             ),
-
-            Positioned(
-              top: _AppShellSizes.logoTopOffset,
-              left: 0,
-              right: 0,
-              child: const _DesktopLogo(
-                isExpanded: true,
-                availableWidth: _AppShellSizes.menuExpandedWidth,
-              ),
-            ),
-          ],
+          ),
         ),
       ),
     );
@@ -686,130 +718,297 @@ class _NavigationTile extends StatefulWidget {
     required this.item,
     required this.isSelected,
     required this.onTap,
-    this.isCompact = false,
-    this.isDesktop = false,
-    this.isOnTintedSurface = false,
+    required this.isCompact,
+    required this.isBottomNavigation,
   });
 
   final _NavigationItem item;
   final bool isSelected;
   final VoidCallback onTap;
   final bool isCompact;
-  final bool isDesktop;
-  final bool isOnTintedSurface;
+  final bool isBottomNavigation;
 
   @override
   State<_NavigationTile> createState() => _NavigationTileState();
 }
 
 class _NavigationTileState extends State<_NavigationTile> {
-  bool _isHovering = false;
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final primary = colorScheme.primary;
+    final isSelected = widget.isSelected;
+
+    final backgroundColor = isSelected
+        ? colorScheme.surfaceContainerHighest
+        : Colors.transparent;
+
+    final itemColor = isSelected ? primary : colorScheme.onSurfaceVariant;
+
+    final iconColor = isSelected
+        ? itemColor
+        : colorScheme.onSurfaceVariant.withValues(alpha: 0.72);
+
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      child: Container(
+        margin: EdgeInsets.symmetric(
+          horizontal: widget.isBottomNavigation ? 2 : 10,
+          vertical: widget.isBottomNavigation ? 0 : 3,
+        ),
+        child: Stack(
+          children: [
+            Material(
+              color: Colors.transparent,
+              borderRadius: BorderRadius.circular(12),
+              clipBehavior: Clip.antiAlias,
+              child: InkWell(
+                onTap: widget.onTap,
+                borderRadius: BorderRadius.circular(12),
+                hoverColor: Colors.transparent,
+                splashColor: Colors.transparent,
+                highlightColor: Colors.transparent,
+                focusColor: Colors.transparent,
+                overlayColor: WidgetStateProperty.all(Colors.transparent),
+                child: Container(
+                  height: widget.isBottomNavigation ? 52 : null,
+                  width: double.infinity,
+                  padding: EdgeInsets.symmetric(
+                    horizontal: widget.isCompact ? 4 : 12,
+                    vertical: widget.isCompact ? 4 : 11,
+                  ),
+                  decoration: BoxDecoration(
+                    color: backgroundColor,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: IconTheme(
+                    data: IconThemeData(
+                      color: iconColor,
+                      size: widget.isCompact ? 21 : 20,
+                    ),
+                    child: DefaultTextStyle(
+                      style: TextStyle(
+                        color: itemColor,
+                        fontSize: widget.isCompact ? 11 : 14,
+                        height: 1.2,
+                        fontWeight: FontWeight.w500,
+                      ),
+                      child: widget.isCompact
+                          ? Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(widget.item.icon),
+                                const SizedBox(height: 2),
+                                Text(
+                                  widget.item.label,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  textAlign: TextAlign.center,
+                                ),
+                              ],
+                            )
+                          : Row(
+                              children: [
+                                Icon(widget.item.icon),
+                                const SizedBox(width: 14),
+                                Expanded(
+                                  child: Text(
+                                    widget.item.label,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              ],
+                            ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            if (isSelected && !widget.isBottomNavigation)
+              Positioned(
+                left: 0,
+                top: 0,
+                bottom: 0,
+                child: Container(
+                  width: 12,
+                  decoration: BoxDecoration(
+                    border: Border(left: BorderSide(color: primary, width: 3)),
+                    borderRadius: const BorderRadius.only(
+                      topLeft: Radius.circular(12),
+                      bottomLeft: Radius.circular(12),
+                    ),
+                  ),
+                ),
+              ),
+            if (isSelected && widget.isBottomNavigation)
+              Positioned(
+                left: 14,
+                right: 14,
+                top: 0,
+                child: Container(
+                  height: 3,
+                  decoration: BoxDecoration(
+                    color: primary,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _UserAvatarMenu extends StatelessWidget {
+  const _UserAvatarMenu({
+    required this.userName,
+    required this.userEmail,
+    required this.onProfile,
+    required this.onCompany,
+    required this.onLogout,
+  });
+
+  final String userName;
+  final String userEmail;
+  final VoidCallback onProfile;
+  final VoidCallback onCompany;
+  final Future<void> Function() onLogout;
+
+  String getInitials(String? name) {
+    if (name == null || name.trim().isEmpty) {
+      return '';
+    }
+
+    final names = name.trim().split(' ').where((item) => item.isNotEmpty);
+
+    if (names.isEmpty) {
+      return '';
+    }
+
+    final namesList = names.toList();
+
+    if (namesList.length == 1) {
+      return namesList.first[0].toUpperCase();
+    }
+
+    return '${namesList.first[0]}${namesList.last[0]}'.toUpperCase();
+  }
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final labelStyle = theme.textTheme.labelMedium;
-    final colorScheme = theme.colorScheme;
-    final isOnTintedSurface = widget.isOnTintedSurface;
-    final tintedTextColor = colorScheme.onPrimary.withValues(alpha: 0.82);
-    final tintedHoverColor = colorScheme.onPrimary.withValues(alpha: 0.12);
+    final initials = getInitials(userName);
+    final primary = Theme.of(context).colorScheme.primary;
+    final colorScheme = Theme.of(context).colorScheme;
 
-    late final Color textColor;
-    late final Color backgroundColor;
-
-    if (widget.isSelected) {
-      textColor = colorScheme.onPrimary;
-      backgroundColor = colorScheme.primary;
-    } else if (_isHovering) {
-      textColor = isOnTintedSurface ? tintedTextColor : colorScheme.onSurface;
-      backgroundColor = isOnTintedSurface
-          ? tintedHoverColor
-          : colorScheme.surfaceContainerHighest;
-    } else {
-      textColor = isOnTintedSurface
-          ? tintedTextColor
-          : colorScheme.onSurfaceVariant;
-      backgroundColor = colorScheme.surfaceContainerHighest.withValues(
-        alpha: 0,
-      );
-    }
-
-    final icone = Icon(
-      widget.isSelected ? widget.item.selectedIcon : widget.item.icon,
-    );
-
-    final content = widget.isCompact
-        ? icone
-        : Row(
+    return PopupMenuButton<String>(
+      offset: const Offset(0, 55),
+      elevation: 8,
+      color: colorScheme.surface,
+      surfaceTintColor: colorScheme.surface,
+      tooltip: '',
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      onSelected: (value) async {
+        switch (value) {
+          case 'profile':
+            onProfile();
+            break;
+          case 'company':
+            onCompany();
+            break;
+          case 'logout':
+            await onLogout();
+            break;
+        }
+      },
+      itemBuilder: (context) => [
+        PopupMenuItem<String>(
+          enabled: false,
+          child: Row(
             children: [
-              icone,
-              const SizedBox(width: 8),
-              Flexible(
+              CircleAvatar(
+                radius: 22,
+                backgroundColor: primary,
                 child: Text(
-                  widget.item.label,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
+                  initials,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      userName,
+                      style: const TextStyle(
+                        color: Colors.black,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 15,
+                      ),
+                    ),
+                    Text(
+                      userEmail,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: Colors.grey.shade600,
+                        fontSize: 13,
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ],
-          );
-
-    return MouseRegion(
-      onEnter: (_) => setState(() => _isHovering = true),
-      onExit: (_) => setState(() => _isHovering = false),
-      cursor: SystemMouseCursors.click,
-      child: Padding(
-        padding: EdgeInsets.symmetric(
-          horizontal: widget.isCompact ? 2 : 0,
-          vertical: widget.isCompact ? 0 : 4,
+          ),
         ),
-        child: GestureDetector(
-          onTap: widget.onTap,
-          behavior: HitTestBehavior.opaque,
-          child: SizedBox(
-            width: widget.isCompact
-                ? (widget.isDesktop
-                      ? _AppShellSizes.compactDesktopTileWidth
-                      : _AppShellSizes.compactMobileTileWidth)
-                : null,
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 180),
-              curve: Curves.easeOut,
-              height: widget.isCompact
-                  ? (widget.isDesktop
-                        ? _AppShellSizes.compactDesktopTileHeight
-                        : _AppShellSizes.compactMobileTileHeight)
-                  : (widget.isDesktop
-                        ? _AppShellSizes.expandedDesktopTileHeight
-                        : 48),
-              padding: EdgeInsets.symmetric(
-                horizontal: widget.isCompact ? 4 : 14,
-                vertical: widget.isCompact ? 4 : 0,
-              ),
-              decoration: BoxDecoration(
-                color: backgroundColor,
-                borderRadius: BorderRadius.circular(
-                  widget.isOnTintedSurface && widget.isCompact
-                      ? _AppShellSizes.mobileNavigationBarRadius
-                      : 18,
-                ),
-              ),
-              child: IconTheme(
-                data: IconThemeData(
-                  color: textColor,
-                  size: widget.isDesktop ? 24 : (widget.isCompact ? 22 : 24),
-                ),
-                child: DefaultTextStyle(
-                  style: (labelStyle ?? const TextStyle()).copyWith(
-                    color: textColor,
-                    fontSize: widget.isCompact ? 11 : 14,
-                    fontWeight: widget.isSelected
-                        ? FontWeight.w700
-                        : FontWeight.w500,
-                  ),
-                  child: content,
-                ),
-              ),
+        const PopupMenuDivider(indent: 16, endIndent: 16),
+        const PopupMenuItem<String>(
+          value: 'profile',
+          child: Row(
+            children: [
+              Icon(Icons.person_outline, color: Colors.grey),
+              SizedBox(width: 12),
+              Text('Dados do usuário'),
+            ],
+          ),
+        ),
+        const PopupMenuItem<String>(
+          value: 'company',
+          child: Row(
+            children: [
+              Icon(Icons.work_outline, color: Colors.grey),
+              SizedBox(width: 12),
+              Text('Dados da Conta'),
+            ],
+          ),
+        ),
+        const PopupMenuDivider(indent: 16, endIndent: 16),
+        const PopupMenuItem<String>(
+          value: 'logout',
+          child: Row(
+            children: [
+              Icon(Icons.logout, color: Colors.red),
+              SizedBox(width: 12),
+              Text('Sair', style: TextStyle(color: Colors.red)),
+            ],
+          ),
+        ),
+      ],
+      child: MouseRegion(
+        cursor: SystemMouseCursors.click,
+        child: CircleAvatar(
+          radius: 19,
+          backgroundColor: primary,
+          child: Text(
+            initials,
+            style: const TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.w600,
+              fontSize: 14,
             ),
           ),
         ),

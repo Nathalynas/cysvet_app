@@ -460,7 +460,7 @@ class _MobileLoginLayout extends StatelessWidget {
         physics: const AlwaysScrollableScrollPhysics(),
         slivers: [
           const SliverToBoxAdapter(
-            child: SizedBox(height: 160, child: _MobileHeaderImage()),
+            child: SizedBox(height: 130, child: _MobileHeaderImage()),
           ),
           SliverFillRemaining(
             hasScrollBody: false,
