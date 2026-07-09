@@ -51,6 +51,18 @@ class VisitsPage extends ConsumerWidget {
       ref.invalidate(visitsProvider);
     });
 
+    void createVisit() {
+      if (propertyOptions.isEmpty) {
+        showAppWarning('Carregue ou cadastre uma propriedade antes da visita.');
+        return;
+      }
+
+      final query = selectedPropertyId == null
+          ? ''
+          : '?propriedade=$selectedPropertyId';
+      context.go('/visitas/nova$query');
+    }
+
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
       body: SafeArea(
@@ -60,10 +72,15 @@ class VisitsPage extends ConsumerWidget {
             padding: EdgeInsets.zero,
             physics: const AlwaysScrollableScrollPhysics(),
             children: [
-              const PageTitle(
+              PageTitle(
                 title: 'Visitas',
                 subtitle:
                     'Registre atendimentos, acompanhe visitas e gere relatórios técnicos.',
+                headerButton: AppButton(
+                  text: 'Nova visita',
+                  icon: const Icon(Icons.add, size: 18),
+                  onPressed: createVisit,
+                ),
               ),
               Padding(
                 padding: PageTitle.contentPadding(context),
@@ -82,19 +99,6 @@ class VisitsPage extends ConsumerWidget {
                         ref
                             .read(visitsPropertyFilterProvider.notifier)
                             .set(value);
-                      },
-                      onCreate: () {
-                        if (propertyOptions.isEmpty) {
-                          showAppWarning(
-                            'Carregue ou cadastre uma propriedade antes da visita.',
-                          );
-                          return;
-                        }
-
-                        final query = selectedPropertyId == null
-                            ? ''
-                            : '?propriedade=$selectedPropertyId';
-                        context.go('/visitas/nova$query');
                       },
                     ),
                     const SizedBox(height: 28),
@@ -154,7 +158,6 @@ class _VisitsToolbar extends StatelessWidget {
     required this.selectedPropertyId,
     required this.onSearchChanged,
     required this.onPropertyChanged,
-    required this.onCreate,
   });
 
   final String searchQuery;
@@ -162,7 +165,6 @@ class _VisitsToolbar extends StatelessWidget {
   final int? selectedPropertyId;
   final ValueChanged<String> onSearchChanged;
   final ValueChanged<int?> onPropertyChanged;
-  final VoidCallback onCreate;
 
   @override
   Widget build(BuildContext context) {
@@ -181,24 +183,10 @@ class _VisitsToolbar extends StatelessWidget {
           allPropertiesText: 'Todas',
           onChanged: onPropertyChanged,
         );
-        final createButton = AppButton(
-          text: 'Nova visita',
-          icon: const Icon(Icons.add, size: 18),
-          height: 42,
-          borderRadius: 16,
-          onPressed: onCreate,
-        );
-
         if (stacked) {
           return Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              search,
-              const SizedBox(height: 10),
-              propertyFilter,
-              const SizedBox(height: 10),
-              createButton,
-            ],
+            children: [search, const SizedBox(height: 10), propertyFilter],
           );
         }
 
@@ -208,8 +196,6 @@ class _VisitsToolbar extends StatelessWidget {
             Expanded(child: search),
             const SizedBox(width: 14),
             SizedBox(width: 230, child: propertyFilter),
-            const SizedBox(width: 14),
-            createButton,
           ],
         );
       },

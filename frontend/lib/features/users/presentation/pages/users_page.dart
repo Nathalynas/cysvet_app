@@ -44,9 +44,14 @@ class UsuariosPage extends ConsumerWidget {
             padding: EdgeInsets.zero,
             physics: const AlwaysScrollableScrollPhysics(),
             children: [
-              const PageTitle(
+              PageTitle(
                 title: 'Usuários',
                 subtitle: 'Administre os usuários com acesso ao sistema.',
+                headerButton: AppButton(
+                  text: 'Novo usuário',
+                  icon: const Icon(Icons.add),
+                  onPressed: () => UserDialog.show(context),
+                ),
               ),
               Padding(
                 padding: PageTitle.contentPadding(context),
@@ -64,7 +69,6 @@ class UsuariosPage extends ConsumerWidget {
                         ref.read(usersStatusFilterProvider.notifier).state =
                             value ?? UserStatusFilter.all;
                       },
-                      onCreate: () => UserDialog.show(context),
                     ),
                     const SizedBox(height: 16),
                     AsyncValueView<List<UserSummaryModel>>(
@@ -110,14 +114,12 @@ class _UsersToolbar extends StatelessWidget {
     required this.statusFilter,
     required this.onSearchChanged,
     required this.onStatusChanged,
-    required this.onCreate,
   });
 
   final String searchQuery;
   final UserStatusFilter statusFilter;
   final ValueChanged<String> onSearchChanged;
   final ValueChanged<UserStatusFilter?> onStatusChanged;
-  final VoidCallback onCreate;
 
   @override
   Widget build(BuildContext context) {
@@ -137,22 +139,10 @@ class _UsersToolbar extends StatelessWidget {
               .map((item) => AppDropdownOption(label: item.label, value: item))
               .toList(growable: false),
         );
-        final button = AppButton(
-          text: 'Novo usuário',
-          icon: const Icon(Icons.add),
-          onPressed: onCreate,
-        );
-
         if (stacked) {
           return Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              search,
-              const SizedBox(height: 10),
-              status,
-              const SizedBox(height: 10),
-              button,
-            ],
+            children: [search, const SizedBox(height: 10), status],
           );
         }
 
@@ -162,8 +152,6 @@ class _UsersToolbar extends StatelessWidget {
             Expanded(child: search),
             const SizedBox(width: 12),
             SizedBox(width: 200, child: status),
-            const SizedBox(width: 12),
-            button,
           ],
         );
       },

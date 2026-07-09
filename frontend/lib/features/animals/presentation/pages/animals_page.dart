@@ -68,10 +68,16 @@ class AnimalsPage extends ConsumerWidget {
             padding: EdgeInsets.zero,
             physics: const AlwaysScrollableScrollPhysics(),
             children: [
-              const PageTitle(
+              PageTitle(
                 title: 'Animais',
                 subtitle:
                     'Consulte e organize os animais vinculados às propriedades.',
+                headerButton: AppButton(
+                  text: 'Novo animal',
+                  icon: const Icon(Icons.add),
+                  onPressed: () =>
+                      AnimalDialog.show(context, properties: propertyOptions),
+                ),
               ),
               Padding(
                 padding: PageTitle.contentPadding(context),
@@ -108,10 +114,6 @@ class AnimalsPage extends ConsumerWidget {
                       },
                       onImport: () =>
                           _importAnimalsCsv(context, ref, propertyOptions),
-                      onCreate: () => AnimalDialog.show(
-                        context,
-                        properties: propertyOptions,
-                      ),
                     ),
                     const SizedBox(height: 12),
                     AsyncValueView<List<AnimalSummaryModel>>(
@@ -212,7 +214,6 @@ class _AnimalsToolbar extends StatefulWidget {
     required this.onStatusChanged,
     required this.onReproductiveStatusChanged,
     required this.onImport,
-    required this.onCreate,
   });
 
   final List<PropertySummaryModel> properties;
@@ -225,7 +226,6 @@ class _AnimalsToolbar extends StatefulWidget {
   final ValueChanged<AnimalStatusFilter?> onStatusChanged;
   final ValueChanged<AnimalReproductiveStatus?> onReproductiveStatusChanged;
   final VoidCallback onImport;
-  final VoidCallback onCreate;
 
   @override
   State<_AnimalsToolbar> createState() => _AnimalsToolbarState();
@@ -290,12 +290,6 @@ class _AnimalsToolbarState extends State<_AnimalsToolbar> {
           ),
         );
 
-        final createButton = AppButton(
-          text: 'Novo animal',
-          icon: const Icon(Icons.add),
-          onPressed: widget.onCreate,
-        );
-
         final filterButton = Tooltip(
           message: _filtersOpen ? 'Ocultar filtros' : 'Mostrar filtros',
           child: AppButton(
@@ -331,13 +325,7 @@ class _AnimalsToolbarState extends State<_AnimalsToolbar> {
                 reproductiveStatus,
               ],
               const SizedBox(height: 10),
-              Row(
-                children: [
-                  importButton,
-                  const SizedBox(width: 10),
-                  Expanded(child: createButton),
-                ],
-              ),
+              Align(alignment: Alignment.centerLeft, child: importButton),
             ],
           );
         }
@@ -354,13 +342,7 @@ class _AnimalsToolbarState extends State<_AnimalsToolbar> {
               const SizedBox(height: 10),
               reproductiveStatus,
               const SizedBox(height: 10),
-              Row(
-                children: [
-                  importButton,
-                  const SizedBox(width: 10),
-                  Expanded(child: createButton),
-                ],
-              ),
+              Align(alignment: Alignment.centerLeft, child: importButton),
             ],
           );
         }
@@ -377,8 +359,6 @@ class _AnimalsToolbarState extends State<_AnimalsToolbar> {
             SizedBox(width: 190, child: reproductiveStatus),
             const SizedBox(width: 12),
             importButton,
-            const SizedBox(width: 12),
-            createButton,
           ],
         );
       },

@@ -101,10 +101,15 @@ class PropertiesPage extends ConsumerWidget {
             padding: EdgeInsets.zero,
             physics: const AlwaysScrollableScrollPhysics(),
             children: [
-              const PageTitle(
+              PageTitle(
                 title: 'Propriedades',
                 subtitle:
                     'Gerencie as fazendas atendidas e suas informações cadastrais.',
+                headerButton: AppButton(
+                  text: 'Nova propriedade',
+                  icon: const Icon(Icons.add),
+                  onPressed: () => PropertyDialog.show(context),
+                ),
               ),
               Padding(
                 padding: PageTitle.contentPadding(context),
@@ -128,7 +133,6 @@ class PropertiesPage extends ConsumerWidget {
                                   .state =
                               value ?? PropertyStatusFilter.all;
                         },
-                        onCreate: () => PropertyDialog.show(context),
                       ),
                     ),
                     const SizedBox(height: 16),
@@ -220,15 +224,12 @@ class _PropertiesToolbar extends StatelessWidget {
     required this.statusFilter,
     required this.onSearchChanged,
     required this.onStatusChanged,
-    required this.onCreate,
   });
 
   final String searchQuery;
   final PropertyStatusFilter statusFilter;
   final ValueChanged<String> onSearchChanged;
   final ValueChanged<PropertyStatusFilter?> onStatusChanged;
-  final VoidCallback onCreate;
-
   @override
   Widget build(BuildContext context) {
     return LayoutBuilder(
@@ -247,22 +248,10 @@ class _PropertiesToolbar extends StatelessWidget {
               .map((item) => AppDropdownOption(label: item.label, value: item))
               .toList(growable: false),
         );
-        final button = AppButton(
-          text: 'Nova propriedade',
-          icon: const Icon(Icons.add),
-          onPressed: onCreate,
-        );
-
         if (stacked) {
           return Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              search,
-              const SizedBox(height: 10),
-              status,
-              const SizedBox(height: 10),
-              button,
-            ],
+            children: [search, const SizedBox(height: 10), status],
           );
         }
 
@@ -272,8 +261,6 @@ class _PropertiesToolbar extends StatelessWidget {
             Expanded(child: search),
             const SizedBox(width: 12),
             SizedBox(width: 200, child: status),
-            const SizedBox(width: 12),
-            button,
           ],
         );
       },

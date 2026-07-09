@@ -1,5 +1,7 @@
 // ignore_for_file: deprecated_member_use
 
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_material_design_icons/flutter_material_design_icons.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -426,11 +428,15 @@ class PageTitle extends StatelessWidget {
     required this.title,
     this.subtitle,
     this.backRoute,
+    this.headerButton,
+    this.headerFilter,
   });
 
   final String title;
   final String? subtitle;
   final String? backRoute;
+  final Widget? headerButton;
+  final Widget? headerFilter;
 
   static const double _mobileHorizontalPadding = 16;
   static const double _desktopHorizontalPadding = 30;
@@ -458,16 +464,45 @@ class PageTitle extends StatelessWidget {
     final isMobile = MediaQuery.of(context).size.width < MOBILE_WIDTH;
     final horizontal = PageTitle.horizontalPadding(context);
     final pageSubtitle = subtitle;
+    final hasHeaderActions = headerFilter != null || headerButton != null;
 
-    return Container(
-      width: double.infinity,
-      padding: EdgeInsets.fromLTRB(
-        horizontal,
-        isMobile ? 16 : 24,
-        horizontal,
-        isMobile ? 10 : 12,
-      ),
-      child: Row(
+    Widget titleContent() {
+      return Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              color: colorScheme.onSurface,
+              fontWeight: FontWeight.w800,
+              fontSize: isMobile ? 21 : 22,
+            ),
+          ),
+          if (pageSubtitle != null && pageSubtitle.isNotEmpty) ...[
+            const SizedBox(height: 4),
+            Text(
+              pageSubtitle,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: colorScheme.onSurfaceVariant,
+                fontWeight: FontWeight.w500,
+                fontSize: isMobile ? 13 : 14,
+              ),
+            ),
+          ],
+        ],
+      );
+    }
+
+    Widget titleRow({required bool expanded}) {
+      final title = titleContent();
+
+      return Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           if (backRoute != null && !isMobile) ...[
             Tooltip(
@@ -487,39 +522,113 @@ class PageTitle extends StatelessWidget {
             ),
             const SizedBox(width: 12),
           ],
-          Expanded(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    color: colorScheme.onSurface,
-                    fontWeight: FontWeight.w800,
-                    fontSize: isMobile ? 21 : 22,
-                  ),
-                ),
-                if (pageSubtitle != null && pageSubtitle.isNotEmpty) ...[
-                  const SizedBox(height: 4),
-                  Text(
-                    pageSubtitle,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      color: colorScheme.onSurfaceVariant,
-                      fontWeight: FontWeight.w500,
-                      fontSize: isMobile ? 13 : 14,
-                    ),
-                  ),
-                ],
-              ],
-            ),
-          ),
+          if (expanded) Expanded(child: title) else Flexible(child: title),
         ],
+      );
+    }
+
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.fromLTRB(
+        horizontal,
+        isMobile ? 16 : 24,
+        horizontal,
+        isMobile ? 10 : 12,
       ),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          if (!hasHeaderActions) {
+            return titleRow(expanded: true);
+          }
+
+          final actions = _PageTitleHeaderActions(
+            headerFilter: headerFilter,
+            headerButton: headerButton,
+          );
+          final inline = constraints.maxWidth >= 760;
+
+          if (!inline) {
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                titleRow(expanded: false),
+                const SizedBox(height: 12),
+                actions,
+              ],
+            );
+          }
+
+          final maxActionsWidth = math.min(
+            math.max(0.0, constraints.maxWidth - 220.0),
+            760.0,
+          );
+
+          return Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Expanded(child: titleRow(expanded: true)),
+              const SizedBox(width: 16),
+              ConstrainedBox(
+                constraints: BoxConstraints(maxWidth: maxActionsWidth),
+                child: actions,
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _PageTitleHeaderActions extends StatelessWidget {
+  const _PageTitleHeaderActions({
+    required this.headerButton,
+    required this.headerFilter,
+  });
+
+  final Widget? headerButton;
+  final Widget? headerFilter;
+
+  @override
+  Widget build(BuildContext context) {
+    final filter = headerFilter;
+    final button = headerButton;
+
+    if (filter == null && button == null) {
+      return const SizedBox.shrink();
+    }
+
+    if (filter == null) {
+      return Align(alignment: Alignment.centerRight, child: button!);
+    }
+
+    if (button == null) {
+      return filter;
+    }
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        if (constraints.maxWidth < 520) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              filter,
+              const SizedBox(height: 10),
+              Align(alignment: Alignment.centerRight, child: button),
+            ],
+          );
+        }
+
+        return Row(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Flexible(child: filter),
+            const SizedBox(width: 12),
+            button,
+          ],
+        );
+      },
     );
   }
 }
