@@ -13,6 +13,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
 
+import '../../../../app/app_shell.dart';
 import '../../../../core/presentation/async_value_view.dart';
 import '../../../../core/presentation/app_scaffold_messenger.dart';
 import '../../../animals/application/animals_provider.dart';
@@ -97,91 +98,109 @@ class PropertiesPage extends ConsumerWidget {
             ]);
           },
           child: ListView(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+            padding: EdgeInsets.zero,
             physics: const AlwaysScrollableScrollPhysics(),
             children: [
-              Container(
-                constraints: const BoxConstraints(maxWidth: 520),
-                child: _PropertiesToolbar(
-                  searchQuery: searchQuery,
-                  statusFilter: statusFilter,
-                  onSearchChanged: (value) {
-                    ref.read(propertiesSearchQueryProvider.notifier).state =
-                        value;
-                  },
-                  onStatusChanged: (value) {
-                    ref.read(propertiesStatusFilterProvider.notifier).state =
-                        value ?? PropertyStatusFilter.all;
-                  },
-                  onCreate: () => PropertyDialog.show(context),
-                ),
-              ),
-              const SizedBox(height: 16),
-              AsyncValueView<List<PropertySummaryModel>>(
-                value: properties,
-                loadingMessage: 'Buscando propriedades...',
-                emptyMessage: 'Nenhuma propriedade cadastrada.',
-                isEmpty: (items) => items.isEmpty,
-                onRetry: () => ref.invalidate(propertiesProvider),
-                builder: (items) {
-                  final filteredItems = _filterProperties(
-                    items,
-                    searchQuery,
-                    statusFilter,
-                  );
-
-                  if (filteredItems.isEmpty) {
-                    return Padding(
-                      padding: const EdgeInsets.only(top: 24),
-                      child: Center(
-                        child: Text(
-                          'Nenhuma propriedade encontrada para os filtros atuais.',
-                          style: theme.textTheme.bodyMedium,
-                          textAlign: TextAlign.center,
-                        ),
+              const PageTitle(title: 'Propriedades'),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Container(
+                      constraints: const BoxConstraints(maxWidth: 520),
+                      child: _PropertiesToolbar(
+                        searchQuery: searchQuery,
+                        statusFilter: statusFilter,
+                        onSearchChanged: (value) {
+                          ref
+                                  .read(propertiesSearchQueryProvider.notifier)
+                                  .state =
+                              value;
+                        },
+                        onStatusChanged: (value) {
+                          ref
+                                  .read(propertiesStatusFilterProvider.notifier)
+                                  .state =
+                              value ?? PropertyStatusFilter.all;
+                        },
+                        onCreate: () => PropertyDialog.show(context),
                       ),
-                    );
-                  }
+                    ),
+                    const SizedBox(height: 16),
+                    AsyncValueView<List<PropertySummaryModel>>(
+                      value: properties,
+                      loadingMessage: 'Buscando propriedades...',
+                      emptyMessage: 'Nenhuma propriedade cadastrada.',
+                      isEmpty: (items) => items.isEmpty,
+                      onRetry: () => ref.invalidate(propertiesProvider),
+                      builder: (items) {
+                        final filteredItems = _filterProperties(
+                          items,
+                          searchQuery,
+                          statusFilter,
+                        );
 
-                  final related = relatedData.asData?.value;
-
-                  return LayoutBuilder(
-                    builder: (context, constraints) {
-                      final size = MediaQuery.sizeOf(context);
-                      final isMobile = size.width < MOBILE_WIDTH;
-                      final isSmallMobile = size.width < 360;
-                      final cardWidth = isSmallMobile ? double.infinity : 360.0;
-                      final alignment = isMobile
-                          ? WrapAlignment.center
-                          : WrapAlignment.start;
-
-                      return Wrap(
-                        alignment: alignment,
-                        runAlignment: alignment,
-                        spacing: 16,
-                        runSpacing: 16,
-                        children: [
-                          for (final property in filteredItems)
-                            SizedBox(
-                              width: cardWidth,
-                              child: _PropertyCard(
-                                property: property,
-                                insights: related == null
-                                    ? null
-                                    : _PropertyInsights.from(property, related),
-                                insightsLoading: relatedData.isLoading,
-                                onTap: () => _showPropertyDetails(
-                                  context,
-                                  ref,
-                                  property,
-                                ),
+                        if (filteredItems.isEmpty) {
+                          return Padding(
+                            padding: const EdgeInsets.only(top: 24),
+                            child: Center(
+                              child: Text(
+                                'Nenhuma propriedade encontrada para os filtros atuais.',
+                                style: theme.textTheme.bodyMedium,
+                                textAlign: TextAlign.center,
                               ),
                             ),
-                        ],
-                      );
-                    },
-                  );
-                },
+                          );
+                        }
+
+                        final related = relatedData.asData?.value;
+
+                        return LayoutBuilder(
+                          builder: (context, constraints) {
+                            final size = MediaQuery.sizeOf(context);
+                            final isMobile = size.width < MOBILE_WIDTH;
+                            final isSmallMobile = size.width < 360;
+                            final cardWidth = isSmallMobile
+                                ? double.infinity
+                                : 360.0;
+                            final alignment = isMobile
+                                ? WrapAlignment.center
+                                : WrapAlignment.start;
+
+                            return Wrap(
+                              alignment: alignment,
+                              runAlignment: alignment,
+                              spacing: 16,
+                              runSpacing: 16,
+                              children: [
+                                for (final property in filteredItems)
+                                  SizedBox(
+                                    width: cardWidth,
+                                    child: _PropertyCard(
+                                      property: property,
+                                      insights: related == null
+                                          ? null
+                                          : _PropertyInsights.from(
+                                              property,
+                                              related,
+                                            ),
+                                      insightsLoading: relatedData.isLoading,
+                                      onTap: () => _showPropertyDetails(
+                                        context,
+                                        ref,
+                                        property,
+                                      ),
+                                    ),
+                                  ),
+                              ],
+                            );
+                          },
+                        );
+                      },
+                    ),
+                  ],
+                ),
               ),
             ],
           ),

@@ -64,55 +64,66 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => _buildPublicRoute(const RegisterPage()),
       ),
       ShellRoute(
-        builder: (context, state, child) {
-          return AppShell(child: child);
-        },
+        pageBuilder: (context, state, child) =>
+            _buildAppShellPage(AppShell(child: child)),
         routes: [
           GoRoute(
             path: '/dashboard',
-            builder: (context, state) => const DashboardPage(),
+            pageBuilder: (context, state) =>
+                _buildShellChildPage(state, const DashboardPage()),
           ),
           GoRoute(
             path: '/propriedades',
-            builder: (context, state) => const PropertiesPage(),
+            pageBuilder: (context, state) =>
+                _buildShellChildPage(state, const PropertiesPage()),
           ),
           GoRoute(
             path: '/animais',
-            builder: (context, state) => const AnimalsPage(),
+            pageBuilder: (context, state) =>
+                _buildShellChildPage(state, const AnimalsPage()),
           ),
           GoRoute(
             path: '/visitas/nova',
-            builder: (context, state) => VisitFormPage(
-              initialPropertyId: int.tryParse(
-                state.uri.queryParameters['propriedade'] ?? '',
+            pageBuilder: (context, state) => _buildShellChildPage(
+              state,
+              VisitFormPage(
+                initialPropertyId: int.tryParse(
+                  state.uri.queryParameters['propriedade'] ?? '',
+                ),
               ),
             ),
           ),
           GoRoute(
             path: '/visitas/:visitId/detalhes',
-            builder: (context, state) {
+            pageBuilder: (context, state) {
               final routeData = state.extra is VisitReportRouteData
                   ? state.extra! as VisitReportRouteData
                   : null;
 
-              return VisitReportPage(
-                visitId:
-                    int.tryParse(state.pathParameters['visitId'] ?? '') ?? 0,
-                initialData: routeData,
+              return _buildShellChildPage(
+                state,
+                VisitReportPage(
+                  visitId:
+                      int.tryParse(state.pathParameters['visitId'] ?? '') ?? 0,
+                  initialData: routeData,
+                ),
               );
             },
           ),
           GoRoute(
             path: '/visitas',
-            builder: (context, state) => const VisitsPage(),
+            pageBuilder: (context, state) =>
+                _buildShellChildPage(state, const VisitsPage()),
           ),
           GoRoute(
             path: '/usuarios',
-            builder: (context, state) => const UsuariosPage(),
+            pageBuilder: (context, state) =>
+                _buildShellChildPage(state, const UsuariosPage()),
           ),
           GoRoute(
             path: '/configuracoes',
-            builder: (context, state) => const ConfiguracoesPage(),
+            pageBuilder: (context, state) =>
+                _buildShellChildPage(state, const ConfiguracoesPage()),
           ),
           GoRoute(
             path: '/perfil',
@@ -123,6 +134,23 @@ final appRouterProvider = Provider<GoRouter>((ref) {
     ],
   );
 });
+
+Page<void> _buildAppShellPage(Widget child) {
+  return NoTransitionPage<void>(key: const ValueKey('app-shell'), child: child);
+}
+
+Page<void> _buildShellChildPage(GoRouterState state, Widget child) {
+  return NoTransitionPage<void>(
+    key: state.pageKey,
+    name: state.name ?? state.path,
+    arguments: <String, String>{
+      ...state.pathParameters,
+      ...state.uri.queryParameters,
+    },
+    restorationId: state.pageKey.value,
+    child: child,
+  );
+}
 
 Widget _buildPublicRoute(Widget child) {
   return Theme(data: AppTheme.lightTheme, child: child);

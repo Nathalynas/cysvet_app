@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
 
+import '../../../../app/app_shell.dart';
 import '../../../../core/enums/user_status.dart';
 import '../../../../core/presentation/app_scaffold_messenger.dart';
 import '../../../../core/presentation/async_value_view.dart';
@@ -40,44 +41,57 @@ class UsuariosPage extends ConsumerWidget {
         child: RefreshIndicator(
           onRefresh: () => ref.refresh(usersProvider.future),
           child: ListView(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+            padding: EdgeInsets.zero,
             physics: const AlwaysScrollableScrollPhysics(),
             children: [
-              _UsersToolbar(
-                searchQuery: searchQuery,
-                statusFilter: statusFilter,
-                onSearchChanged: (value) {
-                  ref.read(usersSearchQueryProvider.notifier).state = value;
-                },
-                onStatusChanged: (value) {
-                  ref.read(usersStatusFilterProvider.notifier).state =
-                      value ?? UserStatusFilter.all;
-                },
-                onCreate: () => UserDialog.show(context),
-              ),
-              const SizedBox(height: 16),
-              AsyncValueView<List<UserSummaryModel>>(
-                value: users,
-                loadingMessage: 'Buscando usuários...',
-                emptyMessage: 'Nenhum usuário cadastrado.',
-                isEmpty: (items) => items.isEmpty,
-                onRetry: () => ref.invalidate(usersProvider),
-                builder: (items) {
-                  final filteredItems = _filterUsers(
-                    items,
-                    searchQuery,
-                    statusFilter,
-                  );
+              const PageTitle(title: 'Usuários'),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    _UsersToolbar(
+                      searchQuery: searchQuery,
+                      statusFilter: statusFilter,
+                      onSearchChanged: (value) {
+                        ref.read(usersSearchQueryProvider.notifier).state =
+                            value;
+                      },
+                      onStatusChanged: (value) {
+                        ref.read(usersStatusFilterProvider.notifier).state =
+                            value ?? UserStatusFilter.all;
+                      },
+                      onCreate: () => UserDialog.show(context),
+                    ),
+                    const SizedBox(height: 16),
+                    AsyncValueView<List<UserSummaryModel>>(
+                      value: users,
+                      loadingMessage: 'Buscando usuários...',
+                      emptyMessage: 'Nenhum usuário cadastrado.',
+                      isEmpty: (items) => items.isEmpty,
+                      onRetry: () => ref.invalidate(usersProvider),
+                      builder: (items) {
+                        final filteredItems = _filterUsers(
+                          items,
+                          searchQuery,
+                          statusFilter,
+                        );
 
-                  return _UsersTable(
-                    users: filteredItems,
-                    onEdit: (user) => UserDialog.show(context, user: user),
-                    onInactivate: (user) =>
-                        _confirmInactivate(context, ref, user),
-                    onActivate: (user) => _confirmActivate(context, ref, user),
-                    onDelete: (user) => _confirmDelete(context, ref, user),
-                  );
-                },
+                        return _UsersTable(
+                          users: filteredItems,
+                          onEdit: (user) =>
+                              UserDialog.show(context, user: user),
+                          onInactivate: (user) =>
+                              _confirmInactivate(context, ref, user),
+                          onActivate: (user) =>
+                              _confirmActivate(context, ref, user),
+                          onDelete: (user) =>
+                              _confirmDelete(context, ref, user),
+                        );
+                      },
+                    ),
+                  ],
+                ),
               ),
             ],
           ),

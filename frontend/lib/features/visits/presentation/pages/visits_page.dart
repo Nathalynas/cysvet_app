@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../app/app_shell.dart';
 import '../../../../core/presentation/app_scaffold_messenger.dart';
 import '../../../../core/presentation/async_value_view.dart';
 import '../../../../core/utils/formatters.dart';
@@ -56,70 +57,83 @@ class VisitsPage extends ConsumerWidget {
         child: RefreshIndicator(
           onRefresh: () => ref.refresh(visitsProvider.future),
           child: ListView(
-            padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
+            padding: EdgeInsets.zero,
             physics: const AlwaysScrollableScrollPhysics(),
             children: [
-              _VisitsToolbar(
-                searchQuery: searchQuery,
-                properties: propertyOptions,
-                selectedPropertyId: selectedPropertyId,
-                onSearchChanged: (value) {
-                  ref.read(visitsSearchQueryProvider.notifier).state = value;
-                },
-                onPropertyChanged: (value) {
-                  ref.read(visitsPropertyFilterProvider.notifier).set(value);
-                },
-                onCreate: () {
-                  if (propertyOptions.isEmpty) {
-                    showAppWarning(
-                      'Carregue ou cadastre uma propriedade antes da visita.',
-                    );
-                    return;
-                  }
+              const PageTitle(title: 'Visitas'),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    _VisitsToolbar(
+                      searchQuery: searchQuery,
+                      properties: propertyOptions,
+                      selectedPropertyId: selectedPropertyId,
+                      onSearchChanged: (value) {
+                        ref.read(visitsSearchQueryProvider.notifier).state =
+                            value;
+                      },
+                      onPropertyChanged: (value) {
+                        ref
+                            .read(visitsPropertyFilterProvider.notifier)
+                            .set(value);
+                      },
+                      onCreate: () {
+                        if (propertyOptions.isEmpty) {
+                          showAppWarning(
+                            'Carregue ou cadastre uma propriedade antes da visita.',
+                          );
+                          return;
+                        }
 
-                  final query = selectedPropertyId == null
-                      ? ''
-                      : '?propriedade=$selectedPropertyId';
-                  context.go('/visitas/nova$query');
-                },
-              ),
-              const SizedBox(height: 28),
-              AsyncValueView<List<VisitSummaryModel>>(
-                value: visits,
-                loadingMessage: 'Buscando visitas...',
-                emptyMessage: 'Nenhuma visita encontrada para o filtro atual.',
-                isEmpty: (items) => items.isEmpty,
-                onRetry: () => ref.invalidate(visitsProvider),
-                builder: (items) {
-                  final filteredItems = _filterVisits(
-                    items,
-                    searchQuery,
-                    propertyById,
-                  );
+                        final query = selectedPropertyId == null
+                            ? ''
+                            : '?propriedade=$selectedPropertyId';
+                        context.go('/visitas/nova$query');
+                      },
+                    ),
+                    const SizedBox(height: 28),
+                    AsyncValueView<List<VisitSummaryModel>>(
+                      value: visits,
+                      loadingMessage: 'Buscando visitas...',
+                      emptyMessage:
+                          'Nenhuma visita encontrada para o filtro atual.',
+                      isEmpty: (items) => items.isEmpty,
+                      onRetry: () => ref.invalidate(visitsProvider),
+                      builder: (items) {
+                        final filteredItems = _filterVisits(
+                          items,
+                          searchQuery,
+                          propertyById,
+                        );
 
-                  if (filteredItems.isEmpty) {
-                    return const _VisitsEmptyState();
-                  }
+                        if (filteredItems.isEmpty) {
+                          return const _VisitsEmptyState();
+                        }
 
-                  return _VisitsGrid(
-                    visits: filteredItems,
-                    propertyById: propertyById,
-                    onOpen: (visit) {
-                      final property = propertyById[visit.idPropriedade];
-                      final propertyName =
-                          property?.nome ?? visit.idExternoPropriedade;
+                        return _VisitsGrid(
+                          visits: filteredItems,
+                          propertyById: propertyById,
+                          onOpen: (visit) {
+                            final property = propertyById[visit.idPropriedade];
+                            final propertyName =
+                                property?.nome ?? visit.idExternoPropriedade;
 
-                      context.go(
-                        '/visitas/${visit.id}/detalhes',
-                        extra: VisitReportRouteData(
-                          visit: visit,
-                          propertyName: propertyName,
-                          property: property,
-                        ),
-                      );
-                    },
-                  );
-                },
+                            context.go(
+                              '/visitas/${visit.id}/detalhes',
+                              extra: VisitReportRouteData(
+                                visit: visit,
+                                propertyName: propertyName,
+                                property: property,
+                              ),
+                            );
+                          },
+                        );
+                      },
+                    ),
+                  ],
+                ),
               ),
             ],
           ),

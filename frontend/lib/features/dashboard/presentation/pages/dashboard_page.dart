@@ -13,6 +13,7 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../app/app_shell.dart';
 import '../../../../core/presentation/async_value_view.dart';
 import '../../../../core/utils/formatters.dart';
 import '../../../animals/application/animals_provider.dart';
@@ -144,42 +145,55 @@ class DashboardPage extends ConsumerWidget {
             ]);
           },
           child: ListView(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+            padding: EdgeInsets.zero,
             physics: const AlwaysScrollableScrollPhysics(),
             children: [
-              _DashboardToolbar(
-                properties: propertyOptions,
-                selectedPropertyId: selectedPropertyId,
-                period: period,
-                onPropertyChanged: (value) {
-                  ref.read(dashboardPropertyFilterProvider.notifier).set(value);
-                },
-                onPeriodChanged: (value) {
-                  ref.read(dashboardPeriodFilterProvider.notifier).set(value);
-                },
-              ),
-              const SizedBox(height: 16),
-              AsyncValueView<DashboardMetricsModel>(
-                value: dashboard,
-                loadingMessage: 'Buscando indicadores...',
-                onRetry: () => ref.invalidate(dashboardProvider),
-                builder: (metrics) {
-                  return _DashboardContent(
-                    metrics: metrics,
-                    relatedData: relatedData,
-                    users: users.asData?.value,
-                    usersLoading: users.isLoading,
-                    usersError: users.hasError,
-                    properties: propertyOptions,
-                    selectedProperty: propertyById[selectedPropertyId],
-                    period: period,
-                    onRetryRelated: () {
-                      ref.invalidate(
-                        dashboardRelatedDataProvider(selectedPropertyId),
-                      );
-                    },
-                  );
-                },
+              const PageTitle(title: 'Dashboard'),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    _DashboardToolbar(
+                      properties: propertyOptions,
+                      selectedPropertyId: selectedPropertyId,
+                      period: period,
+                      onPropertyChanged: (value) {
+                        ref
+                            .read(dashboardPropertyFilterProvider.notifier)
+                            .set(value);
+                      },
+                      onPeriodChanged: (value) {
+                        ref
+                            .read(dashboardPeriodFilterProvider.notifier)
+                            .set(value);
+                      },
+                    ),
+                    const SizedBox(height: 16),
+                    AsyncValueView<DashboardMetricsModel>(
+                      value: dashboard,
+                      loadingMessage: 'Buscando indicadores...',
+                      onRetry: () => ref.invalidate(dashboardProvider),
+                      builder: (metrics) {
+                        return _DashboardContent(
+                          metrics: metrics,
+                          relatedData: relatedData,
+                          users: users.asData?.value,
+                          usersLoading: users.isLoading,
+                          usersError: users.hasError,
+                          properties: propertyOptions,
+                          selectedProperty: propertyById[selectedPropertyId],
+                          period: period,
+                          onRetryRelated: () {
+                            ref.invalidate(
+                              dashboardRelatedDataProvider(selectedPropertyId),
+                            );
+                          },
+                        );
+                      },
+                    ),
+                  ],
+                ),
               ),
             ],
           ),

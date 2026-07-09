@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../app/app_shell.dart';
 import '../../../../app/theme.dart';
 import '../../../../core/network/api_error.dart';
 import '../../../../core/widgets/app_button.dart';
@@ -72,95 +73,107 @@ class _ConfiguracoesPageState extends ConsumerState<ConfiguracoesPage> {
       backgroundColor: theme.scaffoldBackgroundColor,
       body: SafeArea(
         child: ListView(
-          padding: const EdgeInsets.fromLTRB(20, 8, 20, 20),
+          padding: EdgeInsets.zero,
           children: [
-            _AppearanceCard(themeMode: themeMode),
-
-            const SizedBox(height: 16),
-
-            _EditableSettingsCard(
-              title: 'Meus Dados',
-              subtitle: 'Informações básicas do seu usuário.',
-              canEdit: true,
-              isEditing: _isEditingUser,
-              isLoading: _isSavingUser,
-              onEdit: () => setState(() => _isEditingUser = true),
-              onCancel: () => _cancelUserEditing(session),
-              onSubmit: _saveUserData,
-              fields: [
-                ..._buildUserFields(isEditing: _isEditingUser),
-                _InfoRow(label: 'Perfil', value: session.user.displayRole),
-              ],
-            ),
-
-            const SizedBox(height: 16),
-
-            _SettingsCard(
-              title: 'Empresa Ativa',
-              subtitle: 'Selecione a empresa usada nesta sessão.',
+            const PageTitle(title: 'Configurações'),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 8, 20, 20),
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  AppDropdown<int>(
-                    value: activeCompany?.id,
-                    labelText: 'Empresa',
-                    options: session.companies
-                        .map(
-                          (company) => AppDropdownOption<int>(
-                            label: company.name,
-                            value: company.id,
-                          ),
-                        )
-                        .toList(growable: false),
-                    onChanged: (companyId) async {
-                      if (companyId == null ||
-                          companyId == session.activeCompanyId) {
-                        return;
-                      }
+                  _AppearanceCard(themeMode: themeMode),
 
-                      await ref
-                          .read(authSessionProvider.notifier)
-                          .switchActiveCompany(companyId);
+                  const SizedBox(height: 16),
 
-                      if (!context.mounted) {
-                        return;
-                      }
-
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text(
-                            'Empresa ativa atualizada para esta sessão.',
-                          ),
-                        ),
-                      );
-                    },
+                  _EditableSettingsCard(
+                    title: 'Meus Dados',
+                    subtitle: 'Informações básicas do seu usuário.',
+                    canEdit: true,
+                    isEditing: _isEditingUser,
+                    isLoading: _isSavingUser,
+                    onEdit: () => setState(() => _isEditingUser = true),
+                    onCancel: () => _cancelUserEditing(session),
+                    onSubmit: _saveUserData,
+                    fields: [
+                      ..._buildUserFields(isEditing: _isEditingUser),
+                      _InfoRow(
+                        label: 'Perfil',
+                        value: session.user.displayRole,
+                      ),
+                    ],
                   ),
+
+                  const SizedBox(height: 16),
+
+                  _SettingsCard(
+                    title: 'Empresa Ativa',
+                    subtitle: 'Selecione a empresa usada nesta sessão.',
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        AppDropdown<int>(
+                          value: activeCompany?.id,
+                          labelText: 'Empresa',
+                          options: session.companies
+                              .map(
+                                (company) => AppDropdownOption<int>(
+                                  label: company.name,
+                                  value: company.id,
+                                ),
+                              )
+                              .toList(growable: false),
+                          onChanged: (companyId) async {
+                            if (companyId == null ||
+                                companyId == session.activeCompanyId) {
+                              return;
+                            }
+
+                            await ref
+                                .read(authSessionProvider.notifier)
+                                .switchActiveCompany(companyId);
+
+                            if (!context.mounted) {
+                              return;
+                            }
+
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text(
+                                  'Empresa ativa atualizada para esta sessão.',
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  const SizedBox(height: 16),
+
+                  _EditableSettingsCard(
+                    title: 'Dados da Empresa',
+                    subtitle: canEditCompanyData
+                        ? 'Gerencie as informações da empresa ativa.'
+                        : 'Você não tem permissão para editar estes dados.',
+                    canEdit: canEditCompanyData,
+                    isEditing: _isEditingCompany,
+                    isLoading: _isSavingCompany,
+                    onEdit: () => setState(() => _isEditingCompany = true),
+                    onCancel: _cancelCompanyEditing,
+                    onSubmit: _saveCompanyData,
+                    fields: _buildCompanyFields(
+                      canEdit: canEditCompanyData,
+                      isEditing: _isEditingCompany,
+                    ),
+                  ),
+
+                  const SizedBox(height: 20),
+
+                  _LogoutCard(isBusy: isBusy, onLogout: _logout),
                 ],
               ),
             ),
-
-            const SizedBox(height: 16),
-
-            _EditableSettingsCard(
-              title: 'Dados da Empresa',
-              subtitle: canEditCompanyData
-                  ? 'Gerencie as informações da empresa ativa.'
-                  : 'Você não tem permissão para editar estes dados.',
-              canEdit: canEditCompanyData,
-              isEditing: _isEditingCompany,
-              isLoading: _isSavingCompany,
-              onEdit: () => setState(() => _isEditingCompany = true),
-              onCancel: _cancelCompanyEditing,
-              onSubmit: _saveCompanyData,
-              fields: _buildCompanyFields(
-                canEdit: canEditCompanyData,
-                isEditing: _isEditingCompany,
-              ),
-            ),
-
-            const SizedBox(height: 20),
-
-            _LogoutCard(isBusy: isBusy, onLogout: _logout),
           ],
         ),
       ),

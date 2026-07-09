@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:uuid/uuid.dart';
 
+import '../../../../app/app_shell.dart';
 import '../../../../core/enums/animal_status.dart';
 import '../../../../core/presentation/app_scaffold_messenger.dart';
 import '../../../../core/utils/formatters.dart';
@@ -303,100 +304,113 @@ class _VisitFormPageState extends ConsumerState<VisitFormPage> {
         children: [
           Expanded(
             child: ListView(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+              padding: EdgeInsets.zero,
               children: [
-                AppCard(
-                  padding: const EdgeInsets.all(16),
-                  borderRadius: 14,
+                const PageTitle(title: 'Nova visita', backRoute: '/visitas'),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      Text(
-                        'Nova visita',
-                        style: theme.textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                      const SizedBox(height: 6),
-                      Text(
-                        'Vincule a propriedade, selecione o animal e preencha os dados da visita.',
-                        style: theme.textTheme.bodyMedium?.copyWith(
-                          color: colorScheme.onSurfaceVariant,
+                      AppCard(
+                        padding: const EdgeInsets.all(16),
+                        borderRadius: 14,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            Text(
+                              'Nova visita',
+                              style: theme.textTheme.titleLarge?.copyWith(
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                            const SizedBox(height: 6),
+                            Text(
+                              'Vincule a propriedade, selecione o animal e preencha os dados da visita.',
+                              style: theme.textTheme.bodyMedium?.copyWith(
+                                color: colorScheme.onSurfaceVariant,
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+                            _HeaderFields(
+                              propertyId: _propertyId,
+                              properties: properties,
+                              dataVisitaController: _dataVisita,
+                              onVisitDateChanged: (_) =>
+                                  _recalculateAnimalEntries(),
+                              onPropertyChanged: (value) {
+                                setState(() {
+                                  if (_propertyId != value) {
+                                    _propertyId = value;
+                                    _resetAnimalCollection();
+                                  }
+                                });
+                                _loadAnimalsForSelectedProperty();
+                              },
+                            ),
+                            const SizedBox(height: 12),
+                            Wrap(
+                              spacing: 8,
+                              runSpacing: 8,
+                              children: [
+                                _SummaryChip(
+                                  icon: Icons.agriculture_outlined,
+                                  label:
+                                      selectedProperty?.nome ??
+                                      'Sem propriedade',
+                                ),
+                                _SummaryChip(
+                                  icon: MdiIcons.cow,
+                                  label: '${_animalEntries.length} animais',
+                                ),
+                                _SummaryChip(
+                                  icon: Icons.fact_check_outlined,
+                                  label: '$collectedCount com coleta',
+                                ),
+                              ],
+                            ),
+                          ],
                         ),
                       ),
                       const SizedBox(height: 16),
-                      _HeaderFields(
-                        propertyId: _propertyId,
-                        properties: properties,
-                        dataVisitaController: _dataVisita,
-                        onVisitDateChanged: (_) => _recalculateAnimalEntries(),
-                        onPropertyChanged: (value) {
-                          setState(() {
-                            if (_propertyId != value) {
-                              _propertyId = value;
-                              _resetAnimalCollection();
-                            }
-                          });
-                          _loadAnimalsForSelectedProperty();
-                        },
-                      ),
-                      const SizedBox(height: 12),
-                      Wrap(
-                        spacing: 8,
-                        runSpacing: 8,
-                        children: [
-                          _SummaryChip(
-                            icon: Icons.agriculture_outlined,
-                            label: selectedProperty?.nome ?? 'Sem propriedade',
-                          ),
-                          _SummaryChip(
-                            icon: MdiIcons.cow,
-                            label: '${_animalEntries.length} animais',
-                          ),
-                          _SummaryChip(
-                            icon: Icons.fact_check_outlined,
-                            label: '$collectedCount com coleta',
-                          ),
-                        ],
-                      ),
+                      if (_isLoadingAnimals)
+                        const Padding(
+                          padding: EdgeInsets.symmetric(vertical: 48),
+                          child: Center(child: CircularProgressIndicator()),
+                        )
+                      else if (_animalsError != null)
+                        _FeedbackPanel(message: _animalsError!, error: true)
+                      else if (_propertyId == null)
+                        const _FeedbackPanel(
+                          message:
+                              'Selecione a propriedade para carregar a lista de animais.',
+                        )
+                      else if (_animalEntries.isEmpty)
+                        const _FeedbackPanel(
+                          message:
+                              'Nenhum animal encontrado para a propriedade selecionada.',
+                        )
+                      else
+                        _AnimalCollectionLayout(
+                          entries: _animalEntries,
+                          iaHistoryByAnimalId: _iaHistoryByAnimalId,
+                          reviewedAnimalIds: _reviewedAnimalIds,
+                          selectedAnimalId: _selectedAnimalId,
+                          selectedEntry: selectedEntry,
+                          onSelectAnimal: (animalId) {
+                            setState(() {
+                              _selectedAnimalId = animalId;
+                            });
+                          },
+                          onChanged: _updateAnimalEntry,
+                          applyAutomaticCalculations:
+                              _applyAutomaticCalculations,
+                          onConfirmAnimal: _confirmAnimal,
+                          onOpenAnimal: _editAnimalInModal,
+                        ),
                     ],
                   ),
                 ),
-                const SizedBox(height: 16),
-                if (_isLoadingAnimals)
-                  const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 48),
-                    child: Center(child: CircularProgressIndicator()),
-                  )
-                else if (_animalsError != null)
-                  _FeedbackPanel(message: _animalsError!, error: true)
-                else if (_propertyId == null)
-                  const _FeedbackPanel(
-                    message:
-                        'Selecione a propriedade para carregar a lista de animais.',
-                  )
-                else if (_animalEntries.isEmpty)
-                  const _FeedbackPanel(
-                    message:
-                        'Nenhum animal encontrado para a propriedade selecionada.',
-                  )
-                else
-                  _AnimalCollectionLayout(
-                    entries: _animalEntries,
-                    iaHistoryByAnimalId: _iaHistoryByAnimalId,
-                    reviewedAnimalIds: _reviewedAnimalIds,
-                    selectedAnimalId: _selectedAnimalId,
-                    selectedEntry: selectedEntry,
-                    onSelectAnimal: (animalId) {
-                      setState(() {
-                        _selectedAnimalId = animalId;
-                      });
-                    },
-                    onChanged: _updateAnimalEntry,
-                    applyAutomaticCalculations: _applyAutomaticCalculations,
-                    onConfirmAnimal: _confirmAnimal,
-                    onOpenAnimal: _editAnimalInModal,
-                  ),
               ],
             ),
           ),

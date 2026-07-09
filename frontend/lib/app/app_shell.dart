@@ -22,42 +22,36 @@ class AppShell extends ConsumerWidget {
     _NavigationItem(
       route: '/dashboard',
       label: 'Dashboard',
-      title: 'Dashboard',
       icon: Icons.dashboard_outlined,
       selectedIcon: Icons.dashboard,
     ),
     _NavigationItem(
       route: '/propriedades',
       label: 'Propriedades',
-      title: 'Propriedades',
       icon: Icons.agriculture_outlined,
       selectedIcon: Icons.agriculture,
     ),
     _NavigationItem(
       route: '/animais',
       label: 'Animais',
-      title: 'Animais',
       icon: MdiIcons.cow,
       selectedIcon: MdiIcons.cow,
     ),
     _NavigationItem(
       route: '/visitas',
       label: 'Visitas',
-      title: 'Visitas',
       icon: Icons.assignment_outlined,
       selectedIcon: Icons.assignment,
     ),
     _NavigationItem(
       route: '/usuarios',
       label: 'Usuários',
-      title: 'Usuários',
       icon: Icons.group_outlined,
       selectedIcon: Icons.group,
     ),
     _NavigationItem(
       route: '/configuracoes',
       label: 'Configurações',
-      title: 'Configurações',
       icon: Icons.settings_outlined,
       selectedIcon: Icons.settings,
     ),
@@ -66,7 +60,7 @@ class AppShell extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final currentIndex = _getCurrentIndex(context);
-    final pageHeader = _getPageHeader(context, currentIndex);
+    final pageHeader = _getPageHeader(context);
     final session = ref.watch(authSessionProvider);
     final isMobile = MediaQuery.of(context).size.width < MOBILE_WIDTH;
 
@@ -88,13 +82,7 @@ class AppShell extends ConsumerWidget {
                       _onDestinationSelected(context, index);
                     },
                   ),
-                  Expanded(
-                    child: _ShellContent(
-                      title: pageHeader.title,
-                      backRoute: pageHeader.backRoute,
-                      child: child,
-                    ),
-                  ),
+                  Expanded(child: _ShellContent(child: child)),
                 ],
               ),
             ),
@@ -123,13 +111,7 @@ class AppShell extends ConsumerWidget {
                 },
                 backRoute: pageHeader.backRoute,
               ),
-              Expanded(
-                child: _ShellContent(
-                  title: pageHeader.title,
-                  backRoute: pageHeader.backRoute,
-                  child: child,
-                ),
-              ),
+              Expanded(child: _ShellContent(child: child)),
             ],
           );
         },
@@ -155,24 +137,18 @@ class AppShell extends ConsumerWidget {
     return 0;
   }
 
-  _PageHeaderConfig _getPageHeader(BuildContext context, int currentIndex) {
+  _PageHeaderConfig _getPageHeader(BuildContext context) {
     final location = GoRouterState.of(context).uri.path;
 
     if (location.startsWith('/visitas/nova')) {
-      return const _PageHeaderConfig(
-        title: 'Nova visita',
-        backRoute: '/visitas',
-      );
+      return const _PageHeaderConfig(backRoute: '/visitas');
     }
 
     if (location.startsWith('/visitas/') && location.endsWith('/detalhes')) {
-      return const _PageHeaderConfig(
-        title: 'Detalhes da visita',
-        backRoute: '/visitas',
-      );
+      return const _PageHeaderConfig(backRoute: '/visitas');
     }
 
-    return _PageHeaderConfig(title: _items[currentIndex].title);
+    return const _PageHeaderConfig();
   }
 
   void _onDestinationSelected(BuildContext context, int index) {
@@ -181,9 +157,8 @@ class AppShell extends ConsumerWidget {
 }
 
 class _PageHeaderConfig {
-  const _PageHeaderConfig({required this.title, this.backRoute});
+  const _PageHeaderConfig({this.backRoute});
 
-  final String title;
   final String? backRoute;
 }
 
@@ -191,14 +166,12 @@ class _NavigationItem {
   const _NavigationItem({
     required this.route,
     required this.label,
-    required this.title,
     required this.icon,
     required this.selectedIcon,
   });
 
   final String route;
   final String label;
-  final String title;
   final IconData icon;
   final IconData selectedIcon;
 }
@@ -433,35 +406,22 @@ class _HeaderUserCompanyInfo extends StatelessWidget {
 }
 
 class _ShellContent extends StatelessWidget {
-  const _ShellContent({
-    required this.title,
-    required this.child,
-    this.backRoute,
-  });
+  const _ShellContent({required this.child});
 
-  final String title;
   final Widget child;
-  final String? backRoute;
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        _PageTitle(title: title, backRoute: backRoute),
-        Expanded(
-          child: MediaQuery.removePadding(
-            context: context,
-            removeTop: true,
-            child: child,
-          ),
-        ),
-      ],
+    return MediaQuery.removePadding(
+      context: context,
+      removeTop: true,
+      child: child,
     );
   }
 }
 
-class _PageTitle extends StatelessWidget {
-  const _PageTitle({required this.title, this.backRoute});
+class PageTitle extends StatelessWidget {
+  const PageTitle({super.key, required this.title, this.backRoute});
 
   final String title;
   final String? backRoute;

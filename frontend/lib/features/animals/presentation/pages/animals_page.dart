@@ -15,6 +15,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
 
+import '../../../../app/app_shell.dart';
 import '../../../../core/presentation/async_value_view.dart';
 import '../../../../core/utils/formatters.dart';
 import '../../../indicators/domain/indicador_reprodutivo_calculator.dart';
@@ -64,109 +65,128 @@ class AnimalsPage extends ConsumerWidget {
         child: RefreshIndicator(
           onRefresh: () => ref.refresh(animalsProvider.future),
           child: ListView(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+            padding: EdgeInsets.zero,
             physics: const AlwaysScrollableScrollPhysics(),
             children: [
-              _AnimalsToolbar(
-                properties: propertyOptions,
-                searchQuery: searchQuery,
-                selectedPropertyId: selectedPropertyId,
-                statusFilter: statusFilter,
-                reproductiveStatusFilter: reproductiveStatusFilter,
-                onSearchChanged: (value) {
-                  ref.read(animalsSearchQueryProvider.notifier).state = value;
-                },
-                onPropertyChanged: (value) {
-                  ref.read(animalsPropertyFilterProvider.notifier).set(value);
-                },
-                onStatusChanged: (value) {
-                  ref.read(animalsStatusFilterProvider.notifier).state =
-                      value ?? AnimalStatusFilter.all;
-                },
-                onReproductiveStatusChanged: (value) {
-                  ref
-                          .read(
-                            animalsReproductiveStatusFilterProvider.notifier,
-                          )
-                          .state =
-                      value;
-                },
-                onImport: () =>
-                    _importAnimalsCsv(context, ref, propertyOptions),
-                onCreate: () =>
-                    AnimalDialog.show(context, properties: propertyOptions),
-              ),
-              const SizedBox(height: 12),
-              AsyncValueView<List<AnimalSummaryModel>>(
-                value: animals,
-                loadingMessage: 'Buscando animais...',
-                emptyMessage: 'Nenhum animal cadastrado.',
-                isEmpty: (items) => items.isEmpty,
-                onRetry: () => ref.invalidate(animalsProvider),
-                builder: (items) {
-                  final filteredItems = _filterAnimals(
-                    items,
-                    searchQuery,
-                    statusFilter,
-                    reproductiveStatusFilter,
-                  );
-
-                  final activeAnimals = filteredItems.where((animal) {
-                    return animal.status == AnimalStatus.active;
-                  }).length;
-
-                  final propertyContext = _propertyFilterContext(
-                    selectedPropertyId: selectedPropertyId,
-                    propertyById: propertyById,
-                  );
-
-                  return Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      _AnimalsCountSummary(
-                        activeAnimals: activeAnimals,
-                        propertyContext: propertyContext,
+              const PageTitle(title: 'Animais'),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    _AnimalsToolbar(
+                      properties: propertyOptions,
+                      searchQuery: searchQuery,
+                      selectedPropertyId: selectedPropertyId,
+                      statusFilter: statusFilter,
+                      reproductiveStatusFilter: reproductiveStatusFilter,
+                      onSearchChanged: (value) {
+                        ref.read(animalsSearchQueryProvider.notifier).state =
+                            value;
+                      },
+                      onPropertyChanged: (value) {
+                        ref
+                            .read(animalsPropertyFilterProvider.notifier)
+                            .set(value);
+                      },
+                      onStatusChanged: (value) {
+                        ref.read(animalsStatusFilterProvider.notifier).state =
+                            value ?? AnimalStatusFilter.all;
+                      },
+                      onReproductiveStatusChanged: (value) {
+                        ref
+                                .read(
+                                  animalsReproductiveStatusFilterProvider
+                                      .notifier,
+                                )
+                                .state =
+                            value;
+                      },
+                      onImport: () =>
+                          _importAnimalsCsv(context, ref, propertyOptions),
+                      onCreate: () => AnimalDialog.show(
+                        context,
+                        properties: propertyOptions,
                       ),
-                      const SizedBox(height: 8),
-                      if (filteredItems.isEmpty)
-                        Padding(
-                          padding: const EdgeInsets.only(top: 24),
-                          child: Center(
-                            child: Text(
-                              'Nenhum animal encontrado para os filtros atuais.',
-                              style: theme.textTheme.bodyMedium,
-                              textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 12),
+                    AsyncValueView<List<AnimalSummaryModel>>(
+                      value: animals,
+                      loadingMessage: 'Buscando animais...',
+                      emptyMessage: 'Nenhum animal cadastrado.',
+                      isEmpty: (items) => items.isEmpty,
+                      onRetry: () => ref.invalidate(animalsProvider),
+                      builder: (items) {
+                        final filteredItems = _filterAnimals(
+                          items,
+                          searchQuery,
+                          statusFilter,
+                          reproductiveStatusFilter,
+                        );
+
+                        final activeAnimals = filteredItems.where((animal) {
+                          return animal.status == AnimalStatus.active;
+                        }).length;
+
+                        final propertyContext = _propertyFilterContext(
+                          selectedPropertyId: selectedPropertyId,
+                          propertyById: propertyById,
+                        );
+
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            _AnimalsCountSummary(
+                              activeAnimals: activeAnimals,
+                              propertyContext: propertyContext,
                             ),
-                          ),
-                        )
-                      else
-                        _AnimalsMainContent(
-                          animals: filteredItems,
-                          propertyNameFor: (animal) {
-                            return propertyById[animal.idPropriedade]?.nome ??
-                                animal.idExternoPropriedade;
-                          },
-                          onEdit: (animal) => AnimalDialog.show(
-                            context,
-                            properties: propertyOptions,
-                            animal: animal,
-                          ),
-                          onInactivate: (animal) =>
-                              _confirmInactivate(context, ref, animal),
-                          onActivate: (animal) =>
-                              _confirmActivate(context, ref, animal),
-                          onDelete: (animal) =>
-                              _confirmDelete(context, ref, animal),
-                          onShowHistory: (animal) => AnimalHistoryDialog.show(
-                            context: context,
-                            animal: animal,
-                            propertyName: propertyById[animal.idPropriedade]?.nome ??
-                                animal.idExternoPropriedade,
-                          ),
-                        ),
-                    ],
-                  );
-                },
+                            const SizedBox(height: 8),
+                            if (filteredItems.isEmpty)
+                              Padding(
+                                padding: const EdgeInsets.only(top: 24),
+                                child: Center(
+                                  child: Text(
+                                    'Nenhum animal encontrado para os filtros atuais.',
+                                    style: theme.textTheme.bodyMedium,
+                                    textAlign: TextAlign.center,
+                                  ),
+                                ),
+                              )
+                            else
+                              _AnimalsMainContent(
+                                animals: filteredItems,
+                                propertyNameFor: (animal) {
+                                  return propertyById[animal.idPropriedade]
+                                          ?.nome ??
+                                      animal.idExternoPropriedade;
+                                },
+                                onEdit: (animal) => AnimalDialog.show(
+                                  context,
+                                  properties: propertyOptions,
+                                  animal: animal,
+                                ),
+                                onInactivate: (animal) =>
+                                    _confirmInactivate(context, ref, animal),
+                                onActivate: (animal) =>
+                                    _confirmActivate(context, ref, animal),
+                                onDelete: (animal) =>
+                                    _confirmDelete(context, ref, animal),
+                                onShowHistory: (animal) =>
+                                    AnimalHistoryDialog.show(
+                                      context: context,
+                                      animal: animal,
+                                      propertyName:
+                                          propertyById[animal.idPropriedade]
+                                              ?.nome ??
+                                          animal.idExternoPropriedade,
+                                    ),
+                              ),
+                          ],
+                        );
+                      },
+                    ),
+                  ],
+                ),
               ),
             ],
           ),

@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/services.dart';
 import 'package:printing/printing.dart';
 
+import '../../../../app/app_shell.dart';
 import '../../../../app/theme.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/presentation/app_scaffold_messenger.dart';
@@ -124,6 +125,7 @@ class VisitReportPage extends ConsumerWidget {
             data: data,
             companyName: activeCompanyName,
             currentUserName: currentUserName,
+            pageTitleTheme: baseTheme,
           ),
         ),
       ),
@@ -136,29 +138,43 @@ class _ReportPageContent extends StatelessWidget {
     required this.data,
     required this.companyName,
     required this.currentUserName,
+    required this.pageTitleTheme,
   });
 
   final VisitReportRouteData data;
   final String? companyName;
   final String? currentUserName;
+  final ThemeData pageTitleTheme;
 
   @override
   Widget build(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(24, 10, 24, 8),
-          child: Align(
-            alignment: Alignment.centerLeft,
-            child: _ReportPdfActions(
-              visit: data.visit,
-              propertyName: data.propertyName,
-            ),
-          ),
-        ),
         Expanded(
           child: _ReportDocumentViewport(
+            header: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Theme(
+                  data: pageTitleTheme,
+                  child: const PageTitle(
+                    title: 'Detalhes da visita',
+                    backRoute: '/visitas',
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(24, 10, 24, 8),
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: _ReportPdfActions(
+                      visit: data.visit,
+                      propertyName: data.propertyName,
+                    ),
+                  ),
+                ),
+              ],
+            ),
             child: VisitReportCard(
               visit: data.visit,
               propertyName: data.propertyName,
@@ -174,9 +190,10 @@ class _ReportPageContent extends StatelessWidget {
 }
 
 class _ReportDocumentViewport extends StatefulWidget {
-  const _ReportDocumentViewport({required this.child});
+  const _ReportDocumentViewport({required this.child, this.header});
 
   final Widget child;
+  final Widget? header;
 
   @override
   State<_ReportDocumentViewport> createState() =>
@@ -262,44 +279,50 @@ class _ReportDocumentViewportState extends State<_ReportDocumentViewport> {
           thumbVisibility: true,
           child: SingleChildScrollView(
             controller: _verticalController,
-            child: Scrollbar(
-              controller: _horizontalController,
-              thumbVisibility: true,
-              notificationPredicate: (notification) {
-                return notification.metrics.axis == Axis.horizontal;
-              },
-              child: SingleChildScrollView(
-                controller: _horizontalController,
-                scrollDirection: Axis.horizontal,
-                child: ConstrainedBox(
-                  constraints: BoxConstraints(
-                    minWidth: constraints.maxWidth,
-                    minHeight: constraints.maxHeight,
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(24, 18, 24, 32),
-                    child: Align(
-                      alignment: Alignment.topCenter,
-                      child: Listener(
-                        onPointerSignal: _handlePointerSignal,
-                        child: SizedBox(
-                          width: scaledWidth,
-                          height: scaledHeight,
-                          child: ClipRect(
-                            child: Transform.scale(
-                              scale: _scale,
-                              alignment: Alignment.topLeft,
-                              child: OverflowBox(
-                                alignment: Alignment.topLeft,
-                                minWidth: _ReportTokens.documentWidth,
-                                maxWidth: _ReportTokens.documentWidth,
-                                minHeight: 0,
-                                maxHeight: double.infinity,
-                                child: SizedBox(
-                                  width: _ReportTokens.documentWidth,
-                                  child: KeyedSubtree(
-                                    key: _documentKey,
-                                    child: widget.child,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                if (widget.header != null) widget.header!,
+                Scrollbar(
+                  controller: _horizontalController,
+                  thumbVisibility: true,
+                  notificationPredicate: (notification) {
+                    return notification.metrics.axis == Axis.horizontal;
+                  },
+                  child: SingleChildScrollView(
+                    controller: _horizontalController,
+                    scrollDirection: Axis.horizontal,
+                    child: ConstrainedBox(
+                      constraints: BoxConstraints(
+                        minWidth: constraints.maxWidth,
+                        minHeight: constraints.maxHeight,
+                      ),
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(24, 18, 24, 32),
+                        child: Align(
+                          alignment: Alignment.topCenter,
+                          child: Listener(
+                            onPointerSignal: _handlePointerSignal,
+                            child: SizedBox(
+                              width: scaledWidth,
+                              height: scaledHeight,
+                              child: ClipRect(
+                                child: Transform.scale(
+                                  scale: _scale,
+                                  alignment: Alignment.topLeft,
+                                  child: OverflowBox(
+                                    alignment: Alignment.topLeft,
+                                    minWidth: _ReportTokens.documentWidth,
+                                    maxWidth: _ReportTokens.documentWidth,
+                                    minHeight: 0,
+                                    maxHeight: double.infinity,
+                                    child: SizedBox(
+                                      width: _ReportTokens.documentWidth,
+                                      child: KeyedSubtree(
+                                        key: _documentKey,
+                                        child: widget.child,
+                                      ),
+                                    ),
                                   ),
                                 ),
                               ),
@@ -310,7 +333,7 @@ class _ReportDocumentViewportState extends State<_ReportDocumentViewport> {
                     ),
                   ),
                 ),
-              ),
+              ],
             ),
           ),
         );
