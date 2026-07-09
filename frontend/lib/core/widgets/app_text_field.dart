@@ -1,7 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-class AppTextField extends StatelessWidget {
+class _TextFieldControlStyle {
+  static const double height = 42;
+  static const double multilineHeight = 82;
+  static const double radius = 12;
+
+  static const EdgeInsets fieldPadding = EdgeInsets.symmetric(horizontal: 14);
+
+  static const double floatingLabelFontSize = 12;
+  static const double inputFontSize = 14;
+}
+
+class AppTextField extends StatefulWidget {
   const AppTextField({
     super.key,
     this.label,
@@ -38,6 +49,7 @@ class AppTextField extends StatelessWidget {
     this.textStyle,
     this.prefixIconConstraints,
     this.suffixIconConstraints,
+    this.height,
   });
 
   final String? label;
@@ -74,165 +86,451 @@ class AppTextField extends StatelessWidget {
   final TextStyle? textStyle;
   final BoxConstraints? prefixIconConstraints;
   final BoxConstraints? suffixIconConstraints;
+  final double? height;
 
   @override
-  Widget build(BuildContext context) {
-    return TextFormField(
-      controller: controller,
-      initialValue: controller == null ? initialValue : null,
-      keyboardType: keyboardType,
-      obscureText: obscureText,
-      readOnly: readOnly,
-      enabled: enabled,
-      autofocus: autofocus,
-      textInputAction: textInputAction,
-      textCapitalization: capitalize
-          ? TextCapitalization.characters
-          : TextCapitalization.none,
-      maxLines: obscureText ? 1 : maxLines,
-      minLines: obscureText ? null : minLines,
-      style: textStyle,
-      inputFormatters: _buildInputFormatters(),
-      validator: _validate,
-      onChanged: onChanged,
-      onFieldSubmitted: onSubmitted,
-      onTap: onTap,
-      decoration: _buildDecoration(context),
-    );
+  State<AppTextField> createState() => _AppTextFieldState();
+}
+
+class _AppTextFieldState extends State<AppTextField> {
+  late final FocusNode _focusNode;
+  late TextEditingController _controller;
+  late bool _ownsController;
+
+  bool _focused = false;
+
+  bool get _isSingleLine {
+    final effectiveMaxLines = widget.obscureText ? 1 : widget.maxLines;
+    final effectiveMinLines = widget.obscureText ? null : widget.minLines;
+
+    return effectiveMaxLines == 1 && effectiveMinLines == null;
   }
 
-  InputDecoration _buildDecoration(BuildContext context) {
-    final theme = Theme.of(context);
-    final radiusValue = borderRadius ?? 12.0;
-    final effectiveBorderColor = borderColor ?? theme.colorScheme.outline;
-    final effectiveFocusedBorderColor =
-        focusedBorderColor ?? theme.colorScheme.primary;
-    final effectiveLabelColor = enabled
-        ? theme.colorScheme.onSurfaceVariant
-        : theme.disabledColor;
+  double get _effectiveHeight {
+    if (!_isSingleLine) {
+      return widget.height ?? _TextFieldControlStyle.multilineHeight;
+    }
 
-    return InputDecoration(
-      labelText: _labelText,
-      hintText: hint,
-      prefixIcon: prefixIcon,
-      suffixIcon: _buildSuffixIcon(),
-      filled: true,
-      fillColor: fillColor ?? theme.colorScheme.surfaceContainerHighest,
-      floatingLabelBehavior: FloatingLabelBehavior.auto,
-      labelStyle: TextStyle(
-        color: effectiveLabelColor,
-        fontSize: 16,
-        fontWeight: FontWeight.w500,
-      ),
-      floatingLabelStyle: TextStyle(
-        color: effectiveFocusedBorderColor,
-        fontSize: 14,
-        fontWeight: FontWeight.w600,
-      ),
-      contentPadding:
-          contentPadding ??
-          const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      isDense: isDense,
-      prefixIconConstraints: prefixIconConstraints,
-      suffixIconConstraints: suffixIconConstraints,
-      border: _buildCustomBorder(radiusValue, effectiveBorderColor),
-      enabledBorder: _buildCustomBorder(radiusValue, effectiveBorderColor),
-      focusedBorder: _buildCustomBorder(
-        radiusValue,
-        effectiveFocusedBorderColor,
-        width: 1.5,
-      ),
-      disabledBorder: _buildCustomBorder(
-        radiusValue,
-        theme.colorScheme.outline.withValues(alpha: 0.45),
-      ),
-    );
+    return widget.height ?? _TextFieldControlStyle.height;
   }
 
-  InputBorder _buildCustomBorder(
-    double radius,
-    Color color, {
-    double width = 1.0,
-  }) {
-    return OutlineInputBorder(
-      borderRadius: BorderRadius.all(Radius.circular(radius)),
-      borderSide: BorderSide(color: color, width: width),
-    );
+  double get _effectiveRadius {
+    return widget.borderRadius ?? _TextFieldControlStyle.radius;
   }
 
   String? get _labelText {
-    if (label == null || label!.isEmpty) {
+    if (widget.label == null || widget.label!.isEmpty) {
       return null;
     }
 
-    return required ? '${label!} *' : label;
+    return widget.required ? '${widget.label!} *' : widget.label;
+  }
+
+  bool get _hasValue {
+    return _controller.text.trim().isNotEmpty;
+  }
+
+  bool get _shouldFloatLabel {
+    return _focused || _hasValue;
+  }
+
+  @override
+  void initState() {
+    super.initState();
+
+    _focusNode = FocusNode();
+    _focusNode.addListener(_handleFocusChanged);
+
+    _ownsController = widget.controller == null;
+    _controller =
+        widget.controller ?? TextEditingController(text: widget.initialValue);
+    _controller.addListener(_handleTextChanged);
+  }
+
+  @override
+  void didUpdateWidget(covariant AppTextField oldWidget) {
+    super.didUpdateWidget(oldWidget);
+
+    if (oldWidget.controller != widget.controller) {
+      _controller.removeListener(_handleTextChanged);
+
+      if (_ownsController) {
+        _controller.dispose();
+      }
+
+      _ownsController = widget.controller == null;
+      _controller =
+          widget.controller ?? TextEditingController(text: widget.initialValue);
+      _controller.addListener(_handleTextChanged);
+    }
+  }
+
+  @override
+  void dispose() {
+    _focusNode.removeListener(_handleFocusChanged);
+    _focusNode.dispose();
+
+    _controller.removeListener(_handleTextChanged);
+
+    if (_ownsController) {
+      _controller.dispose();
+    }
+
+    super.dispose();
+  }
+
+  void _handleFocusChanged() {
+    setState(() {
+      _focused = _focusNode.hasFocus;
+    });
+  }
+
+  void _handleTextChanged() {
+    setState(() {});
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FormField<String>(
+      initialValue: _controller.text,
+      validator: _validate,
+      builder: (field) {
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            _buildShell(context, field),
+            if (field.hasError)
+              Padding(
+                padding: const EdgeInsets.only(top: 6, left: 12),
+                child: Text(
+                  field.errorText!,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: Theme.of(context).colorScheme.error,
+                    fontSize: 11,
+                    height: 1.1,
+                  ),
+                ),
+              ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildShell(BuildContext context, FormFieldState<String> field) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
+    final borderColor = field.hasError
+        ? colorScheme.error
+        : _focused
+        ? widget.focusedBorderColor ?? colorScheme.primary
+        : widget.borderColor ?? colorScheme.outline.withValues(alpha: 0.75);
+
+    final fillColor = widget.fillColor ?? colorScheme.surface;
+
+    return Container(
+      height: _effectiveHeight,
+      width: double.infinity,
+      padding: widget.contentPadding ?? _TextFieldControlStyle.fieldPadding,
+      decoration: BoxDecoration(
+        color: fillColor,
+        borderRadius: BorderRadius.circular(_effectiveRadius),
+        border: Border.all(color: borderColor, width: _focused ? 1.2 : 1),
+        boxShadow: [
+          BoxShadow(
+            color: theme.shadowColor.withValues(alpha: 0.08),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          if (widget.prefixIcon != null) ...[
+            widget.prefixIcon!,
+            const SizedBox(width: 8),
+          ],
+          Expanded(
+            child: _isSingleLine
+                ? _buildSingleLineContent(context, field)
+                : _buildMultiLineContent(context, field),
+          ),
+          if (_buildSuffixIcon(field) != null) ...[
+            const SizedBox(width: 8),
+            _buildSuffixIcon(field)!,
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFloatingLabelOnBorder(BuildContext context, String label) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 4),
+        color: widget.fillColor ?? colorScheme.surface,
+        child: Text(
+          label,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          textAlign: TextAlign.left,
+          style: _labelStyle(context, floating: true),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSingleLineContent(
+    BuildContext context,
+    FormFieldState<String> field,
+  ) {
+    final label = _labelText;
+
+    if (label == null) {
+      return Center(child: _buildTextField(context, field));
+    }
+
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        AnimatedPositioned(
+          duration: const Duration(milliseconds: 140),
+          curve: Curves.easeOut,
+          left: 0,
+          right: 0,
+
+          top: _shouldFloatLabel ? -6 : 11,
+
+          child: IgnorePointer(
+            child: _shouldFloatLabel
+                ? _buildFloatingLabelOnBorder(context, label)
+                : Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      label,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      textAlign: TextAlign.left,
+                      style: _labelStyle(context, floating: false),
+                    ),
+                  ),
+          ),
+        ),
+
+        AnimatedPositioned(
+          duration: const Duration(milliseconds: 140),
+          curve: Curves.easeOut,
+          left: 0,
+          right: 0,
+          top: _shouldFloatLabel ? 16 : 9,
+          child: _buildTextField(context, field, hideHint: !_shouldFloatLabel),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildMultiLineContent(
+  BuildContext context,
+  FormFieldState<String> field,
+) {
+  final label = _labelText;
+
+  if (label == null) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 10),
+      child: _buildTextField(context, field),
+    );
+  }
+
+  return Stack(
+    clipBehavior: Clip.none,
+    children: [
+      AnimatedPositioned(
+        duration: const Duration(milliseconds: 140),
+        curve: Curves.easeOut,
+        left: 0,
+        right: 0,
+        top: _shouldFloatLabel ? -6 : 12,
+        child: IgnorePointer(
+          child: _shouldFloatLabel
+              ? _buildFloatingLabelOnBorder(context, label)
+              : Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    textAlign: TextAlign.left,
+                    style: _labelStyle(context, floating: false),
+                  ),
+                ),
+        ),
+      ),
+      Positioned.fill(
+        top: _shouldFloatLabel ? 18 : 8,
+        bottom: 8,
+        child: _buildTextField(
+          context,
+          field,
+          hideHint: !_shouldFloatLabel,
+        ),
+      ),
+    ],
+  );
+}
+
+  TextStyle _labelStyle(BuildContext context, {required bool floating}) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
+    return theme.textTheme.bodySmall!.copyWith(
+      fontSize: floating ? _TextFieldControlStyle.floatingLabelFontSize : 14,
+      height: 1,
+      fontWeight: floating ? FontWeight.w500 : FontWeight.w400,
+      color: _focused ? colorScheme.primary : colorScheme.onSurfaceVariant,
+    );
+  }
+
+  Widget _buildTextField(
+    BuildContext context,
+    FormFieldState<String> field, {
+    bool hideHint = false,
+  }) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
+    return TextField(
+      controller: _controller,
+      focusNode: _focusNode,
+      keyboardType: widget.keyboardType,
+      obscureText: widget.obscureText,
+      readOnly: widget.readOnly,
+      enabled: widget.enabled,
+      autofocus: widget.autofocus,
+      textInputAction: widget.textInputAction,
+      textCapitalization: widget.capitalize
+          ? TextCapitalization.characters
+          : TextCapitalization.none,
+      maxLines: widget.obscureText ? 1 : widget.maxLines,
+      minLines: widget.obscureText ? null : widget.minLines,
+      style: _effectiveTextStyle(context),
+      inputFormatters: _buildInputFormatters(),
+      onTap: widget.onTap,
+      onChanged: (value) {
+        field.didChange(value);
+        widget.onChanged?.call(value);
+      },
+      onSubmitted: widget.onSubmitted,
+      decoration: InputDecoration(
+        isDense: true,
+        isCollapsed: true,
+        border: InputBorder.none,
+        enabledBorder: InputBorder.none,
+        focusedBorder: InputBorder.none,
+        disabledBorder: InputBorder.none,
+        errorBorder: InputBorder.none,
+        focusedErrorBorder: InputBorder.none,
+        contentPadding: EdgeInsets.zero,
+        filled: false,
+        hintText: hideHint ? null : widget.hint,
+        hintStyle: theme.textTheme.bodyMedium?.copyWith(
+          fontSize: _TextFieldControlStyle.inputFontSize,
+          height: 1.2,
+          color: colorScheme.onSurfaceVariant,
+          fontWeight: FontWeight.w400,
+        ),
+      ),
+    );
+  }
+
+  TextStyle? _effectiveTextStyle(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
+    return theme.textTheme.bodyMedium
+        ?.copyWith(
+          fontSize: _TextFieldControlStyle.inputFontSize,
+          height: 1.2,
+          color: widget.enabled ? colorScheme.onSurface : theme.disabledColor,
+        )
+        .merge(widget.textStyle);
   }
 
   List<TextInputFormatter>? _buildInputFormatters() {
-    final formatters = <TextInputFormatter>[...?inputFormatters];
+    final formatters = <TextInputFormatter>[...?widget.inputFormatters];
 
-    if (capitalize) {
+    if (widget.capitalize) {
       formatters.add(UpperCaseTextFormatter());
     }
 
-    if (denySpaces) {
+    if (widget.denySpaces) {
       formatters.add(FilteringTextInputFormatter.deny(RegExp(r'\s')));
     }
 
     return formatters.isEmpty ? null : formatters;
   }
 
-  Widget? _buildSuffixIcon() {
-    final shouldShowClearButton = clearable && controller != null;
+  Widget? _buildSuffixIcon(FormFieldState<String> field) {
+    final shouldShowClearButton = widget.clearable && widget.controller != null;
 
     if (!shouldShowClearButton) {
-      return suffixIcon;
+      return widget.suffixIcon;
     }
 
-    final clearButton = ValueListenableBuilder<TextEditingValue>(
-      valueListenable: controller!,
-      builder: (context, value, _) {
-        if (value.text.isEmpty) {
-          return const SizedBox.shrink();
-        }
+    final hasText = _controller.text.isNotEmpty;
 
-        return IconButton(
-          tooltip: 'Limpar',
-          icon: const Icon(Icons.clear, size: 18),
-          visualDensity: VisualDensity.compact,
-          constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
-          padding: EdgeInsets.zero,
-          onPressed: enabled && !readOnly ? controller!.clear : null,
-        );
-      },
+    if (!hasText) {
+      return widget.suffixIcon;
+    }
+
+    final clearButton = InkWell(
+      borderRadius: BorderRadius.circular(18),
+      onTap: widget.enabled && !widget.readOnly
+          ? () {
+              _controller.clear();
+              field.didChange('');
+              widget.onChanged?.call('');
+            }
+          : null,
+      child: const SizedBox(
+        width: 36,
+        height: 36,
+        child: Icon(Icons.clear, size: 18),
+      ),
     );
 
-    if (suffixIcon == null) {
+    if (widget.suffixIcon == null) {
       return clearButton;
     }
 
     return Row(
       mainAxisSize: MainAxisSize.min,
-      children: [suffixIcon!, clearButton],
+      children: [widget.suffixIcon!, clearButton],
     );
   }
 
   String? _validate(String? rawValue) {
-    final value = rawValue?.trim() ?? '';
+    final value = _controller.text.trim();
 
-    if (required && value.isEmpty) {
+    if (widget.required && value.isEmpty) {
       return 'Campo obrigatório';
     }
 
-    if (minChars != null && value.isNotEmpty && value.length < minChars!) {
-      return 'Informe pelo menos $minChars caracteres';
+    if (widget.minChars != null &&
+        value.isNotEmpty &&
+        value.length < widget.minChars!) {
+      return 'Informe pelo menos ${widget.minChars} caracteres';
     }
 
-    if (maxChars != null && value.length > maxChars!) {
-      return 'Informe no máximo $maxChars caracteres';
+    if (widget.maxChars != null && value.length > widget.maxChars!) {
+      return 'Informe no máximo ${widget.maxChars} caracteres';
     }
 
-    return validator?.call(rawValue);
+    return widget.validator?.call(_controller.text);
   }
 }
 

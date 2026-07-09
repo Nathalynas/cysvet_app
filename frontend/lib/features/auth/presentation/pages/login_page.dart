@@ -118,7 +118,9 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     final form = _buildLoginForm(context, isBusy);
 
     return Scaffold(
-      backgroundColor: isMobile ? AppTheme.primaryColor : AppTheme.backgroundColor,
+      backgroundColor: isMobile
+          ? AppTheme.primaryColor
+          : AppTheme.backgroundColor,
       body: isMobile
           ? _MobileLoginLayout(form: form)
           : _DesktopLoginLayout(form: form),
@@ -171,16 +173,6 @@ class _LoginPageState extends ConsumerState<LoginPage> {
             fillColor: Colors.white,
             borderColor: AppTheme.borderColor.withValues(alpha: 0.7),
             focusedBorderColor: AppTheme.primaryColor,
-            borderRadius: 7,
-            isDense: true,
-            contentPadding: const EdgeInsets.symmetric(
-              horizontal: 12,
-              vertical: 10,
-            ),
-            suffixIconConstraints: const BoxConstraints.tightFor(
-              width: 38,
-              height: 38,
-            ),
             suffixIcon: const Icon(
               Icons.email_outlined,
               size: 17,
@@ -199,32 +191,20 @@ class _LoginPageState extends ConsumerState<LoginPage> {
             fillColor: Colors.white,
             borderColor: AppTheme.borderColor.withValues(alpha: 0.7),
             focusedBorderColor: AppTheme.primaryColor,
-            borderRadius: 7,
-            isDense: true,
-            contentPadding: const EdgeInsets.symmetric(
-              horizontal: 12,
-              vertical: 10,
-            ),
-            suffixIconConstraints: const BoxConstraints.tightFor(
-              width: 38,
-              height: 38,
-            ),
-            suffixIcon: IconButton(
-              tooltip: _showPassword ? 'Ocultar senha' : 'Mostrar senha',
-              icon: Icon(
-                _showPassword ? Icons.visibility_off : Icons.visibility,
-                size: 17,
-                color: AppTheme.mutedTextColor,
-              ),
-              visualDensity: VisualDensity.compact,
-              padding: EdgeInsets.zero,
-              onPressed: isBusy
+            suffixIcon: GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: isBusy
                   ? null
                   : () {
                       setState(() {
                         _showPassword = !_showPassword;
                       });
                     },
+              child: Icon(
+                _showPassword ? Icons.visibility_off : Icons.visibility,
+                size: 17,
+                color: AppTheme.mutedTextColor,
+              ),
             ),
             validator: _validatePassword,
             onSubmitted: (_) => _submit(),

@@ -537,37 +537,22 @@ class _ThemeSegmentButton extends StatelessWidget {
         ? colorScheme.primary
         : colorScheme.onSurfaceVariant;
 
-    return Material(
-      color: Colors.transparent,
-      borderRadius: BorderRadius.circular(9),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(9),
-        onTap: selected ? null : onTap,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 180),
-          curve: Curves.easeOut,
-          height: 30,
-          padding: const EdgeInsets.symmetric(horizontal: 14),
-          decoration: BoxDecoration(
-            color: selected ? selectedBackground : Colors.transparent,
-            borderRadius: BorderRadius.circular(9),
-            border: selected ? Border.all(color: selectedBorder) : null,
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(icon, size: 15, color: foreground),
-              const SizedBox(width: 6),
-              Text(
-                label,
-                style: theme.textTheme.labelMedium?.copyWith(
-                  color: foreground,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-            ],
-          ),
-        ),
+    return IgnorePointer(
+      ignoring: selected,
+      child: AppButton(
+        height: 30,
+        shadow: false,
+        outlined: selected,
+        color: selected ? selectedBackground : Colors.transparent,
+        textColor: foreground,
+        borderColor: selected ? selectedBorder : Colors.transparent,
+        borderRadius: 9,
+        padding: const EdgeInsets.symmetric(horizontal: 14),
+        fontSize: theme.textTheme.labelMedium?.fontSize ?? 12,
+        fontWeight: FontWeight.w800,
+        icon: Icon(icon, size: 15),
+        text: label,
+        onPressed: onTap,
       ),
     );
   }

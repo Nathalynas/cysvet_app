@@ -150,18 +150,7 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
                                   alpha: 0.7,
                                 ),
                                 focusedBorderColor: AppTheme.primaryColor,
-                                borderRadius: 7,
-                                isDense: true,
-                                contentPadding: const EdgeInsets.symmetric(
-                                  horizontal: 12,
-                                  vertical: 10,
-                                ),
                                 validator: _validateName,
-                                suffixIconConstraints:
-                                    const BoxConstraints.tightFor(
-                                      width: 38,
-                                      height: 38,
-                                    ),
                                 suffixIcon: const Icon(
                                   Icons.person_outline,
                                   size: 17,
@@ -181,18 +170,7 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
                                   alpha: 0.7,
                                 ),
                                 focusedBorderColor: AppTheme.primaryColor,
-                                borderRadius: 7,
-                                isDense: true,
-                                contentPadding: const EdgeInsets.symmetric(
-                                  horizontal: 12,
-                                  vertical: 10,
-                                ),
                                 validator: _validateEmail,
-                                suffixIconConstraints:
-                                    const BoxConstraints.tightFor(
-                                      width: 38,
-                                      height: 38,
-                                    ),
                                 suffixIcon: const Icon(
                                   Icons.email_outlined,
                                   size: 17,
@@ -212,37 +190,22 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
                                   alpha: 0.7,
                                 ),
                                 focusedBorderColor: AppTheme.primaryColor,
-                                borderRadius: 7,
-                                isDense: true,
-                                contentPadding: const EdgeInsets.symmetric(
-                                  horizontal: 12,
-                                  vertical: 10,
-                                ),
-                                suffixIconConstraints:
-                                    const BoxConstraints.tightFor(
-                                      width: 38,
-                                      height: 38,
-                                    ),
-                                suffixIcon: IconButton(
-                                  tooltip: _showPassword
-                                      ? 'Ocultar senha'
-                                      : 'Mostrar senha',
-                                  icon: Icon(
-                                    _showPassword
-                                        ? Icons.visibility_off
-                                        : Icons.visibility,
-                                    size: 17,
-                                    color: AppTheme.mutedTextColor,
-                                  ),
-                                  visualDensity: VisualDensity.compact,
-                                  padding: EdgeInsets.zero,
-                                  onPressed: isBusy
+                                suffixIcon: GestureDetector(
+                                  behavior: HitTestBehavior.opaque,
+                                  onTap: isBusy
                                       ? null
                                       : () {
                                           setState(() {
                                             _showPassword = !_showPassword;
                                           });
                                         },
+                                  child: Icon(
+                                    _showPassword
+                                        ? Icons.visibility_off
+                                        : Icons.visibility,
+                                    size: 17,
+                                    color: AppTheme.mutedTextColor,
+                                  ),
                                 ),
                                 validator: _validatePassword,
                               ),
@@ -259,31 +222,9 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
                                   alpha: 0.7,
                                 ),
                                 focusedBorderColor: AppTheme.primaryColor,
-                                borderRadius: 7,
-                                isDense: true,
-                                contentPadding: const EdgeInsets.symmetric(
-                                  horizontal: 12,
-                                  vertical: 10,
-                                ),
-                                suffixIconConstraints:
-                                    const BoxConstraints.tightFor(
-                                      width: 38,
-                                      height: 38,
-                                    ),
-                                suffixIcon: IconButton(
-                                  tooltip: _showConfirmPassword
-                                      ? 'Ocultar senha'
-                                      : 'Mostrar senha',
-                                  icon: Icon(
-                                    _showConfirmPassword
-                                        ? Icons.visibility_off
-                                        : Icons.visibility,
-                                    size: 17,
-                                    color: AppTheme.mutedTextColor,
-                                  ),
-                                  visualDensity: VisualDensity.compact,
-                                  padding: EdgeInsets.zero,
-                                  onPressed: isBusy
+                                suffixIcon: GestureDetector(
+                                  behavior: HitTestBehavior.opaque,
+                                  onTap: isBusy
                                       ? null
                                       : () {
                                           setState(() {
@@ -291,6 +232,13 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
                                                 !_showConfirmPassword;
                                           });
                                         },
+                                  child: Icon(
+                                    _showConfirmPassword
+                                        ? Icons.visibility_off
+                                        : Icons.visibility,
+                                    size: 17,
+                                    color: AppTheme.mutedTextColor,
+                                  ),
                                 ),
                                 validator: _validateConfirmPassword,
                                 onSubmitted: (_) => _submit(),

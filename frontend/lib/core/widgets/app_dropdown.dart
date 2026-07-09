@@ -3,12 +3,13 @@ import 'package:flutter/material.dart';
 
 class _DropdownControlStyle {
   static const double height = 42;
-  static const double radius = 16;
+  static const double radius = 12;
 
   static const EdgeInsets fieldPadding = EdgeInsets.symmetric(
     horizontal: 14,
     vertical: 8,
   );
+
   static const BoxConstraints prefixIconConstraints = BoxConstraints(
     minWidth: 38,
     minHeight: height,
@@ -73,13 +74,17 @@ class _AppDropdownState<T> extends State<AppDropdown<T>> {
     for (final option in widget.options) {
       if (option.value == widget.value) return option;
     }
+
     return null;
   }
 
   List<AppDropdownOption<T>> get _filteredOptions {
     final filter = _searchFilter.trim().normalize();
+
     if (filter.isEmpty) return widget.options;
+
     final words = filter.split(' ').where((word) => word.isNotEmpty).toList();
+
     return widget.options.where((option) {
       final label = option.label.trim().normalize();
       return words.every(label.contains);
@@ -89,9 +94,12 @@ class _AppDropdownState<T> extends State<AppDropdown<T>> {
   @override
   void didUpdateWidget(covariant AppDropdown<T> oldWidget) {
     super.didUpdateWidget(oldWidget);
+
     if (_isOpen) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted && _isOpen) _overlayEntry?.markNeedsBuild();
+        if (mounted && _isOpen) {
+          _overlayEntry?.markNeedsBuild();
+        }
       });
     }
   }
@@ -108,14 +116,20 @@ class _AppDropdownState<T> extends State<AppDropdown<T>> {
     return FormField<T?>(
       initialValue: widget.value,
       validator: (value) {
-        if (widget.required && value == null) return 'Campo obrigatorio';
+        if (widget.required && value == null) {
+          return 'Campo obrigatório';
+        }
+
         return widget.validator?.call(value);
       },
       builder: (field) {
         _fieldState = field;
+
         if (field.value != widget.value) {
           WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (mounted) field.didChange(widget.value);
+            if (mounted) {
+              field.didChange(widget.value);
+            }
           });
         }
 
@@ -156,15 +170,18 @@ class _AppDropdownState<T> extends State<AppDropdown<T>> {
       _removeOverlay();
       return;
     }
+
     _showOverlay();
   }
 
   void _showOverlay() {
     final renderBox =
         _fieldKey.currentContext?.findRenderObject() as RenderBox?;
+
     if (renderBox == null) return;
 
     final size = renderBox.size;
+
     _searchFilter = '';
     _searchController.clear();
 
@@ -190,6 +207,7 @@ class _AppDropdownState<T> extends State<AppDropdown<T>> {
               child: Material(
                 color: colorScheme.surface,
                 elevation: 8,
+                shadowColor: theme.shadowColor,
                 borderRadius: BorderRadius.circular(widget.borderRadius),
                 clipBehavior: Clip.antiAlias,
                 child: ConstrainedBox(
@@ -210,18 +228,56 @@ class _AppDropdownState<T> extends State<AppDropdown<T>> {
                             maxLines: 1,
                             style: theme.textTheme.bodyMedium?.copyWith(
                               fontSize: 14,
+                              height: 1.2,
+                              color: colorScheme.onSurface,
                             ),
                             decoration: InputDecoration(
                               isDense: true,
                               hintText: 'Pesquisar',
+                              hintStyle: theme.inputDecorationTheme.hintStyle
+                                  ?.copyWith(
+                                    fontSize: 14,
+                                    height: 1.2,
+                                    color: colorScheme.onSurfaceVariant,
+                                  ),
                               contentPadding:
                                   _DropdownControlStyle.fieldPadding,
-                              prefixIcon: const Icon(Icons.search, size: 18),
+                              prefixIcon: Icon(
+                                Icons.search,
+                                size: 18,
+                                color: colorScheme.onSurfaceVariant,
+                              ),
                               prefixIconConstraints:
                                   _DropdownControlStyle.prefixIconConstraints,
+                              filled: true,
+                              fillColor: colorScheme.surface,
                               border: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(
                                   widget.borderRadius,
+                                ),
+                                borderSide: BorderSide(
+                                  color: colorScheme.outline.withValues(
+                                    alpha: 0.75,
+                                  ),
+                                ),
+                              ),
+                              enabledBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(
+                                  widget.borderRadius,
+                                ),
+                                borderSide: BorderSide(
+                                  color: colorScheme.outline.withValues(
+                                    alpha: 0.75,
+                                  ),
+                                ),
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(
+                                  widget.borderRadius,
+                                ),
+                                borderSide: BorderSide(
+                                  color: colorScheme.primary,
+                                  width: 1.2,
                                 ),
                               ),
                             ),
@@ -236,7 +292,7 @@ class _AppDropdownState<T> extends State<AppDropdown<T>> {
                             ? Padding(
                                 padding: const EdgeInsets.all(16),
                                 child: Text(
-                                  'Nenhuma opcao encontrada.',
+                                  'Nenhuma opção encontrada.',
                                   style: theme.textTheme.bodyMedium?.copyWith(
                                     color: colorScheme.onSurfaceVariant,
                                   ),
@@ -249,7 +305,8 @@ class _AppDropdownState<T> extends State<AppDropdown<T>> {
                                 itemCount: filteredOptions.length,
                                 itemBuilder: (context, index) {
                                   final option = filteredOptions[index];
-                                  final selected = option.value == widget.value;
+                                  final selected =
+                                      option.value == widget.value;
 
                                   return InkWell(
                                     onTap: () {
@@ -272,6 +329,9 @@ class _AppDropdownState<T> extends State<AppDropdown<T>> {
                                               style: theme.textTheme.bodyMedium
                                                   ?.copyWith(
                                                     fontSize: 14,
+                                                    height: 1.2,
+                                                    color:
+                                                        colorScheme.onSurface,
                                                     fontWeight: selected
                                                         ? FontWeight.w600
                                                         : FontWeight.w400,
@@ -306,11 +366,15 @@ class _AppDropdownState<T> extends State<AppDropdown<T>> {
   void _removeOverlay({bool updateState = true}) {
     _overlayEntry?.remove();
     _overlayEntry = null;
+
     if (!updateState) {
       _isOpen = false;
       return;
     }
-    if (mounted) setState(() => _isOpen = false);
+
+    if (mounted) {
+      setState(() => _isOpen = false);
+    }
   }
 }
 
@@ -342,55 +406,82 @@ class _DropdownShell<T> extends StatelessWidget {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
 
+    final borderColor = hasError
+        ? colorScheme.error
+        : isOpen
+            ? colorScheme.primary
+            : colorScheme.outline.withValues(alpha: 0.75);
+
     return CompositedTransformTarget(
       link: layerLink,
-      child: InkWell(
-        key: fieldKey,
+      child: Material(
+        color: Colors.transparent,
         borderRadius: BorderRadius.circular(borderRadius),
-        onTap: onTap,
-        child: Container(
-          height: height,
-          width: double.infinity,
-          padding: const EdgeInsets.symmetric(horizontal: 12),
-          decoration: BoxDecoration(
-            color: colorScheme.surfaceContainerHighest,
-            borderRadius: BorderRadius.circular(borderRadius),
-            border: Border.all(
-              color: hasError ? colorScheme.error : colorScheme.outline,
-            ),
-          ),
-          child: Row(
-            children: [
-              Expanded(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      labelText,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        fontSize: 11,
-                        height: 1,
-                        color: colorScheme.onSurfaceVariant,
-                      ),
-                    ),
-                    const SizedBox(height: 3),
-                    Text(
-                      selectedLabel,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: theme.textTheme.bodyMedium?.copyWith(fontSize: 14),
-                    ),
-                  ],
+        child: InkWell(
+          key: fieldKey,
+          borderRadius: BorderRadius.circular(borderRadius),
+          onTap: onTap,
+          child: Container(
+            height: height,
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 14),
+            decoration: BoxDecoration(
+              color: colorScheme.surface,
+              borderRadius: BorderRadius.circular(borderRadius),
+              border: Border.all(
+                color: borderColor,
+                width: isOpen ? 1.2 : 1,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: theme.shadowColor.withValues(alpha: 0.08),
+                  blurRadius: 10,
+                  offset: const Offset(0, 2),
                 ),
-              ),
-              Icon(
-                isOpen ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
-                size: 20,
-              ),
-            ],
+              ],
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        labelText,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          fontSize: 11,
+                          height: 1,
+                          color: isOpen
+                              ? colorScheme.primary
+                              : colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                      const SizedBox(height: 3),
+                      Text(
+                        selectedLabel,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          fontSize: 14,
+                          height: 1.2,
+                          color: colorScheme.onSurface,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Icon(
+                  isOpen ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
+                  size: 20,
+                  color: isOpen
+                      ? colorScheme.primary
+                      : colorScheme.onSurfaceVariant,
+                ),
+              ],
+            ),
           ),
         ),
       ),

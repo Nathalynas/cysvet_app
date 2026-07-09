@@ -281,9 +281,8 @@ class _AnimalsToolbarState extends State<_AnimalsToolbar> {
         final importButton = Tooltip(
           message: 'Importar CSV',
           child: AppButton(
-            outlined: true,
             onPressed: widget.onImport,
-            child: const Icon(Icons.upload_file_outlined),
+            icon: const Icon(Icons.upload_file_outlined),
           ),
         );
 

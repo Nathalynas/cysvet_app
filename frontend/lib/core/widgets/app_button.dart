@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 class _ButtonControlStyle {
   static const double height = 42;
-  static const double radius = 16;
+  static const double radius = 12;
   static const double iconWidth = height;
 
   static const EdgeInsets buttonPadding = EdgeInsets.symmetric(horizontal: 14);
@@ -31,6 +31,7 @@ class AppButton extends StatelessWidget {
     this.fontWeight = FontWeight.w600,
     this.expanded = false,
     this.child,
+    this.shadow = true,
   });
 
   final String? text;
@@ -53,74 +54,100 @@ class AppButton extends StatelessWidget {
   final FontWeight fontWeight;
   final bool expanded;
   final Widget? child;
+  final bool shadow;
+
+  bool get _isEnabled {
+    return !loading && !disabled && onPressed != null;
+  }
+
+  bool get _isIconOnly {
+    final hasText = text != null && text!.trim().isNotEmpty;
+
+    if (hasText || loading) {
+      return false;
+    }
+
+    return child != null || icon != null || trailingIcon != null;
+  }
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-    final effectiveColor = color ?? colorScheme.primary;
-    final effectiveTextColor =
-        textColor ?? (outlined ? effectiveColor : colorScheme.onPrimary);
-    final effectiveBorderColor = borderColor ?? effectiveColor;
-    final isEnabled = !loading && !disabled && onPressed != null;
-    final isIconOnly = _isIconOnly;
+    final effectiveHeight = height ?? _ButtonControlStyle.height;
+
+    final effectiveWidth = expanded
+        ? double.infinity
+        : width ?? (_isIconOnly ? _ButtonControlStyle.iconWidth : null);
 
     final button = SizedBox(
-      width: expanded
-          ? double.infinity
-          : (width ?? (isIconOnly ? _ButtonControlStyle.iconWidth : null)),
-      height: height,
+      width: effectiveWidth,
+      height: effectiveHeight,
       child: outlined
           ? OutlinedButton(
-              onPressed: isEnabled ? onPressed : null,
-              style: _buttonStyle(
-                theme: theme,
-                backgroundColor: Colors.transparent,
-                foregroundColor: effectiveTextColor,
-                borderColor: effectiveBorderColor,
-                isIconOnly: isIconOnly,
-              ),
-              child: _buildContent(effectiveTextColor),
+              onPressed: _isEnabled ? onPressed : null,
+              style: _buttonStyle(context: context, isIconOnly: _isIconOnly),
+              child: _buildContent(context),
             )
           : ElevatedButton(
-              onPressed: isEnabled ? onPressed : null,
-              style: _buttonStyle(
-                theme: theme,
-                backgroundColor: effectiveColor,
-                foregroundColor: effectiveTextColor,
-                borderColor: effectiveBorderColor,
-                isIconOnly: isIconOnly,
-              ),
-              child: _buildContent(effectiveTextColor),
+              onPressed: _isEnabled ? onPressed : null,
+              style: _buttonStyle(context: context, isIconOnly: _isIconOnly),
+              child: _buildContent(context),
             ),
     );
 
+    final buttonWithShadow = shadow
+        ? DecoratedBox(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(borderRadius),
+              boxShadow: [
+                BoxShadow(
+                  color: Theme.of(context).shadowColor.withValues(alpha: 0.08),
+                  blurRadius: 10,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: button,
+          )
+        : button;
+
     if (margin == null) {
-      return button;
+      return buttonWithShadow;
     }
 
-    return Padding(padding: margin!, child: button);
+    return Padding(padding: margin!, child: buttonWithShadow);
   }
 
   ButtonStyle _buttonStyle({
-    required ThemeData theme,
-    required Color backgroundColor,
-    required Color foregroundColor,
-    required Color borderColor,
+    required BuildContext context,
     required bool isIconOnly,
   }) {
-    final disabledBackgroundColor = theme.colorScheme.onSurface.withValues(
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
+    final effectiveColor = color ?? colorScheme.primary;
+
+    final effectiveTextColor =
+        textColor ?? (outlined ? effectiveColor : colorScheme.onPrimary);
+
+    final effectiveBorderColor = borderColor ?? effectiveColor;
+
+    final disabledBackgroundColor = colorScheme.onSurface.withValues(
       alpha: 0.12,
     );
-    final disabledForegroundColor = theme.colorScheme.onSurface.withValues(
+
+    final disabledForegroundColor = colorScheme.onSurface.withValues(
       alpha: 0.38,
     );
 
     return ButtonStyle(
-      elevation: WidgetStateProperty.all(outlined ? 0 : 1),
+      elevation: WidgetStateProperty.all(0),
+      shadowColor: WidgetStateProperty.all(Colors.transparent),
+      surfaceTintColor: WidgetStateProperty.all(Colors.transparent),
+
       minimumSize: WidgetStateProperty.all(Size.zero),
       tapTargetSize: MaterialTapTargetSize.shrinkWrap,
       visualDensity: VisualDensity.compact,
+
       mouseCursor: WidgetStateProperty.resolveWith((states) {
         if (states.contains(WidgetState.disabled)) {
           return SystemMouseCursors.basic;
@@ -128,28 +155,60 @@ class AppButton extends StatelessWidget {
 
         return SystemMouseCursors.click;
       }),
+
       backgroundColor: WidgetStateProperty.resolveWith((states) {
         if (states.contains(WidgetState.disabled)) {
-          return outlined ? Colors.transparent : disabledBackgroundColor;
+          return outlined ? effectiveColor : disabledBackgroundColor;
         }
-        return backgroundColor;
+
+        return effectiveColor;
       }),
+      
       foregroundColor: WidgetStateProperty.resolveWith((states) {
         if (states.contains(WidgetState.disabled)) {
           return disabledForegroundColor;
         }
-        return foregroundColor;
+
+        return effectiveTextColor;
       }),
+
+      overlayColor: WidgetStateProperty.resolveWith((states) {
+        if (states.contains(WidgetState.disabled)) {
+          return Colors.transparent;
+        }
+
+        if (states.contains(WidgetState.pressed)) {
+          return outlined
+              ? effectiveColor.withValues(alpha: 0.10)
+              : Colors.white.withValues(alpha: 0.14);
+        }
+
+        if (states.contains(WidgetState.hovered)) {
+          return outlined
+              ? effectiveColor.withValues(alpha: 0.05)
+              : Colors.white.withValues(alpha: 0.08);
+        }
+
+        return Colors.transparent;
+      }),
+
       side: WidgetStateProperty.resolveWith((states) {
-        final color = states.contains(WidgetState.disabled)
-            ? theme.colorScheme.outline.withValues(alpha: 0.45)
-            : borderColor;
-        return outlined ? BorderSide(color: color) : BorderSide.none;
+        final effectiveSideColor = states.contains(WidgetState.disabled)
+            ? colorScheme.outline.withValues(alpha: 0.45)
+            : effectiveBorderColor;
+
+        if (outlined) {
+          return BorderSide(color: effectiveSideColor, width: 1);
+        }
+
+        return BorderSide.none;
       }),
+
       padding: WidgetStateProperty.all(
         padding ??
             (isIconOnly ? EdgeInsets.zero : _ButtonControlStyle.buttonPadding),
       ),
+
       shape: WidgetStateProperty.all(
         RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(borderRadius),
@@ -158,25 +217,42 @@ class AppButton extends StatelessWidget {
     );
   }
 
-  Widget _buildContent(Color indicatorColor) {
+  Widget _buildContent(BuildContext context) {
+    final contentColor = _contentColor(context);
+
     if (loading) {
       return SizedBox(
-        width: 20,
-        height: 20,
+        width: 18,
+        height: 18,
         child: CircularProgressIndicator(
           strokeWidth: 2,
-          valueColor: AlwaysStoppedAnimation<Color>(indicatorColor),
+          valueColor: AlwaysStoppedAnimation<Color>(contentColor),
         ),
       );
     }
 
     if (child != null) {
-      return child!;
+      return IconTheme(
+        data: IconThemeData(color: contentColor, size: 18),
+        child: DefaultTextStyle(
+          style: TextStyle(
+            color: contentColor,
+            fontSize: fontSize,
+            fontWeight: fontWeight,
+            height: 1.2,
+          ),
+          child: child!,
+        ),
+      );
     }
 
     final label = upperCase ? (text ?? '').toUpperCase() : (text ?? '');
+
     if (label.isEmpty) {
-      return icon ?? trailingIcon ?? const SizedBox.shrink();
+      return IconTheme(
+        data: IconThemeData(color: contentColor, size: 18),
+        child: icon ?? trailingIcon ?? const SizedBox.shrink(),
+      );
     }
 
     final textWidget = Text(
@@ -184,27 +260,47 @@ class AppButton extends StatelessWidget {
       maxLines: 1,
       overflow: TextOverflow.ellipsis,
       textAlign: TextAlign.center,
-      style: TextStyle(fontSize: fontSize, fontWeight: fontWeight),
+      style: TextStyle(
+        color: contentColor,
+        fontSize: fontSize,
+        fontWeight: fontWeight,
+        height: 1.2,
+      ),
     );
 
     if (icon == null && trailingIcon == null) {
       return textWidget;
     }
 
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        if (icon != null) ...[icon!, const SizedBox(width: 8)],
-        textWidget,
-        if (trailingIcon != null) ...[const SizedBox(width: 8), trailingIcon!],
-      ],
+    return IconTheme(
+      data: IconThemeData(color: contentColor, size: 18),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          if (icon != null) ...[icon!, const SizedBox(width: 8)],
+          Flexible(child: textWidget),
+          if (trailingIcon != null) ...[
+            const SizedBox(width: 8),
+            trailingIcon!,
+          ],
+        ],
+      ),
     );
   }
 
-  bool get _isIconOnly {
-    final hasText = text != null && text!.trim().isNotEmpty;
-    if (hasText || loading) return false;
-    return child != null || icon != null || trailingIcon != null;
+  Color _contentColor(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    final effectiveColor = color ?? colorScheme.primary;
+
+    final effectiveTextColor =
+        textColor ?? (outlined ? effectiveColor : colorScheme.onPrimary);
+
+    final disabledForegroundColor = colorScheme.onSurface.withValues(
+      alpha: 0.38,
+    );
+
+    return _isEnabled ? effectiveTextColor : disabledForegroundColor;
   }
 }
