@@ -68,7 +68,11 @@ class AnimalsPage extends ConsumerWidget {
             padding: EdgeInsets.zero,
             physics: const AlwaysScrollableScrollPhysics(),
             children: [
-              const PageTitle(title: 'Animais'),
+              const PageTitle(
+                title: 'Animais',
+                subtitle:
+                    'Consulte e organize os animais vinculados às propriedades.',
+              ),
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
                 child: Column(

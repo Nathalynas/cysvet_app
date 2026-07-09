@@ -421,14 +421,22 @@ class _ShellContent extends StatelessWidget {
 }
 
 class PageTitle extends StatelessWidget {
-  const PageTitle({super.key, required this.title, this.backRoute});
+  const PageTitle({
+    super.key,
+    required this.title,
+    this.subtitle,
+    this.backRoute,
+  });
 
   final String title;
+  final String? subtitle;
   final String? backRoute;
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
     final isMobile = MediaQuery.of(context).size.width < MOBILE_WIDTH;
+    final pageSubtitle = subtitle;
 
     return Container(
       width: double.infinity,
@@ -449,8 +457,8 @@ class PageTitle extends StatelessWidget {
                 height: 40,
                 padding: EdgeInsets.zero,
                 borderRadius: 12,
-                color: Theme.of(context).colorScheme.primary,
-                textColor: Theme.of(context).colorScheme.primary,
+                color: colorScheme.primary,
+                textColor: colorScheme.primary,
                 borderColor: Colors.transparent,
                 onPressed: () => context.go(backRoute!),
                 child: const Icon(Icons.arrow_back),
@@ -459,15 +467,34 @@ class PageTitle extends StatelessWidget {
             const SizedBox(width: 12),
           ],
           Expanded(
-            child: Text(
-              title,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                color: Theme.of(context).colorScheme.onSurface,
-                fontWeight: FontWeight.w800,
-                fontSize: isMobile ? 21 : 22,
-              ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: colorScheme.onSurface,
+                    fontWeight: FontWeight.w800,
+                    fontSize: isMobile ? 21 : 22,
+                  ),
+                ),
+                if (pageSubtitle != null && pageSubtitle.isNotEmpty) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    pageSubtitle,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: colorScheme.onSurfaceVariant,
+                      fontWeight: FontWeight.w500,
+                      fontSize: isMobile ? 13 : 14,
+                    ),
+                  ),
+                ],
+              ],
             ),
           ),
         ],

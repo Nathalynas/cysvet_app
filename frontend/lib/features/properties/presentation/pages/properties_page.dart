@@ -101,7 +101,11 @@ class PropertiesPage extends ConsumerWidget {
             padding: EdgeInsets.zero,
             physics: const AlwaysScrollableScrollPhysics(),
             children: [
-              const PageTitle(title: 'Propriedades'),
+              const PageTitle(
+                title: 'Propriedades',
+                subtitle:
+                    'Gerencie as fazendas atendidas e suas informações cadastrais.',
+              ),
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
                 child: Column(

@@ -60,7 +60,11 @@ class VisitsPage extends ConsumerWidget {
             padding: EdgeInsets.zero,
             physics: const AlwaysScrollableScrollPhysics(),
             children: [
-              const PageTitle(title: 'Visitas'),
+              const PageTitle(
+                title: 'Visitas',
+                subtitle:
+                    'Registre atendimentos, acompanhe visitas e gere relatórios técnicos.',
+              ),
               Padding(
                 padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
                 child: Column(

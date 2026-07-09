@@ -75,7 +75,11 @@ class _ConfiguracoesPageState extends ConsumerState<ConfiguracoesPage> {
         child: ListView(
           padding: EdgeInsets.zero,
           children: [
-            const PageTitle(title: 'Configurações'),
+            const PageTitle(
+              title: 'Configurações',
+              subtitle:
+                  'Ajuste preferências, dados do usuário e informações da empresa.',
+            ),
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 8, 20, 20),
               child: Column(

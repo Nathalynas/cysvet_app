@@ -44,7 +44,10 @@ class UsuariosPage extends ConsumerWidget {
             padding: EdgeInsets.zero,
             physics: const AlwaysScrollableScrollPhysics(),
             children: [
-              const PageTitle(title: 'Usuários'),
+              const PageTitle(
+                title: 'Usuários',
+                subtitle: 'Administre os usuários com acesso ao sistema.',
+              ),
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
                 child: Column(

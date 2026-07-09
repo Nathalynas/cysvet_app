@@ -148,7 +148,11 @@ class DashboardPage extends ConsumerWidget {
             padding: EdgeInsets.zero,
             physics: const AlwaysScrollableScrollPhysics(),
             children: [
-              const PageTitle(title: 'Dashboard'),
+              const PageTitle(
+                title: 'Dashboard',
+                subtitle:
+                    'Acompanhe os principais indicadores e atividades do rebanho.',
+              ),
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
                 child: Column(
