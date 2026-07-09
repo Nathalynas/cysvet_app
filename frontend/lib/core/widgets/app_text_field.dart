@@ -239,9 +239,9 @@ class _AppTextFieldState extends State<AppTextField> {
         border: Border.all(color: borderColor, width: _focused ? 1.2 : 1),
         boxShadow: [
           BoxShadow(
-            color: theme.shadowColor.withValues(alpha: 0.08),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 18,
+            offset: const Offset(0, 4),
           ),
         ],
       ),
@@ -334,54 +334,50 @@ class _AppTextFieldState extends State<AppTextField> {
   }
 
   Widget _buildMultiLineContent(
-  BuildContext context,
-  FormFieldState<String> field,
-) {
-  final label = _labelText;
+    BuildContext context,
+    FormFieldState<String> field,
+  ) {
+    final label = _labelText;
 
-  if (label == null) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 10),
-      child: _buildTextField(context, field),
+    if (label == null) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 10),
+        child: _buildTextField(context, field),
+      );
+    }
+
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        AnimatedPositioned(
+          duration: const Duration(milliseconds: 140),
+          curve: Curves.easeOut,
+          left: 0,
+          right: 0,
+          top: _shouldFloatLabel ? -6 : 12,
+          child: IgnorePointer(
+            child: _shouldFloatLabel
+                ? _buildFloatingLabelOnBorder(context, label)
+                : Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      label,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      textAlign: TextAlign.left,
+                      style: _labelStyle(context, floating: false),
+                    ),
+                  ),
+          ),
+        ),
+        Positioned.fill(
+          top: _shouldFloatLabel ? 18 : 8,
+          bottom: 8,
+          child: _buildTextField(context, field, hideHint: !_shouldFloatLabel),
+        ),
+      ],
     );
   }
-
-  return Stack(
-    clipBehavior: Clip.none,
-    children: [
-      AnimatedPositioned(
-        duration: const Duration(milliseconds: 140),
-        curve: Curves.easeOut,
-        left: 0,
-        right: 0,
-        top: _shouldFloatLabel ? -6 : 12,
-        child: IgnorePointer(
-          child: _shouldFloatLabel
-              ? _buildFloatingLabelOnBorder(context, label)
-              : Align(
-                  alignment: Alignment.centerLeft,
-                  child: Text(
-                    label,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    textAlign: TextAlign.left,
-                    style: _labelStyle(context, floating: false),
-                  ),
-                ),
-        ),
-      ),
-      Positioned.fill(
-        top: _shouldFloatLabel ? 18 : 8,
-        bottom: 8,
-        child: _buildTextField(
-          context,
-          field,
-          hideHint: !_shouldFloatLabel,
-        ),
-      ),
-    ],
-  );
-}
 
   TextStyle _labelStyle(BuildContext context, {required bool floating}) {
     final theme = Theme.of(context);

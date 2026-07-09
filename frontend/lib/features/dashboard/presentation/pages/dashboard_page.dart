@@ -20,6 +20,7 @@ import '../../../animals/application/animals_provider.dart';
 import '../../../animals/data/animals_repository.dart';
 import '../../../animals/domain/animal_summary_model.dart';
 import '../../../auth/application/auth_state.dart';
+import '../../../auth/domain/auth_session_model.dart';
 import '../../../indicators/domain/indicador_reprodutivo_calculator.dart';
 import '../../../properties/application/properties_provider.dart';
 import '../../../properties/domain/property_summary_model.dart';
@@ -101,7 +102,7 @@ enum DashboardPeriodFilter {
 
 class DashboardPeriodFilterNotifier extends Notifier<DashboardPeriodFilter> {
   @override
-  DashboardPeriodFilter build() => DashboardPeriodFilter.currentYear;
+  DashboardPeriodFilter build() => DashboardPeriodFilter.last30;
 
   void set(DashboardPeriodFilter? value) {
     if (value == null) return;
@@ -224,25 +225,32 @@ class _DashboardToolbar extends StatelessWidget {
     return LayoutBuilder(
       builder: (context, constraints) {
         final stacked = constraints.maxWidth < 720;
-        final propertyFilter = PropertyFilterCard(
+
+        final propertyFilter = PropertySegmentedFilter(
           properties: properties,
           selectedPropertyId: selectedPropertyId,
-          labelText: 'Propriedade/fazenda',
-          allPropertiesText: 'Visão geral da empresa',
+          generalText: 'Geral',
+          propertyText: 'Por propriedade',
           onChanged: onPropertyChanged,
         );
+
         final periodFilter = AppDropdown<DashboardPeriodFilter>(
           value: period,
           labelText: 'Período',
           onChanged: onPeriodChanged,
           options: DashboardPeriodFilter.values
-              .map((item) => AppDropdownOption(label: item.label, value: item))
+              .map(
+                (item) => AppDropdownOption<DashboardPeriodFilter>(
+                  label: item.label,
+                  value: item,
+                ),
+              )
               .toList(growable: false),
         );
 
         if (stacked) {
           return Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               propertyFilter,
               const SizedBox(height: 10),
@@ -251,12 +259,17 @@ class _DashboardToolbar extends StatelessWidget {
           );
         }
 
-        return Row(
-          children: [
-            Expanded(child: propertyFilter),
-            const SizedBox(width: 12),
-            SizedBox(width: 230, child: periodFilter),
-          ],
+        return Align(
+          alignment: Alignment.centerRight,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              propertyFilter,
+              const SizedBox(width: 12),
+              SizedBox(width: 230, child: periodFilter),
+            ],
+          ),
         );
       },
     );
@@ -342,61 +355,192 @@ class _DashboardContent extends StatelessWidget {
   }
 }
 
-class _DashboardHeader extends StatelessWidget {
+class _DashboardHeader extends ConsumerWidget {
   const _DashboardHeader({required this.insights});
 
   final _DashboardInsights insights;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     final property = insights.selectedProperty;
+    final isMobile = MediaQuery.sizeOf(context).width < MOBILE_WIDTH;
+
+    final rawCompanyName = ref
+        .watch(authSessionProvider)
+        ?.activeCompany
+        ?.name
+        .trim();
+    final companyName = rawCompanyName == null || rawCompanyName.isEmpty
+        ? 'Empresa não informada'
+        : rawCompanyName;
 
     return AppCard(
-      borderRadius: 16,
-      padding: const EdgeInsets.all(18),
+      borderRadius: 20,
+      padding: EdgeInsets.zero,
       shadow: false,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            property?.nome ?? 'Gestão reprodutiva da empresa',
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: theme.textTheme.titleLarge?.copyWith(
-              color: colorScheme.onSurface,
-              fontWeight: FontWeight.w900,
-              height: 1.12,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(20),
+        child: Stack(
+          children: [
+            Positioned.fill(
+              child: Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.centerLeft,
+                    end: Alignment.centerRight,
+                    colors: [
+                      colorScheme.primary,
+                      colorScheme.primary.withValues(alpha: 0.92),
+                      colorScheme.primary.withValues(alpha: 0.78),
+                    ],
+                  ),
+                ),
+              ),
             ),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            property == null
-                ? '${insights.period.label} - ${formatDate(insights.now)}'
-                : 'Relatório da fazenda - ${formatDate(insights.now)} - ${insights.period.label}',
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: colorScheme.onSurfaceVariant,
-              fontWeight: FontWeight.w600,
+
+            Positioned.fill(
+              child: Align(
+                alignment: Alignment.centerRight,
+                child: FractionallySizedBox(
+                  widthFactor: isMobile ? 0.62 : 0.52,
+                  heightFactor: 1,
+                  child: ShaderMask(
+                    blendMode: BlendMode.dstIn,
+                    shaderCallback: (bounds) {
+                      return const LinearGradient(
+                        begin: Alignment.centerLeft,
+                        end: Alignment.centerRight,
+                        stops: [0.0, 0.22, 1.0],
+                        colors: [
+                          Colors.transparent,
+                          Colors.black87,
+                          Colors.black,
+                        ],
+                      ).createShader(bounds);
+                    },
+                    child: Image.asset(
+                      'assets/images/cow2.jfif',
+                      fit: BoxFit.cover,
+                      alignment: Alignment.centerRight,
+                    ),
+                  ),
+                ),
+              ),
             ),
-          ),
-          if (property != null) ...[
-            const SizedBox(height: 6),
-            Text(
-              [
-                if (property.nomeProprietario.trim().isNotEmpty)
-                  'Responsável: ${property.nomeProprietario.trim()}',
-                if (property.localizacao.trim().isNotEmpty)
-                  property.localizacao.trim(),
-              ].join(' - '),
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: colorScheme.onSurfaceVariant,
+
+            Positioned.fill(
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.centerLeft,
+                    end: Alignment.centerRight,
+                    stops: const [0.0, 0.48, 1.0],
+                    colors: [
+                      colorScheme.primary.withValues(alpha: 0.96),
+                      colorScheme.primary.withValues(alpha: 0.70),
+                      colorScheme.primary.withValues(alpha: 0.08),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+
+            Padding(
+              padding: EdgeInsets.fromLTRB(
+                isMobile ? 18 : 22,
+                isMobile ? 18 : 22,
+                isMobile ? 18 : 280,
+                isMobile ? 18 : 22,
+              ),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 680),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      property?.nome ?? companyName,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.headlineSmall?.copyWith(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w900,
+                        height: 1.08,
+                      ),
+                    ),
+
+                    if (property != null) ...[
+                      const SizedBox(height: 6),
+                      Wrap(
+                        spacing: 18,
+                        runSpacing: 4,
+                        crossAxisAlignment: WrapCrossAlignment.center,
+                        children: [
+                          if (property.nomeProprietario.trim().isNotEmpty)
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Icons.person_outline_rounded,
+                                  size: 16,
+                                  color: Colors.white.withValues(alpha: 0.88),
+                                ),
+                                const SizedBox(width: 5),
+                                Text(
+                                  property.nomeProprietario.trim(),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: theme.textTheme.bodyMedium?.copyWith(
+                                    color: Colors.white.withValues(alpha: 0.88),
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                              ],
+                            ),
+
+                          if (property.localizacao.trim().isNotEmpty)
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Icons.location_on_outlined,
+                                  size: 16,
+                                  color: Colors.white.withValues(alpha: 0.88),
+                                ),
+                                const SizedBox(width: 5),
+                                Text(
+                                  property.localizacao.trim(),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: theme.textTheme.bodyMedium?.copyWith(
+                                    color: Colors.white.withValues(alpha: 0.88),
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                              ],
+                            ),
+                        ],
+                      ),
+                    ],
+
+                    const SizedBox(height: 6),
+
+                    Text(
+                      property == null
+                          ? '${insights.period.label} - ${formatDate(insights.now)}'
+                          : 'Relatório da fazenda - ${formatDate(insights.now)} - ${insights.period.label}',
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: Colors.white.withValues(alpha: 0.88),
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ],
-        ],
+        ),
       ),
     );
   }

@@ -477,45 +477,6 @@ class _AppearanceCard extends ConsumerWidget {
   }
 }
 
-class _ThemeSegmentedSelector extends StatelessWidget {
-  const _ThemeSegmentedSelector({required this.value, required this.onChanged});
-
-  final ThemeMode value;
-  final ValueChanged<ThemeMode> onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-
-    return Container(
-      height: 38,
-      padding: const EdgeInsets.all(4),
-      decoration: BoxDecoration(
-        color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.70),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: colorScheme.outline.withValues(alpha: 0.14)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          _ThemeSegmentButton(
-            label: 'Claro',
-            icon: Icons.wb_sunny_outlined,
-            selected: value == ThemeMode.light,
-            onTap: () => onChanged(ThemeMode.light),
-          ),
-          _ThemeSegmentButton(
-            label: 'Escuro',
-            icon: Icons.dark_mode_outlined,
-            selected: value == ThemeMode.dark,
-            onTap: () => onChanged(ThemeMode.dark),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 class _ThemeSegmentButton extends StatelessWidget {
   const _ThemeSegmentButton({
     required this.label,
@@ -534,29 +495,63 @@ class _ThemeSegmentButton extends StatelessWidget {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
 
-    final selectedBackground = colorScheme.surface;
-    final selectedBorder = colorScheme.outline.withValues(alpha: 0.16);
-
-    final foreground = selected
-        ? colorScheme.primary
-        : colorScheme.onSurfaceVariant;
-
     return IgnorePointer(
       ignoring: selected,
       child: AppButton(
         height: 30,
         shadow: false,
-        outlined: selected,
-        color: selected ? selectedBackground : Colors.transparent,
-        textColor: foreground,
-        borderColor: selected ? selectedBorder : Colors.transparent,
+        outlined: false,
+        color: selected ? colorScheme.secondary : Colors.transparent,
+        textColor: selected
+            ? colorScheme.onSecondary
+            : colorScheme.onSurfaceVariant,
+        borderColor: Colors.transparent,
         borderRadius: 9,
         padding: const EdgeInsets.symmetric(horizontal: 14),
         fontSize: theme.textTheme.labelMedium?.fontSize ?? 12,
-        fontWeight: FontWeight.w800,
+        fontWeight: FontWeight.w700,
         icon: Icon(icon, size: 15),
         text: label,
         onPressed: onTap,
+      ),
+    );
+  }
+}
+
+class _ThemeSegmentedSelector extends StatelessWidget {
+  const _ThemeSegmentedSelector({
+    required this.value,
+    required this.onChanged,
+  });
+
+  final ThemeMode value;
+  final ValueChanged<ThemeMode> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return AppCard(
+      padding: const EdgeInsets.all(4),
+      borderRadius: 13,
+      shadow: false,
+      child: SizedBox(
+        height: 30,
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _ThemeSegmentButton(
+              label: 'Claro',
+              icon: Icons.wb_sunny_outlined,
+              selected: value == ThemeMode.light,
+              onTap: () => onChanged(ThemeMode.light),
+            ),
+            _ThemeSegmentButton(
+              label: 'Escuro',
+              icon: Icons.dark_mode_outlined,
+              selected: value == ThemeMode.dark,
+              onTap: () => onChanged(ThemeMode.dark),
+            ),
+          ],
+        ),
       ),
     );
   }
