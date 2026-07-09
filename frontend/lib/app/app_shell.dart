@@ -1082,28 +1082,21 @@ class _UserAvatarMenu extends StatelessWidget {
             ],
           ),
         ),
-        const PopupMenuDivider(indent: 16, endIndent: 16),
+        const PopupMenuItem<String>(
+          enabled: false,
+          height: 12,
+          child: SizedBox.shrink(),
+        ),
         const PopupMenuItem<String>(
           value: 'profile',
           child: Row(
             children: [
               Icon(Icons.person_outline, color: Colors.grey),
               SizedBox(width: 12),
-              Text('Dados do usuário'),
+              Text('Meu Perfil'),
             ],
           ),
         ),
-        const PopupMenuItem<String>(
-          value: 'company',
-          child: Row(
-            children: [
-              Icon(Icons.work_outline, color: Colors.grey),
-              SizedBox(width: 12),
-              Text('Dados da Conta'),
-            ],
-          ),
-        ),
-        const PopupMenuDivider(indent: 16, endIndent: 16),
         const PopupMenuItem<String>(
           value: 'logout',
           child: Row(
