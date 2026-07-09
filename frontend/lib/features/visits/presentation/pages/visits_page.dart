@@ -66,7 +66,7 @@ class VisitsPage extends ConsumerWidget {
                     'Registre atendimentos, acompanhe visitas e gere relatórios técnicos.',
               ),
               Padding(
-                padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
+                padding: PageTitle.contentPadding(context),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [

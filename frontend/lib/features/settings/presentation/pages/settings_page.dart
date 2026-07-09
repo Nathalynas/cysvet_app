@@ -81,7 +81,7 @@ class _ConfiguracoesPageState extends ConsumerState<ConfiguracoesPage> {
                   'Ajuste preferências, dados do usuário e informações da empresa.',
             ),
             Padding(
-              padding: const EdgeInsets.fromLTRB(20, 8, 20, 20),
+              padding: PageTitle.contentPadding(context),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [

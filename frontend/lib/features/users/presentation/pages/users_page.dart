@@ -49,7 +49,7 @@ class UsuariosPage extends ConsumerWidget {
                 subtitle: 'Administre os usuários com acesso ao sistema.',
               ),
               Padding(
-                padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+                padding: PageTitle.contentPadding(context),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [

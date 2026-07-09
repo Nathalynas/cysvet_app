@@ -154,7 +154,7 @@ class DashboardPage extends ConsumerWidget {
                     'Acompanhe os principais indicadores e atividades do rebanho.',
               ),
               Padding(
-                padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+                padding: PageTitle.contentPadding(context),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [

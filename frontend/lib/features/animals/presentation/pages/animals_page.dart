@@ -74,7 +74,7 @@ class AnimalsPage extends ConsumerWidget {
                     'Consulte e organize os animais vinculados às propriedades.',
               ),
               Padding(
-                padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+                padding: PageTitle.contentPadding(context),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [

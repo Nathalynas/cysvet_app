@@ -432,18 +432,39 @@ class PageTitle extends StatelessWidget {
   final String? subtitle;
   final String? backRoute;
 
+  static const double _mobileHorizontalPadding = 16;
+  static const double _desktopHorizontalPadding = 30;
+  static const double _contentTopPadding = 8;
+  static const double _contentBottomPadding = 16;
+
+  static double horizontalPadding(BuildContext context) {
+    final isMobile = MediaQuery.of(context).size.width < MOBILE_WIDTH;
+    return isMobile ? _mobileHorizontalPadding : _desktopHorizontalPadding;
+  }
+
+  static EdgeInsets contentPadding(BuildContext context) {
+    final horizontal = horizontalPadding(context);
+    return EdgeInsets.fromLTRB(
+      horizontal,
+      _contentTopPadding,
+      horizontal,
+      _contentBottomPadding,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     final isMobile = MediaQuery.of(context).size.width < MOBILE_WIDTH;
+    final horizontal = PageTitle.horizontalPadding(context);
     final pageSubtitle = subtitle;
 
     return Container(
       width: double.infinity,
       padding: EdgeInsets.fromLTRB(
-        isMobile ? 16 : 30,
+        horizontal,
         isMobile ? 16 : 24,
-        isMobile ? 16 : 30,
+        horizontal,
         isMobile ? 10 : 12,
       ),
       child: Row(
