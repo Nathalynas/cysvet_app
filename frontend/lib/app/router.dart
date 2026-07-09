@@ -8,6 +8,7 @@ import '../features/auth/presentation/pages/login_page.dart';
 import '../features/auth/presentation/pages/register_page.dart';
 import '../features/settings/presentation/pages/settings_page.dart';
 import '../features/dashboard/presentation/pages/dashboard_page.dart';
+import '../features/properties/presentation/pages/property_details_page.dart';
 import '../features/properties/presentation/pages/properties_page.dart';
 import '../features/splash/presentation/pages/splash_page.dart';
 import '../features/users/presentation/pages/users_page.dart';
@@ -76,6 +77,23 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             path: '/propriedades',
             pageBuilder: (context, state) =>
                 _buildShellChildPage(state, const PropertiesPage()),
+          ),
+          GoRoute(
+            path: '/propriedades/:propertyId',
+            pageBuilder: (context, state) {
+              return _buildShellChildPage(
+                state,
+                PropertyDetailsPage(
+                  propertyId:
+                      int.tryParse(state.pathParameters['propertyId'] ?? '') ??
+                      0,
+                  initialTab: propertyTabFromQuery(
+                    state.uri.queryParameters['aba'] ??
+                        state.uri.queryParameters['tab'],
+                  ),
+                ),
+              );
+            },
           ),
           GoRoute(
             path: '/animais',
