@@ -158,12 +158,12 @@ class AppButton extends StatelessWidget {
 
       backgroundColor: WidgetStateProperty.resolveWith((states) {
         if (states.contains(WidgetState.disabled)) {
-          return outlined ? effectiveColor : disabledBackgroundColor;
+          return outlined ? Colors.transparent : disabledBackgroundColor;
         }
 
-        return effectiveColor;
+        return outlined ? Colors.transparent : effectiveColor;
       }),
-      
+
       foregroundColor: WidgetStateProperty.resolveWith((states) {
         if (states.contains(WidgetState.disabled)) {
           return disabledForegroundColor;
