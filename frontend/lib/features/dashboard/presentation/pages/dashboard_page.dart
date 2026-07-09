@@ -321,7 +321,7 @@ class _DashboardContent extends StatelessWidget {
       children: [
         _DashboardHeader(insights: insights),
         const SizedBox(height: 14),
-        _MetricGrid(items: insights.mainMetrics),
+        _TopDashboardSection(insights: insights),
         if (relatedData.isLoading && data == null) ...[
           const SizedBox(height: 16),
           const LoadingState(message: 'Carregando animais e visitas...'),
@@ -335,11 +335,6 @@ class _DashboardContent extends StatelessWidget {
             showProperty: !isPropertyView,
           ),
           const SizedBox(height: 22),
-          _VisitHistorySection(
-            rows: insights.visitHistoryRows,
-            showProperty: !isPropertyView,
-          ),
-          const SizedBox(height: 22),
           _ChartsSection(insights: insights),
           const SizedBox(height: 22),
           _MonthlyCalendarSection(rows: insights.monthlySchedule),
@@ -349,6 +344,11 @@ class _DashboardContent extends StatelessWidget {
             const SizedBox(height: 22),
             _VisitObservationsSection(items: insights.observations),
           ],
+          const SizedBox(height: 22),
+          _VisitHistorySection(
+            rows: insights.visitHistoryRows,
+            showProperty: !isPropertyView,
+          ),
         ],
       ],
     );
@@ -546,113 +546,239 @@ class _DashboardHeader extends ConsumerWidget {
   }
 }
 
-class _MetricGrid extends StatelessWidget {
-  const _MetricGrid({required this.items});
+class _TopDashboardSection extends StatelessWidget {
+  const _TopDashboardSection({required this.insights});
 
-  final List<_MetricItem> items;
+  final _DashboardInsights insights;
 
   @override
   Widget build(BuildContext context) {
     final isMobile = MediaQuery.sizeOf(context).width < MOBILE_WIDTH;
 
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        const spacing = 12.0;
+    if (isMobile) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _MetricSummaryCard(items: insights.mainMetrics),
+          const SizedBox(height: 12),
+          _RateLineChart(items: insights.rateItems),
+        ],
+      );
+    }
 
-        if (!isMobile) {
-          return Wrap(
-            spacing: spacing,
-            runSpacing: spacing,
-            children: [for (final item in items) _MetricCard(item: item)],
-          );
-        }
+    // Nao use IntrinsicHeight aqui.
+    // O grafico usa LayoutBuilder internamente, e LayoutBuilder nao pode ser
+    // medido por dimensoes intrinsecas. Por isso, no desktop a altura e
+    // controlada pelo container pai, mantendo os cards alinhados sem quebrar o
+    // layout do Flutter.
+    final sectionHeight = math.max(
+      348.0,
+      insights.mainMetrics.length * 44.0 + 96.0,
+    );
 
-        const itemsPerRow = 3;
-        final rows = <Widget>[];
-
-        for (
-          var rowStart = 0;
-          rowStart < items.length;
-          rowStart += itemsPerRow
-        ) {
-          if (rows.isNotEmpty) {
-            rows.add(const SizedBox(height: spacing));
-          }
-
-          rows.add(
-            IntrinsicHeight(
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  for (var column = 0; column < itemsPerRow; column++) ...[
-                    if (column > 0) const SizedBox(width: spacing),
-                    Expanded(
-                      child: rowStart + column < items.length
-                          ? _MetricCard(
-                              item: items[rowStart + column],
-                              allowTallContent: true,
-                            )
-                          : const SizedBox.shrink(),
-                    ),
-                  ],
-                ],
-              ),
-            ),
-          );
-        }
-
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: rows,
-        );
-      },
+    return SizedBox(
+      height: sectionHeight,
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          SizedBox(
+            width: 360,
+            child: _MetricSummaryCard(items: insights.mainMetrics),
+          ),
+          const SizedBox(width: 12),
+          Expanded(child: _RateLineChart(items: insights.rateItems)),
+        ],
+      ),
     );
   }
 }
 
-class _MetricCard extends StatelessWidget {
-  const _MetricCard({required this.item, this.allowTallContent = false});
+class _MetricSummaryCard extends StatelessWidget {
+  const _MetricSummaryCard({required this.items});
 
-  final _MetricItem item;
-  final bool allowTallContent;
+  final List<_MetricItem> items;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
+    final isMobile = MediaQuery.sizeOf(context).width < MOBILE_WIDTH;
+
+    final header = [
+      Text(
+        'Resumo do Rebanho',
+        style: theme.textTheme.titleSmall?.copyWith(
+          color: colorScheme.onSurface,
+          fontWeight: FontWeight.w900,
+        ),
+      ),
+      const SizedBox(height: 4),
+      Text(
+        'Principais totais acompanhados no filtro atual.',
+        style: theme.textTheme.bodySmall?.copyWith(
+          color: colorScheme.onSurfaceVariant,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+    ];
+
+    final compactRows = <Widget>[
+      for (var index = 0; index < items.length; index++) ...[
+        if (index > 0)
+          Divider(
+            height: 12,
+            color: colorScheme.outline.withValues(alpha: 0.18),
+          ),
+        _MetricSummaryRow(item: items[index]),
+      ],
+    ];
+
+    final expandedRows = Column(
+      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        for (final item in items) _MetricSummaryRow(item: item),
+      ],
+    );
 
     return AppCard(
-      borderRadius: 14,
-      padding: const EdgeInsets.all(16),
+      borderRadius: 16,
+      padding: const EdgeInsets.all(14),
       child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text(
-            item.label,
-            maxLines: allowTallContent ? 3 : 2,
-            overflow: TextOverflow.ellipsis,
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: colorScheme.onSurfaceVariant,
-              fontWeight: FontWeight.w700,
-              height: 1.15,
-            ),
-          ),
-          const SizedBox(height: 10),
-          Text(
-            item.value,
-            maxLines: allowTallContent ? 2 : 1,
-            overflow: TextOverflow.ellipsis,
-            style: theme.textTheme.headlineSmall?.copyWith(
-              color: item.color ?? colorScheme.primary,
-              fontWeight: FontWeight.w900,
-              height: 1,
-            ),
-          ),
+          ...header,
+          SizedBox(height: isMobile ? 10 : 6),
+          if (isMobile) ...compactRows else Expanded(child: expandedRows),
         ],
       ),
     );
   }
+}
+
+class _MetricSummaryRow extends StatelessWidget {
+  const _MetricSummaryRow({required this.item});
+
+  final _MetricItem item;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final color = item.color ?? colorScheme.primary;
+
+    return Row(
+      children: [
+        Container(
+          width: 30,
+          height: 30,
+          decoration: BoxDecoration(
+            color: color.withValues(alpha: 0.18),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Icon(_metricIcon(item.label), size: 16, color: color),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Text(
+            item.label,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: colorScheme.onSurfaceVariant,
+              fontWeight: FontWeight.w800,
+              height: 1.15,
+            ),
+          ),
+        ),
+        const SizedBox(width: 12),
+        Text(
+          item.value,
+          style: theme.textTheme.titleMedium?.copyWith(
+            color: color,
+            fontWeight: FontWeight.w900,
+            height: 1,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _EqualHeightCardGrid extends StatelessWidget {
+  const _EqualHeightCardGrid({
+    required this.children,
+    required this.columns,
+    this.desktopRowHeight,
+  });
+
+  static const double _spacing = 12;
+
+  final List<Widget> children;
+  final int columns;
+  final double? desktopRowHeight;
+
+  @override
+  Widget build(BuildContext context) {
+    if (children.isEmpty) return const SizedBox.shrink();
+
+    if (columns <= 1 || MediaQuery.sizeOf(context).width < MOBILE_WIDTH) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          for (var index = 0; index < children.length; index++) ...[
+            if (index > 0) SizedBox(height: _spacing),
+            children[index],
+          ],
+        ],
+      );
+    }
+
+    final rows = <Widget>[];
+
+    for (var rowStart = 0; rowStart < children.length; rowStart += columns) {
+      if (rows.isNotEmpty) {
+        rows.add(SizedBox(height: _spacing));
+      }
+
+      final row = Row(
+        crossAxisAlignment: desktopRowHeight == null
+            ? CrossAxisAlignment.start
+            : CrossAxisAlignment.stretch,
+        children: [
+          for (var column = 0; column < columns; column++) ...[
+            if (column > 0) SizedBox(width: _spacing),
+            Expanded(
+              child: rowStart + column < children.length
+                  ? children[rowStart + column]
+                  : const SizedBox.shrink(),
+            ),
+          ],
+        ],
+      );
+
+      rows.add(
+        desktopRowHeight == null
+            ? row
+            : SizedBox(height: desktopRowHeight, child: row),
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: rows,
+    );
+  }
+}
+
+IconData _metricIcon(String label) {
+  final text = label.normalize();
+  if (text.contains('propriedade')) return Icons.home_work_rounded;
+  if (text.contains('animal')) return Icons.pets_rounded;
+  if (text.contains('lact')) return Icons.water_drop_rounded;
+  if (text.contains('seca')) return Icons.grass_rounded;
+  if (text.contains('novilha')) return Icons.spa_rounded;
+  return Icons.analytics_rounded;
 }
 
 class _SectionTitle extends StatelessWidget {
@@ -720,6 +846,10 @@ class _AgendaTable extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (MediaQuery.sizeOf(context).width < MOBILE_WIDTH) {
+      return _CompactAgendaCard(items: items, showProperty: showProperty);
+    }
+
     return AppTable<_AgendaItem>(
       rows: items,
       emptyMessage: 'Nenhuma ação reprodutiva encontrada.',
@@ -741,30 +871,163 @@ class _AgendaTable extends StatelessWidget {
         AppTableColumn<_AgendaItem>(
           label: 'Data',
           flex: 2,
+          alignment: Alignment.center,
           cellBuilder: (context, item) => Text(formatDate(item.date)),
         ),
         AppTableColumn<_AgendaItem>(
           label: 'Tipo',
           flex: 3,
+          alignment: Alignment.center,
           cellBuilder: (context, item) => Text(item.type),
         ),
         if (showProperty)
           AppTableColumn<_AgendaItem>(
             label: 'Propriedade',
             flex: 3,
+            alignment: Alignment.center,
             cellBuilder: (context, item) => Text(_dashIfBlank(item.property)),
+          )
+        else
+          AppTableColumn<_AgendaItem>(
+            label: 'Animal',
+            flex: 2,
+            alignment: Alignment.center,
+            cellBuilder: (context, item) => Text(_dashIfBlank(item.animalCode)),
           ),
-        AppTableColumn<_AgendaItem>(
-          label: 'Animal',
-          flex: 2,
-          cellBuilder: (context, item) => Text(_dashIfBlank(item.animalCode)),
+      ],
+    );
+  }
+}
+
+class _CompactAgendaCard extends StatelessWidget {
+  const _CompactAgendaCard({required this.items, required this.showProperty});
+
+  final List<_AgendaItem> items;
+  final bool showProperty;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
+    return AppCard(
+      borderRadius: 16,
+      padding: const EdgeInsets.all(14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          if (items.isEmpty)
+            Text(
+              'Nenhuma ação reprodutiva encontrada.',
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: colorScheme.onSurfaceVariant,
+              ),
+            )
+          else ...[
+            for (var index = 0; index < items.length; index++) ...[
+              if (index > 0)
+                Divider(
+                  height: 18,
+                  color: colorScheme.outline.withValues(alpha: 0.18),
+                ),
+              _CompactAgendaRow(
+                item: items[index],
+                showProperty: showProperty,
+              ),
+            ],
+          ],
+          Divider(
+            height: 20,
+            color: colorScheme.outline.withValues(alpha: 0.22),
+          ),
+          _CompactTableFooter(
+            label: _recordsLabel(
+              items.length,
+              singular: 'ação',
+              plural: 'ações',
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _CompactAgendaRow extends StatelessWidget {
+  const _CompactAgendaRow({required this.item, required this.showProperty});
+
+  final _AgendaItem item;
+  final bool showProperty;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final related = showProperty ? item.property : item.animalCode;
+
+    return Row(
+      children: [
+        _CompactListIcon(icon: Icons.event_available_rounded),
+        const SizedBox(width: 10),
+        Text(
+          formatDate(item.date),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: theme.textTheme.bodySmall?.copyWith(
+            color: colorScheme.onSurface,
+            fontWeight: FontWeight.w900,
+          ),
         ),
-        AppTableColumn<_AgendaItem>(
-          label: 'Descrição',
-          flex: 5,
-          cellBuilder: (context, item) => Text(item.description),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Text(
+            item.type,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: colorScheme.onSurface,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+        ),
+        const SizedBox(width: 8),
+        Flexible(
+          child: Text(
+            _dashIfBlank(related),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.right,
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: colorScheme.onSurfaceVariant,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
         ),
       ],
+    );
+  }
+}
+
+class _CompactTableFooter extends StatelessWidget {
+  const _CompactTableFooter({required this.label});
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: Text(
+        label,
+        textAlign: TextAlign.left,
+        style: theme.textTheme.bodySmall?.copyWith(
+          color: colorScheme.onSurfaceVariant,
+          fontWeight: FontWeight.w800,
+        ),
+      ),
     );
   }
 }
@@ -781,8 +1044,8 @@ class _ChartsSection extends StatelessWidget {
       children: [
         _SectionTitle(
           insights.selectedProperty == null
-              ? 'Gráficos principais'
-              : 'Gráficos da fazenda',
+              ? 'Gráficos Principais'
+              : 'Gráficos da Fazenda',
         ),
         const SizedBox(height: 10),
         LayoutBuilder(
@@ -793,31 +1056,23 @@ class _ChartsSection extends StatelessWidget {
                 : width >= 760
                 ? 2
                 : 1;
-            const spacing = 12.0;
-            final cardWidth = (width - spacing * (columns - 1)) / columns;
 
-            return Wrap(
-              spacing: spacing,
-              runSpacing: spacing,
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                SizedBox(
-                  width: cardWidth,
-                  child: _LactationThirdChart(items: insights.lactationThirds),
+                _EqualHeightCardGrid(
+                  columns: columns,
+                  desktopRowHeight: 370,
+                  children: [
+                    _LactationThirdChart(items: insights.lactationThirds),
+                    _ParityDonutChart(items: insights.parityChartItems),
+                    _ReproductiveDonutChart(
+                      items: insights.reproductiveChartItems,
+                    ),
+                  ],
                 ),
-                SizedBox(
-                  width: cardWidth,
-                  child: _ParityDonutChart(items: insights.parityChartItems),
-                ),
-                SizedBox(
-                  width: cardWidth,
-                  child: _ReproductiveDonutChart(
-                    items: insights.reproductiveChartItems,
-                  ),
-                ),
-                SizedBox(
-                  width: columns == 1 ? cardWidth : width,
-                  child: _RateChart(items: insights.rateItems),
-                ),
+                const SizedBox(height: 12),
+                _RateGaugeChart(items: insights.rateItems),
               ],
             );
           },
@@ -837,7 +1092,7 @@ class _ReproductiveDonutChart extends StatelessWidget {
     final hasData = items.any((item) => item.value > 0);
 
     return _ChartCard(
-      title: 'Distribuição reprodutiva',
+      title: 'Distribuição Reprodutiva',
       child: hasData
           ? LayoutBuilder(
               builder: (context, constraints) {
@@ -874,19 +1129,13 @@ class _ReproductiveDonutChart extends StatelessWidget {
                   ),
                 );
 
-                return Align(
-                  alignment: Alignment.center,
-                  child: SizedBox(
-                    width: chartDimension,
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        chart,
-                        const SizedBox(height: 14),
-                        _ChartLegend(items: items),
-                      ],
-                    ),
-                  ),
+                return Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Align(alignment: Alignment.center, child: chart),
+                    const SizedBox(height: 12),
+                    _ChartLegend(items: items, organizeOnDesktop: true),
+                  ],
                 );
               },
             )
@@ -905,7 +1154,8 @@ class _LactationThirdChart extends StatelessWidget {
     final hasData = items.any((item) => item.value > 0);
 
     return _ChartCard(
-      title: 'Terço de lactação',
+      title: 'Terço de Lactação',
+      centerContent: true,
       child: hasData
           ? Column(
               mainAxisSize: MainAxisSize.min,
@@ -934,7 +1184,8 @@ class _ParityDonutChart extends StatelessWidget {
     final hasData = items.any((item) => item.value > 0);
 
     return _ChartCard(
-      title: 'Multíparas e novilhas',
+      title: 'Multíparas e Novilhas',
+      centerContent: true,
       child: hasData
           ? LayoutBuilder(
               builder: (context, constraints) {
@@ -989,8 +1240,8 @@ class _ParityDonutChart extends StatelessWidget {
   }
 }
 
-class _RateChart extends StatelessWidget {
-  const _RateChart({required this.items});
+class _RateLineChart extends StatelessWidget {
+  const _RateLineChart({required this.items});
 
   final List<_RateItem> items;
 
@@ -999,40 +1250,161 @@ class _RateChart extends StatelessWidget {
     final chartItems = items.where((item) => item.value != null).toList();
 
     return _ChartCard(
-      title: 'Indicadores reprodutivos',
+      title: 'Indicadores Reprodutivos',
+      subtitle: 'Taxa de serviço, concepção, prenhez e concepção por IA.',
+      subtitleBottomSpacing: 28,
       child: chartItems.isEmpty
-          ? const _EmptyChart(message: 'Sem indicadores calculados.')
+          ? const SizedBox(
+              height: 190,
+              child: _EmptyChart(message: 'Sem indicadores calculados.'),
+            )
           : LayoutBuilder(
               builder: (context, constraints) {
-                final columns = constraints.maxWidth >= 920
-                    ? 4
-                    : constraints.maxWidth >= 760
-                    ? 3
-                    : constraints.maxWidth >= 520
-                    ? 2
-                    : 1;
-                const spacing = 12.0;
-                final itemWidth =
-                    (constraints.maxWidth - spacing * (columns - 1)) / columns;
-                final lastRowCount = items.length % columns;
-                final lastItemWidth = columns == 3
-                    ? itemWidth * 2 + spacing
-                    : constraints.maxWidth;
+                final theme = Theme.of(context);
+                final colorScheme = theme.colorScheme;
+                final maxValue = chartItems.fold<double>(0, (max, item) {
+                  return math.max(max, item.value ?? 0);
+                });
+                final maxY = math.max(1.0, maxValue + 0.10).clamp(0.0, 1.0);
 
-                return Wrap(
-                  spacing: spacing,
-                  runSpacing: spacing,
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    for (var index = 0; index < items.length; index++)
-                      SizedBox(
-                        width:
-                            columns > 1 &&
-                                lastRowCount == 1 &&
-                                index == items.length - 1
-                            ? lastItemWidth
-                            : itemWidth,
-                        child: _GaugeTile(item: items[index]),
+                    SizedBox(
+                      height: 195,
+                      child: LineChart(
+                        LineChartData(
+                          minX: 0,
+                          maxX: math.max(1, chartItems.length - 1).toDouble(),
+                          minY: 0,
+                          maxY: maxY,
+                          lineTouchData: LineTouchData(
+                            handleBuiltInTouches: true,
+                            touchTooltipData: LineTouchTooltipData(
+                              getTooltipItems: (spots) {
+                                return spots.map((spot) {
+                                  final index = spot.x.toInt();
+                                  if (index < 0 || index >= chartItems.length) {
+                                    return null;
+                                  }
+                                  final item = chartItems[index];
+                                  return LineTooltipItem(
+                                    '${item.label}\n${formatPercent(item.value!)}',
+                                    (theme.textTheme.bodySmall ??
+                                            const TextStyle())
+                                        .copyWith(
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.w900,
+                                        ),
+                                  );
+                                }).toList();
+                              },
+                            ),
+                          ),
+                          gridData: FlGridData(
+                            show: true,
+                            drawVerticalLine: false,
+                            horizontalInterval: 0.25,
+                            getDrawingHorizontalLine: (value) => FlLine(
+                              color: colorScheme.outline.withValues(
+                                alpha: 0.18,
+                              ),
+                              strokeWidth: 1,
+                            ),
+                          ),
+                          borderData: FlBorderData(show: false),
+                          titlesData: FlTitlesData(
+                            topTitles: const AxisTitles(),
+                            rightTitles: const AxisTitles(),
+                            leftTitles: AxisTitles(
+                              sideTitles: SideTitles(
+                                showTitles: true,
+                                reservedSize: 42,
+                                interval: 0.25,
+                                getTitlesWidget: (value, meta) {
+                                  return Text(
+                                    '${(value * 100).round()}%',
+                                    style: theme.textTheme.bodySmall?.copyWith(
+                                      color: colorScheme.onSurfaceVariant,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  );
+                                },
+                              ),
+                            ),
+                            bottomTitles: AxisTitles(
+                              sideTitles: SideTitles(
+                                showTitles: true,
+                                reservedSize: 48,
+                                interval: 1,
+                                getTitlesWidget: (value, meta) {
+                                  final index = value.round();
+                                  if (index < 0 || index >= chartItems.length) {
+                                    return const SizedBox.shrink();
+                                  }
+
+                                  return Padding(
+                                    padding: const EdgeInsets.only(top: 10),
+                                    child: Text(
+                                      chartItems[index].shortLabel,
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
+                                      textAlign: TextAlign.center,
+                                      style: theme.textTheme.bodySmall
+                                          ?.copyWith(
+                                            color: colorScheme.onSurfaceVariant,
+                                            fontWeight: FontWeight.w800,
+                                            height: 1.05,
+                                          ),
+                                    ),
+                                  );
+                                },
+                              ),
+                            ),
+                          ),
+                          lineBarsData: [
+                            LineChartBarData(
+                              spots: [
+                                for (
+                                  var index = 0;
+                                  index < chartItems.length;
+                                  index++
+                                )
+                                  FlSpot(
+                                    index.toDouble(),
+                                    chartItems[index].value!.clamp(0.0, 1.0),
+                                  ),
+                              ],
+                              isCurved: true,
+                              preventCurveOverShooting: true,
+                              color: _ChartColors.deepBlue,
+                              barWidth: 4,
+                              isStrokeCapRound: true,
+                              belowBarData: BarAreaData(
+                                show: true,
+                                color: _ChartColors.deepBlue.withValues(
+                                  alpha: 0.18,
+                                ),
+                              ),
+                              dotData: FlDotData(
+                                show: true,
+                                getDotPainter: (spot, percent, bar, index) {
+                                  final item = chartItems[index];
+                                  return FlDotCirclePainter(
+                                    radius: 5,
+                                    color: item.color,
+                                    strokeWidth: 3,
+                                    strokeColor: colorScheme.surface,
+                                  );
+                                },
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
+                    ),
+                    const SizedBox(height: 8),
+                    _RateLegend(items: chartItems),
                   ],
                 );
               },
@@ -1041,55 +1413,86 @@ class _RateChart extends StatelessWidget {
   }
 }
 
-class _PercentBar extends StatelessWidget {
-  const _PercentBar({required this.item, required this.total});
+class _RateLegend extends StatelessWidget {
+  const _RateLegend({required this.items});
 
-  final _ChartCountItem item;
-  final int total;
+  final List<_RateItem> items;
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-    final percent = total == 0 ? 0.0 : item.value / total;
+    final isMobile = MediaQuery.sizeOf(context).width < MOBILE_WIDTH;
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
+    if (isMobile) {
+      return Wrap(
+        spacing: 10,
+        runSpacing: 8,
+        children: [
+          for (final item in items)
+            _LegendItem(
+              color: item.color,
+              label: item.label,
+              value: item.value == null ? '--' : formatPercent(item.value!),
+              allowWrap: true,
+            ),
+        ],
+      );
+    }
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          children: [
-            Expanded(
-              child: Text(
-                item.label,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: colorScheme.onSurfaceVariant,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
+        for (var index = 0; index < items.length; index++) ...[
+          if (index > 0) const SizedBox(width: 10),
+          Expanded(
+            child: _LegendItem(
+              color: items[index].color,
+              label: items[index].label,
+              value: items[index].value == null
+                  ? '--'
+                  : formatPercent(items[index].value!),
+              expand: true,
+              allowWrap: true,
             ),
-            const SizedBox(width: 8),
-            Text(
-              '${(percent * 100).round()}%',
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: colorScheme.onSurface,
-                fontWeight: FontWeight.w900,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 5),
-        ClipRRect(
-          borderRadius: BorderRadius.circular(999),
-          child: LinearProgressIndicator(
-            minHeight: 18,
-            value: percent.clamp(0.0, 1.0),
-            backgroundColor: item.color.withValues(alpha: 0.12),
-            color: item.color,
           ),
-        ),
+        ],
       ],
+    );
+  }
+}
+
+
+class _RateGaugeChart extends StatelessWidget {
+  const _RateGaugeChart({required this.items});
+
+  final List<_RateItem> items;
+
+  @override
+  Widget build(BuildContext context) {
+    return _ChartCard(
+      title: 'Indicadores em Velocímetro',
+      subtitle: 'Visualização rápida das taxas reprodutivas do período.',
+      subtitleBottomSpacing: 18,
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final width = constraints.maxWidth;
+          final columns = width >= 920
+              ? 4
+              : width >= 660
+              ? 2
+              : 1;
+          const spacing = 12.0;
+          final itemWidth = (width - spacing * (columns - 1)) / columns;
+
+          return Wrap(
+            spacing: spacing,
+            runSpacing: spacing,
+            children: [
+              for (final item in items)
+                SizedBox(width: itemWidth, child: _GaugeTile(item: item)),
+            ],
+          );
+        },
+      ),
     );
   }
 }
@@ -1225,21 +1628,89 @@ class _GaugePainter extends CustomPainter {
   }
 }
 
-class _ChartCard extends StatelessWidget {
-  const _ChartCard({required this.title, required this.child});
+class _PercentBar extends StatelessWidget {
+  const _PercentBar({required this.item, required this.total});
 
-  final String title;
-  final Widget child;
+  final _ChartCountItem item;
+  final int total;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final percent = total == 0 ? 0.0 : item.value / total;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                item.label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: colorScheme.onSurfaceVariant,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Text(
+              '${(percent * 100).round()}%',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: colorScheme.onSurface,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 5),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(999),
+          child: LinearProgressIndicator(
+            minHeight: 18,
+            value: percent.clamp(0.0, 1.0),
+            backgroundColor: item.color.withValues(alpha: 0.12),
+            color: item.color,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _ChartCard extends StatelessWidget {
+  const _ChartCard({
+    required this.title,
+    required this.child,
+    this.subtitle,
+    this.centerContent = false,
+    this.subtitleBottomSpacing = 16,
+  });
+
+  final String title;
+  final Widget child;
+  final String? subtitle;
+  final bool centerContent;
+  final double subtitleBottomSpacing;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final shouldCenterContent =
+        centerContent && MediaQuery.sizeOf(context).width >= MOBILE_WIDTH;
+    final content = shouldCenterContent
+        ? Expanded(child: Center(child: child))
+        : child;
 
     return AppCard(
       borderRadius: 16,
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(14),
       child: Column(
-        mainAxisSize: MainAxisSize.min,
+        mainAxisSize: shouldCenterContent ? MainAxisSize.max : MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
@@ -1247,11 +1718,22 @@ class _ChartCard extends StatelessWidget {
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
             style: theme.textTheme.titleSmall?.copyWith(
-              fontWeight: FontWeight.w900,
-            ),
+          color: colorScheme.onSurface,
+          fontWeight: FontWeight.w900,
+        ),
           ),
-          const SizedBox(height: 16),
-          child,
+          if (subtitle != null) ...[
+            const SizedBox(height: 4),
+            Text(
+              subtitle!,
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+          SizedBox(height: subtitle == null ? 16 : subtitleBottomSpacing),
+          content,
         ],
       ),
     );
@@ -1259,13 +1741,15 @@ class _ChartCard extends StatelessWidget {
 }
 
 class _ChartLegend extends StatelessWidget {
-  const _ChartLegend({required this.items});
+  const _ChartLegend({required this.items, this.organizeOnDesktop = false});
 
   final List<_ChartCountItem> items;
+  final bool organizeOnDesktop;
 
   @override
   Widget build(BuildContext context) {
     return Wrap(
+      alignment: WrapAlignment.center,
       spacing: 10,
       runSpacing: 8,
       children: [
@@ -1274,6 +1758,7 @@ class _ChartLegend extends StatelessWidget {
             color: item.color,
             label: item.label,
             value: item.value.toString(),
+            allowWrap: true,
           ),
       ],
     );
@@ -1285,11 +1770,15 @@ class _LegendItem extends StatelessWidget {
     required this.color,
     required this.label,
     required this.value,
+    this.expand = false,
+    this.allowWrap = false,
   });
 
   final Color color;
   final String label;
   final String value;
+  final bool expand;
+  final bool allowWrap;
 
   @override
   Widget build(BuildContext context) {
@@ -1297,9 +1786,9 @@ class _LegendItem extends StatelessWidget {
     final colorScheme = theme.colorScheme;
 
     return ConstrainedBox(
-      constraints: const BoxConstraints(maxWidth: 170),
+      constraints: BoxConstraints(maxWidth: expand ? double.infinity : 220),
       child: Row(
-        mainAxisSize: MainAxisSize.min,
+        mainAxisSize: expand ? MainAxisSize.max : MainAxisSize.min,
         children: [
           Container(
             width: 9,
@@ -1310,8 +1799,9 @@ class _LegendItem extends StatelessWidget {
           Flexible(
             child: Text(
               '$label: $value',
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
+              maxLines: allowWrap ? 3 : 1,
+              overflow: allowWrap ? TextOverflow.visible : TextOverflow.ellipsis,
+              softWrap: allowWrap,
               style: theme.textTheme.bodySmall?.copyWith(
                 color: colorScheme.onSurfaceVariant,
                 fontWeight: FontWeight.w700,
@@ -1354,7 +1844,7 @@ class _MonthlyCalendarSection extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         const _SectionTitle(
-          'Calendário mensal',
+          'Calendário Mensal',
           subtitle: 'Secagem, pré-parto e partos previstos por mês.',
         ),
         const SizedBox(height: 10),
@@ -1377,7 +1867,7 @@ class _MonthlyChart extends StatelessWidget {
       return const AppCard(
         borderRadius: 16,
         child: SizedBox(
-          height: 120,
+          height: 92,
           child: _EmptyChart(message: 'Sem eventos mensais no período.'),
         ),
       );
@@ -1487,46 +1977,38 @@ class _MonthlySummaryTables extends StatelessWidget {
             : constraints.maxWidth >= 660
             ? 2
             : 1;
-        const spacing = 12.0;
-        final width =
-            (constraints.maxWidth - spacing * (columns - 1)) / columns;
 
-        return Wrap(
-          spacing: spacing,
-          runSpacing: spacing,
+        final double? rowHeight = rows.isEmpty
+            ? null
+            : math.max(190.0, rows.length * 38.0 + 112.0);
+
+        return _EqualHeightCardGrid(
+          columns: columns,
+          desktopRowHeight: rowHeight,
           children: [
-            SizedBox(
-              width: width,
-              child: _MonthlySummaryCard(
-                title: 'Mês de secagem',
-                valueLabel: 'Vacas secas',
-                rows: [
-                  for (final row in rows)
-                    _MonthlySummaryItem(row.monthLabel, row.dryOff),
-                ],
-              ),
+            _MonthlySummaryCard(
+              title: 'Mês de secagem',
+              valueLabel: 'Vacas secas',
+              rows: [
+                for (final row in rows)
+                  _MonthlySummaryItem(row.monthLabel, row.dryOff),
+              ],
             ),
-            SizedBox(
-              width: width,
-              child: _MonthlySummaryCard(
-                title: 'Mês de pré-parto',
-                valueLabel: 'Vacas em pré-parto',
-                rows: [
-                  for (final row in rows)
-                    _MonthlySummaryItem(row.monthLabel, row.prepartum),
-                ],
-              ),
+            _MonthlySummaryCard(
+              title: 'Mês de pré-parto',
+              valueLabel: 'Vacas em pré-parto',
+              rows: [
+                for (final row in rows)
+                  _MonthlySummaryItem(row.monthLabel, row.prepartum),
+              ],
             ),
-            SizedBox(
-              width: width,
-              child: _MonthlySummaryCard(
-                title: 'Mês de parto',
-                valueLabel: 'Partos por mês',
-                rows: [
-                  for (final row in rows)
-                    _MonthlySummaryItem(row.monthLabel, row.births),
-                ],
-              ),
+            _MonthlySummaryCard(
+              title: 'Mês de parto',
+              valueLabel: 'Partos por mês',
+              rows: [
+                for (final row in rows)
+                  _MonthlySummaryItem(row.monthLabel, row.births),
+              ],
             ),
           ],
         );
@@ -1679,7 +2161,7 @@ class _VisitHistorySection extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         const _SectionTitle(
-          'Histórico de visitas',
+          'Histórico de Visitas',
           subtitle: 'Visitas recentes no período selecionado.',
         ),
         const SizedBox(height: 10),
@@ -1697,6 +2179,10 @@ class _VisitHistoryTable extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (MediaQuery.sizeOf(context).width < MOBILE_WIDTH) {
+      return _CompactVisitHistoryCard(rows: rows, showProperty: showProperty);
+    }
+
     return AppTable<_VisitHistoryRow>(
       rows: rows,
       emptyMessage: 'Nenhuma visita encontrada no período.',
@@ -1746,6 +2232,119 @@ class _VisitHistoryTable extends StatelessWidget {
   }
 }
 
+class _CompactVisitHistoryCard extends StatelessWidget {
+  const _CompactVisitHistoryCard({
+    required this.rows,
+    required this.showProperty,
+  });
+
+  final List<_VisitHistoryRow> rows;
+  final bool showProperty;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
+    return AppCard(
+      borderRadius: 16,
+      padding: const EdgeInsets.all(14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          if (rows.isEmpty)
+            Text(
+              'Nenhuma visita encontrada no período.',
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: colorScheme.onSurfaceVariant,
+              ),
+            )
+          else ...[
+            for (var index = 0; index < rows.length; index++) ...[
+              if (index > 0)
+                Divider(
+                  height: 18,
+                  color: colorScheme.outline.withValues(alpha: 0.18),
+                ),
+              _CompactVisitRow(
+                row: rows[index],
+                showProperty: showProperty,
+              ),
+            ],
+          ],
+          Divider(
+            height: 20,
+            color: colorScheme.outline.withValues(alpha: 0.22),
+          ),
+          _CompactTableFooter(
+            label: _recordsLabel(
+              rows.length,
+              singular: 'visita',
+              plural: 'visitas',
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _CompactVisitRow extends StatelessWidget {
+  const _CompactVisitRow({required this.row, required this.showProperty});
+
+  final _VisitHistoryRow row;
+  final bool showProperty;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
+    return Row(
+      children: [
+        _CompactListIcon(icon: Icons.event_note_rounded),
+        const SizedBox(width: 10),
+        Text(
+          row.date,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: theme.textTheme.bodySmall?.copyWith(
+            color: colorScheme.onSurface,
+            fontWeight: FontWeight.w900,
+          ),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Text(
+            _dashIfBlank(row.veterinarian),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: colorScheme.onSurface,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+        ),
+        if (showProperty) ...[
+          const SizedBox(width: 8),
+          Flexible(
+            child: Text(
+              _dashIfBlank(row.property),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.right,
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: colorScheme.onSurfaceVariant,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
 class _AnimalDetailsSection extends StatelessWidget {
   const _AnimalDetailsSection({required this.rows});
 
@@ -1774,6 +2373,10 @@ class _AnimalDetailTable extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (MediaQuery.sizeOf(context).width < MOBILE_WIDTH) {
+      return _CompactAnimalListCard(rows: rows);
+    }
+
     final table = AppTable<_AnimalDetailRow>(
       rows: rows,
       mobileBreakpoint: 1180,
@@ -1879,10 +2482,6 @@ class _AnimalDetailTable extends StatelessWidget {
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        if (MediaQuery.sizeOf(context).width < MOBILE_WIDTH) {
-          return table;
-        }
-
         final tableWidth = math.max(1680.0, constraints.maxWidth - 8);
 
         return SingleChildScrollView(
@@ -1892,6 +2491,98 @@ class _AnimalDetailTable extends StatelessWidget {
           child: SizedBox(width: tableWidth, child: table),
         );
       },
+    );
+  }
+}
+
+class _CompactAnimalListCard extends StatelessWidget {
+  const _CompactAnimalListCard({required this.rows});
+
+  final List<_AnimalDetailRow> rows;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
+    return AppCard(
+      borderRadius: 16,
+      padding: const EdgeInsets.all(14),
+      child: rows.isEmpty
+          ? Text(
+              'Nenhum animal encontrado para o filtro atual.',
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: colorScheme.onSurfaceVariant,
+              ),
+            )
+          : Column(
+              children: [
+                for (var index = 0; index < rows.length; index++) ...[
+                  if (index > 0)
+                    Divider(
+                      height: 18,
+                      color: colorScheme.outline.withValues(alpha: 0.18),
+                    ),
+                  _CompactAnimalRow(row: rows[index]),
+                ],
+              ],
+            ),
+    );
+  }
+}
+
+class _CompactAnimalRow extends StatelessWidget {
+  const _CompactAnimalRow({required this.row});
+
+  final _AnimalDetailRow row;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
+    return Row(
+      children: [
+        _CompactListIcon(icon: Icons.pets_rounded),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Text(
+            row.matriz,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: colorScheme.onSurface,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+        ),
+        const SizedBox(width: 10),
+        StatusBadge(
+          label: row.situacaoReprodutiva,
+          type: row.reproductiveBadgeType,
+        ),
+      ],
+    );
+  }
+}
+
+class _CompactListIcon extends StatelessWidget {
+  const _CompactListIcon({required this.icon});
+
+  final IconData icon;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Container(
+      width: 34,
+      height: 34,
+      decoration: BoxDecoration(
+        color: colorScheme.primary,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Icon(icon, size: 18, color: colorScheme.onPrimary),
     );
   }
 }
@@ -2126,49 +2817,27 @@ class _DashboardInsights {
         _MetricItem(
           label: 'Propriedades atendidas',
           value: _formatCount(metrics.totalPropriedades),
-        ),
-      if (!isPropertyView)
-        _MetricItem(
-          label: 'Veterinários ativos',
-          value: users == null || usersLoading || usersError
-              ? '--'
-              : _formatCount(activeVeterinarians),
+          color: _ChartColors.primary,
         ),
       _MetricItem(
         label: isPropertyView ? 'Animais da fazenda' : 'Animais acompanhados',
         value: _formatCount(totalAnimals),
+        color: _ChartColors.success,
       ),
       _MetricItem(
         label: 'Vacas em lactação',
         value: _formatCount(productiveCounts.lactating),
+        color: _ChartColors.info,
       ),
       _MetricItem(
         label: 'Vacas secas',
         value: _formatCount(productiveCounts.dry),
+        color: _ChartColors.warning,
       ),
       _MetricItem(
         label: 'Novilhas',
         value: _formatCount(productiveCounts.heifers),
-      ),
-      _MetricItem(
-        label: 'Taxa de servico',
-        value: formatPercent(metrics.taxaServico),
-        color: _ChartColors.primary,
-      ),
-      _MetricItem(
-        label: 'Taxa de concepção',
-        value: _formatNullablePercent(_conceptionRate(records)),
-        color: _ChartColors.success,
-      ),
-      _MetricItem(
-        label: 'Taxa de prenhez',
-        value: formatPercent(metrics.taxaPrenhez),
-        color: _ChartColors.success,
-      ),
-      _MetricItem(
-        label: 'Concepção por IA',
-        value: _formatNullablePercent(_iaConceptionRate(periodEntries)),
-        color: _ChartColors.info,
+        color: _ChartColors.purple,
       ),
     ];
 
@@ -2325,11 +2994,13 @@ class _RateItem {
     required this.label,
     required this.value,
     required this.color,
+    required this.shortLabel,
   });
 
   final String label;
   final double? value;
   final Color color;
+  final String shortLabel;
 }
 
 class _MonthlyScheduleRow {
@@ -2494,13 +3165,17 @@ enum _ProductiveStatus { lactating, dry, heifer, other }
 class _ChartColors {
   const _ChartColors._();
 
-  static const primary = Color(0xFF2563EB);
-  static const success = Color(0xFF15803D);
-  static const info = Color(0xFF0F766E);
-  static const warning = Color(0xFFB45309);
-  static const danger = Color(0xFFB4234A);
-  static const neutral = Color(0xFF64748B);
-  static const purple = Color(0xFF7C3AED);
+  static const primary = Color(0xFF005115);
+  static const success = Color(0xFF177930);
+  static const info = Color(0xFF008B5E);
+  static const warning = Color(0xFFE86D00);
+  static const danger = Color(0xFFD11F1F);
+  static const neutral = Color(0xFF3F4843);
+  static const purple = Color(0xFF6D28D9);
+  static const deepBlue = Color(0xFF0B2F6B);
+  static const blue = Color(0xFF155EEF);
+  static const cyanBlue = Color(0xFF0369A1);
+  static const indigo = Color(0xFF3730A3);
 }
 
 List<_SituationCount> _buildReproductiveCounts(List<_AnimalRecord> records) {
@@ -2658,9 +3333,9 @@ List<_ChartCountItem> _buildParityChartItems(List<_AnimalRecord> records) {
         _ChartCountItem(
           label: 'Multíparas',
           value: 0,
-          color: Color(0xFF6D4C9B),
+          color: _ChartColors.purple,
         ),
-        _ChartCountItem(label: 'Novilhas', value: 0, color: Color(0xFFB45309)),
+        _ChartCountItem(label: 'Novilhas', value: 0, color: _ChartColors.warning),
       ]
       .asMap()
       .entries
@@ -2687,24 +3362,28 @@ List<_RateItem> _buildRateItems(
   // depende de campo/endpoint especifico.
   return [
     _RateItem(
-      label: 'TX - Serviço',
+      label: 'Taxa de serviço',
+      shortLabel: 'Serviço',
       value: metrics.taxaServico,
-      color: _ChartColors.primary,
+      color: _ChartColors.deepBlue,
     ),
     _RateItem(
-      label: 'TX - Concepção',
+      label: 'Taxa de concepção',
+      shortLabel: 'Concepção',
       value: _conceptionRate(records),
-      color: _ChartColors.success,
+      color: _ChartColors.blue,
     ),
     _RateItem(
-      label: 'TX - Prenhez',
+      label: 'Taxa de prenhez',
+      shortLabel: 'Prenhez',
       value: metrics.taxaPrenhez,
-      color: _ChartColors.info,
+      color: _ChartColors.cyanBlue,
     ),
     _RateItem(
       label: 'Concepção por IA',
+      shortLabel: 'IA',
       value: _iaConceptionRate(entries),
-      color: _ChartColors.warning,
+      color: _ChartColors.indigo,
     ),
   ];
 }
@@ -3249,10 +3928,6 @@ String _formatNullableInt(int? value) {
   return value.toString();
 }
 
-String _formatNullablePercent(double? value) {
-  if (value == null) return '--';
-  return formatPercent(value);
-}
 
 String _recordsLabel(
   int count, {
