@@ -293,7 +293,7 @@ class _AnimalsToolbarState extends State<_AnimalsToolbar> {
         final filterButton = Tooltip(
           message: _filtersOpen ? 'Ocultar filtros' : 'Mostrar filtros',
           child: AppButton(
-            outlined: !_filtersOpen,
+            outlined: _filtersOpen,
             onPressed: () {
               setState(() => _filtersOpen = !_filtersOpen);
             },

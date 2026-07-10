@@ -151,7 +151,7 @@ class VisitsPage extends ConsumerWidget {
   }
 }
 
-class _VisitsToolbar extends StatelessWidget {
+class _VisitsToolbar extends StatefulWidget {
   const _VisitsToolbar({
     required this.searchQuery,
     required this.properties,
@@ -167,22 +167,62 @@ class _VisitsToolbar extends StatelessWidget {
   final ValueChanged<int?> onPropertyChanged;
 
   @override
+  State<_VisitsToolbar> createState() => _VisitsToolbarState();
+}
+
+class _VisitsToolbarState extends State<_VisitsToolbar> {
+  bool _filtersOpen = false;
+
+  @override
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
+        final isMobile = MediaQuery.sizeOf(context).width < MOBILE_WIDTH;
         final stacked = constraints.maxWidth < 760;
         final search = SearchCard(
-          value: searchQuery,
+          value: widget.searchQuery,
           labelText: 'Pesquisar visitas',
-          onChanged: onSearchChanged,
+          onChanged: widget.onSearchChanged,
         );
         final propertyFilter = PropertyFilterCard(
-          properties: properties,
-          selectedPropertyId: selectedPropertyId,
+          properties: widget.properties,
+          selectedPropertyId: widget.selectedPropertyId,
           labelText: 'Propriedade',
           allPropertiesText: 'Todas',
-          onChanged: onPropertyChanged,
+          onChanged: widget.onPropertyChanged,
         );
+
+        final filterButton = Tooltip(
+          message: _filtersOpen ? 'Ocultar filtros' : 'Mostrar filtros',
+          child: AppButton(
+            outlined: _filtersOpen,
+            onPressed: () {
+              setState(() => _filtersOpen = !_filtersOpen);
+            },
+            child: Icon(
+              _filtersOpen
+                  ? Icons.filter_alt_off_outlined
+                  : Icons.filter_alt_outlined,
+            ),
+          ),
+        );
+
+        if (isMobile) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
+                children: [
+                  Expanded(child: search),
+                  const SizedBox(width: 10),
+                  filterButton,
+                ],
+              ),
+              if (_filtersOpen) ...[const SizedBox(height: 10), propertyFilter],
+            ],
+          );
+        }
+
         if (stacked) {
           return Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,

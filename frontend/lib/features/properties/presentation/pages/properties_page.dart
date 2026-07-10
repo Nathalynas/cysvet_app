@@ -214,7 +214,7 @@ class PropertiesPage extends ConsumerWidget {
   }
 }
 
-class _PropertiesToolbar extends StatelessWidget {
+class _PropertiesToolbar extends StatefulWidget {
   const _PropertiesToolbar({
     required this.searchQuery,
     required this.statusFilter,
@@ -226,24 +226,65 @@ class _PropertiesToolbar extends StatelessWidget {
   final PropertyStatusFilter statusFilter;
   final ValueChanged<String> onSearchChanged;
   final ValueChanged<PropertyStatusFilter?> onStatusChanged;
+
+  @override
+  State<_PropertiesToolbar> createState() => _PropertiesToolbarState();
+}
+
+class _PropertiesToolbarState extends State<_PropertiesToolbar> {
+  bool _filtersOpen = false;
+
   @override
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
+        final isMobile = MediaQuery.sizeOf(context).width < MOBILE_WIDTH;
         final stacked = constraints.maxWidth < 720;
         final search = SearchCard(
-          value: searchQuery,
+          value: widget.searchQuery,
           labelText: 'Pesquisar propriedades',
-          onChanged: onSearchChanged,
+          onChanged: widget.onSearchChanged,
         );
         final status = AppDropdown<PropertyStatusFilter>(
-          value: statusFilter,
+          value: widget.statusFilter,
           labelText: 'Status',
-          onChanged: onStatusChanged,
+          onChanged: widget.onStatusChanged,
           options: PropertyStatusFilter.values
               .map((item) => AppDropdownOption(label: item.label, value: item))
               .toList(growable: false),
         );
+
+        final filterButton = Tooltip(
+          message: _filtersOpen ? 'Ocultar filtros' : 'Mostrar filtros',
+          child: AppButton(
+            outlined: _filtersOpen,
+            onPressed: () {
+              setState(() => _filtersOpen = !_filtersOpen);
+            },
+            child: Icon(
+              _filtersOpen
+                  ? Icons.filter_alt_off_outlined
+                  : Icons.filter_alt_outlined,
+            ),
+          ),
+        );
+
+        if (isMobile) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
+                children: [
+                  Expanded(child: search),
+                  const SizedBox(width: 10),
+                  filterButton,
+                ],
+              ),
+              if (_filtersOpen) ...[const SizedBox(height: 10), status],
+            ],
+          );
+        }
+
         if (stacked) {
           return Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,

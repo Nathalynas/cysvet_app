@@ -108,7 +108,7 @@ class UsuariosPage extends ConsumerWidget {
   }
 }
 
-class _UsersToolbar extends StatelessWidget {
+class _UsersToolbar extends StatefulWidget {
   const _UsersToolbar({
     required this.searchQuery,
     required this.statusFilter,
@@ -122,23 +122,63 @@ class _UsersToolbar extends StatelessWidget {
   final ValueChanged<UserStatusFilter?> onStatusChanged;
 
   @override
+  State<_UsersToolbar> createState() => _UsersToolbarState();
+}
+
+class _UsersToolbarState extends State<_UsersToolbar> {
+  bool _filtersOpen = false;
+
+  @override
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
+        final isMobile = MediaQuery.sizeOf(context).width < MOBILE_WIDTH;
         final stacked = constraints.maxWidth < 720;
         final search = SearchCard(
-          value: searchQuery,
+          value: widget.searchQuery,
           labelText: 'Pesquisar usuários',
-          onChanged: onSearchChanged,
+          onChanged: widget.onSearchChanged,
         );
         final status = AppDropdown<UserStatusFilter>(
-          value: statusFilter,
+          value: widget.statusFilter,
           labelText: 'Status',
-          onChanged: onStatusChanged,
+          onChanged: widget.onStatusChanged,
           options: UserStatusFilter.values
               .map((item) => AppDropdownOption(label: item.label, value: item))
               .toList(growable: false),
         );
+
+        final filterButton = Tooltip(
+          message: _filtersOpen ? 'Ocultar filtros' : 'Mostrar filtros',
+          child: AppButton(
+            outlined: _filtersOpen,
+            onPressed: () {
+              setState(() => _filtersOpen = !_filtersOpen);
+            },
+            child: Icon(
+              _filtersOpen
+                  ? Icons.filter_alt_off_outlined
+                  : Icons.filter_alt_outlined,
+            ),
+          ),
+        );
+
+        if (isMobile) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
+                children: [
+                  Expanded(child: search),
+                  const SizedBox(width: 10),
+                  filterButton,
+                ],
+              ),
+              if (_filtersOpen) ...[const SizedBox(height: 10), status],
+            ],
+          );
+        }
+
         if (stacked) {
           return Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,

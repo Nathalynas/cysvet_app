@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:cysvet_app/core/constants/app_constants.dart';
 import 'package:cysvet_app/core/enums/animal_status.dart';
 import 'package:cysvet_app/core/enums/user_status.dart';
+import 'package:cysvet_app/core/widgets/app_button.dart';
 import 'package:cysvet_app/core/widgets/app_card.dart';
 import 'package:cysvet_app/core/widgets/app_dropdown.dart';
 import 'package:cysvet_app/core/widgets/app_table.dart';
@@ -205,7 +206,7 @@ class DashboardPage extends ConsumerWidget {
   }
 }
 
-class _DashboardToolbar extends StatelessWidget {
+class _DashboardToolbar extends StatefulWidget {
   const _DashboardToolbar({
     required this.properties,
     required this.selectedPropertyId,
@@ -221,23 +222,31 @@ class _DashboardToolbar extends StatelessWidget {
   final ValueChanged<DashboardPeriodFilter?> onPeriodChanged;
 
   @override
+  State<_DashboardToolbar> createState() => _DashboardToolbarState();
+}
+
+class _DashboardToolbarState extends State<_DashboardToolbar> {
+  bool _filtersOpen = false;
+
+  @override
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
+        final isMobile = MediaQuery.sizeOf(context).width < MOBILE_WIDTH;
         final stacked = constraints.maxWidth < 720;
 
         final propertyFilter = PropertySegmentedFilter(
-          properties: properties,
-          selectedPropertyId: selectedPropertyId,
+          properties: widget.properties,
+          selectedPropertyId: widget.selectedPropertyId,
           generalText: 'Geral',
           propertyText: 'Por propriedade',
-          onChanged: onPropertyChanged,
+          onChanged: widget.onPropertyChanged,
         );
 
         final periodFilter = AppDropdown<DashboardPeriodFilter>(
-          value: period,
+          value: widget.period,
           labelText: 'Período',
-          onChanged: onPeriodChanged,
+          onChanged: widget.onPeriodChanged,
           options: DashboardPeriodFilter.values
               .map(
                 (item) => AppDropdownOption<DashboardPeriodFilter>(
@@ -247,6 +256,42 @@ class _DashboardToolbar extends StatelessWidget {
               )
               .toList(growable: false),
         );
+
+        final filterButton = Tooltip(
+          message: _filtersOpen ? 'Ocultar período' : 'Mostrar período',
+          child: AppButton(
+            height: 40,
+            outlined: _filtersOpen,
+            onPressed: () {
+              setState(() => _filtersOpen = !_filtersOpen);
+            },
+            child: Icon(
+              _filtersOpen
+                  ? Icons.filter_alt_off_outlined
+                  : Icons.filter_alt_outlined,
+            ),
+          ),
+        );
+
+        if (isMobile) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Flexible(child: propertyFilter),
+                  const SizedBox(width: 10),
+                  filterButton,
+                ],
+              ),
+              if (_filtersOpen) ...[
+                const SizedBox(height: 10),
+                SizedBox(width: 230, child: periodFilter),
+              ],
+            ],
+          );
+        }
 
         if (stacked) {
           return Column(
