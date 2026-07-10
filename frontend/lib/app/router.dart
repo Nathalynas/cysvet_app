@@ -124,6 +124,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                   visitId:
                       int.tryParse(state.pathParameters['visitId'] ?? '') ?? 0,
                   initialData: routeData,
+                  returnRoute: state.uri.queryParameters['retorno'],
                 ),
               );
             },

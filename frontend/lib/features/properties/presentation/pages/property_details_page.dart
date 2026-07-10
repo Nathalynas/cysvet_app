@@ -13,6 +13,7 @@ import 'package:cysvet_app/core/widgets/status_badge.dart';
 import 'package:cysvet_app/features/animals/application/animals_provider.dart';
 import 'package:cysvet_app/features/animals/data/animals_repository.dart';
 import 'package:cysvet_app/features/animals/domain/animal_summary_model.dart';
+import 'package:cysvet_app/features/animals/presentation/widgets/animal_history_dialog.dart';
 import 'package:cysvet_app/features/auth/application/auth_state.dart';
 import 'package:cysvet_app/features/indicators/domain/indicador_reprodutivo_calculator.dart';
 import 'package:cysvet_app/features/properties/application/properties_provider.dart';
@@ -155,7 +156,8 @@ class _PropertyDetailsPageState extends ConsumerState<PropertyDetailsPage> {
   @override
   void didUpdateWidget(covariant PropertyDetailsPage oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.propertyId != widget.propertyId) {
+    if (oldWidget.propertyId != widget.propertyId ||
+        oldWidget.initialTab != widget.initialTab) {
       _activeTab = widget.initialTab;
     }
   }
@@ -223,6 +225,7 @@ class _PropertyDetailsPageState extends ConsumerState<PropertyDetailsPage> {
     return switch (_activeTab) {
       PropertyTab.general => _PropertyGeneralTab(property: property),
       PropertyTab.animals => _PropertyAnimalsTab(
+        property: property,
         value: animalsValue,
         onRetry: () {
           ref.invalidate(propertyDetailsAnimalsProvider(widget.propertyId));
@@ -724,9 +727,7 @@ class _PropertyStatsStrip extends StatelessWidget {
       ),
       _MetricPill(
         label: 'Última visita',
-        value: stats == null
-            ? loadingLabel
-            : formatDate(stats!.lastVisitDate),
+        value: stats == null ? loadingLabel : formatDate(stats!.lastVisitDate),
         icon: Icons.event_available_outlined,
         fullWidth: stacked,
       ),
@@ -744,11 +745,7 @@ class _PropertyStatsStrip extends StatelessWidget {
       );
     }
 
-    return Wrap(
-      spacing: 10,
-      runSpacing: 10,
-      children: items,
-    );
+    return Wrap(spacing: 10, runSpacing: 10, children: items);
   }
 }
 
@@ -868,9 +865,7 @@ class _PropertyActions extends StatelessWidget {
         ),
         _PropertyActionIconButton(
           tooltip: toggleTooltip,
-          icon: isInactive
-              ? Icons.unarchive_outlined
-              : Icons.archive_outlined,
+          icon: isInactive ? Icons.unarchive_outlined : Icons.archive_outlined,
           onPressed: onToggleStatus,
         ),
         _PropertyActionIconButton(
@@ -890,10 +885,7 @@ class _PropertyActions extends StatelessWidget {
           return Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Align(
-                alignment: Alignment.centerRight,
-                child: buttons,
-              ),
+              Align(alignment: Alignment.centerRight, child: buttons),
               const SizedBox(height: 16),
               _PropertyStatsStrip(
                 stats: stats,
@@ -908,10 +900,7 @@ class _PropertyActions extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            _PropertyStatsStrip(
-              stats: stats,
-              loading: statsLoading,
-            ),
+            _PropertyStatsStrip(stats: stats, loading: statsLoading),
             const SizedBox(width: 60),
             buttons,
           ],
@@ -1093,15 +1082,21 @@ class _PropertyGeneralTab extends StatelessWidget {
 }
 
 class _PropertyAnimalsTab extends StatelessWidget {
-  const _PropertyAnimalsTab({required this.value, required this.onRetry});
+  const _PropertyAnimalsTab({
+    required this.property,
+    required this.value,
+    required this.onRetry,
+  });
 
+  final PropertySummaryModel property;
   final AsyncValue<List<AnimalSummaryModel>> value;
   final VoidCallback onRetry;
 
   @override
   Widget build(BuildContext context) {
     return value.when(
-      data: (animals) => _PropertyAnimalsTable(animals: animals),
+      data: (animals) =>
+          _PropertyAnimalsTable(property: property, animals: animals),
       loading: () => const _InlineFeedback(
         message: 'Carregando animais da propriedade...',
         loading: true,
@@ -1143,8 +1138,9 @@ class _PropertyVisitsTab extends StatelessWidget {
 }
 
 class _PropertyAnimalsTable extends StatelessWidget {
-  const _PropertyAnimalsTable({required this.animals});
+  const _PropertyAnimalsTable({required this.property, required this.animals});
 
+  final PropertySummaryModel property;
   final List<AnimalSummaryModel> animals;
 
   @override
@@ -1153,6 +1149,11 @@ class _PropertyAnimalsTable extends StatelessWidget {
       rows: animals,
       footerLabel: _animalsRecordsLabel(animals.length),
       emptyMessage: 'Nenhum animal vinculado a esta propriedade.',
+      onRowTap: (animal) => AnimalHistoryDialog.show(
+        context: context,
+        animal: animal,
+        propertyName: property.nome,
+      ),
       mobileTitleBuilder: (context, animal) {
         return _AnimalIdentityCell(animal: animal);
       },
@@ -1261,12 +1262,17 @@ class _PropertyVisitsTable extends StatelessWidget {
   }
 
   void _openVisit(BuildContext context, VisitSummaryModel visit) {
+    final returnRoute = '/propriedades/${property.id}?aba=visitas';
     context.go(
-      '/visitas/${visit.id}/detalhes',
+      Uri(
+        path: '/visitas/${visit.id}/detalhes',
+        queryParameters: {'retorno': returnRoute},
+      ).toString(),
       extra: VisitReportRouteData(
         visit: visit,
         propertyName: property.nome,
         property: property,
+        returnRoute: returnRoute,
       ),
     );
   }

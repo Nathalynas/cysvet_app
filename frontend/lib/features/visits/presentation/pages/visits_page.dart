@@ -134,6 +134,7 @@ class VisitsPage extends ConsumerWidget {
                                 visit: visit,
                                 propertyName: propertyName,
                                 property: property,
+                                returnRoute: '/visitas',
                               ),
                             );
                           },

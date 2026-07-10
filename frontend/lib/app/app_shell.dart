@@ -146,10 +146,6 @@ class AppShell extends ConsumerWidget {
       return const _PageHeaderConfig(backRoute: '/visitas');
     }
 
-    if (location.startsWith('/visitas/') && location.endsWith('/detalhes')) {
-      return const _PageHeaderConfig(backRoute: '/visitas');
-    }
-
     return const _PageHeaderConfig();
   }
 

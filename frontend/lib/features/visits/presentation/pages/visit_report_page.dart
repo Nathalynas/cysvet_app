@@ -2,10 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/services.dart';
+import 'package:go_router/go_router.dart';
 import 'package:printing/printing.dart';
 
 import '../../../../app/app_shell.dart';
-import '../../../../app/theme.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/presentation/app_scaffold_messenger.dart';
 import '../../../../core/presentation/async_value_view.dart';
@@ -62,22 +62,17 @@ class VisitReportRouteData {
     required this.visit,
     required this.propertyName,
     this.property,
+    this.returnRoute,
   });
 
   final VisitSummaryModel visit;
   final String propertyName;
   final PropertySummaryModel? property;
+  final String? returnRoute;
 }
 
 class _ReportTokens {
   const _ReportTokens._();
-
-  static const green = AppTheme.primaryColor;
-  static const ink = AppTheme.textColor;
-  static const muted = AppTheme.mutedTextColor;
-  static const border = AppTheme.borderColor;
-  static const sectionFill = AppTheme.neutralColor;
-  static const documentSurface = Colors.white;
 
   static const documentWidth = 840.0;
   static const documentPadding = 40.0;
@@ -94,10 +89,16 @@ class _ReportTokens {
 enum _ReportPdfAction { share, download }
 
 class VisitReportPage extends ConsumerWidget {
-  const VisitReportPage({super.key, required this.visitId, this.initialData});
+  const VisitReportPage({
+    super.key,
+    required this.visitId,
+    this.initialData,
+    this.returnRoute,
+  });
 
   final int visitId;
   final VisitReportRouteData? initialData;
+  final String? returnRoute;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -107,13 +108,12 @@ class VisitReportPage extends ConsumerWidget {
     final session = ref.watch(authSessionProvider);
     final activeCompanyName = _cleanText(session?.activeCompany?.name);
     final currentUserName = _cleanText(session?.user.name);
-    final baseTheme = Theme.of(context);
-    final reportTheme = _buildReportTheme(baseTheme);
+    final theme = Theme.of(context);
 
-    return Theme(
-      data: reportTheme,
-      child: ColoredBox(
-        color: _ReportTokens.documentSurface,
+    return Scaffold(
+      backgroundColor: theme.scaffoldBackgroundColor,
+      body: ColoredBox(
+        color: theme.scaffoldBackgroundColor,
         // TODO(frontend-only): Pagina de detalhes exibindo o relatorio como documento fixo.
         child: AsyncValueView<VisitReportRouteData>(
           value: value,
@@ -125,7 +125,9 @@ class VisitReportPage extends ConsumerWidget {
             data: data,
             companyName: activeCompanyName,
             currentUserName: currentUserName,
-            pageTitleTheme: baseTheme,
+            backRoute: _safeVisitReportBackRoute(
+              data.returnRoute ?? returnRoute,
+            ),
           ),
         ),
       ),
@@ -138,13 +140,13 @@ class _ReportPageContent extends StatelessWidget {
     required this.data,
     required this.companyName,
     required this.currentUserName,
-    required this.pageTitleTheme,
+    required this.backRoute,
   });
 
   final VisitReportRouteData data;
   final String? companyName;
   final String? currentUserName;
-  final ThemeData pageTitleTheme;
+  final String backRoute;
 
   @override
   Widget build(BuildContext context) {
@@ -156,12 +158,59 @@ class _ReportPageContent extends StatelessWidget {
             header: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Theme(
-                  data: pageTitleTheme,
-                  child: const PageTitle(
-                    title: 'Detalhes da visita',
-                    backRoute: '/visitas',
-                  ),
+                Builder(
+                  builder: (context) {
+                    final theme = Theme.of(context);
+                    final colorScheme = theme.colorScheme;
+                    final isMobile =
+                        MediaQuery.sizeOf(context).width < MOBILE_WIDTH;
+                    final horizontal = PageTitle.horizontalPadding(context);
+
+                    return Padding(
+                      padding: EdgeInsets.fromLTRB(
+                        horizontal,
+                        isMobile ? 16 : 24,
+                        horizontal,
+                        isMobile ? 10 : 12,
+                      ),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          Tooltip(
+                            message: 'Voltar',
+                            child: AppButton(
+                              width: 38,
+                              height: 38,
+                              padding: EdgeInsets.zero,
+                              borderRadius: 12,
+                              shadow: true,
+                              color: colorScheme.surface,
+                              textColor: colorScheme.primary,
+                              borderColor: Colors.transparent,
+                              icon: Icon(
+                                Icons.arrow_back,
+                                size: 18,
+                                color: colorScheme.primary,
+                              ),
+                              onPressed: () => context.go(backRoute),
+                            ),
+                          ),
+                          const SizedBox(width: 14),
+                          Expanded(
+                            child: Text(
+                              'Detalhes da visita',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: theme.textTheme.titleLarge?.copyWith(
+                                color: colorScheme.onSurface,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
                 ),
                 Padding(
                   padding: const EdgeInsets.fromLTRB(24, 10, 24, 8),
@@ -360,6 +409,8 @@ class VisitReportCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
     // TODO(api): Manter o PDF oficial do back-end alinhado ao layout visual.
     final data = _VisitReportData.fromVisit(
       visit: visit,
@@ -374,12 +425,14 @@ class VisitReportCard extends StatelessWidget {
       width: _ReportTokens.documentWidth,
       child: DecoratedBox(
         decoration: BoxDecoration(
-          color: _ReportTokens.documentSurface,
+          color: colorScheme.surface,
           borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: _ReportTokens.border),
+          border: Border.all(color: colorScheme.outline.withValues(alpha: 0.2)),
           boxShadow: [
             BoxShadow(
-              color: _ReportTokens.ink.withValues(alpha: 0.06),
+              color: theme.shadowColor.withValues(
+                alpha: theme.brightness == Brightness.dark ? 0.24 : 0.08,
+              ),
               blurRadius: 18,
               offset: const Offset(0, 10),
             ),
@@ -509,20 +562,6 @@ class _ReportPdfActionsState extends ConsumerState<_ReportPdfActions> {
   }
 }
 
-ThemeData _buildReportTheme(ThemeData baseTheme) {
-  return baseTheme.copyWith(
-    colorScheme: baseTheme.colorScheme.copyWith(
-      primary: _ReportTokens.green,
-      surface: _ReportTokens.documentSurface,
-      surfaceContainerHighest: _ReportTokens.sectionFill,
-      onSurface: _ReportTokens.ink,
-      onSurfaceVariant: _ReportTokens.muted,
-      outline: _ReportTokens.border,
-    ),
-    dividerTheme: baseTheme.dividerTheme.copyWith(color: _ReportTokens.border),
-  );
-}
-
 class _ReportHeader extends StatelessWidget {
   const _ReportHeader({required this.data});
 
@@ -531,10 +570,11 @@ class _ReportHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
     final title = Text(
       'Relatório Técnico de Visita',
       style: theme.textTheme.headlineMedium?.copyWith(
-        color: _ReportTokens.green,
+        color: colorScheme.primary,
         fontWeight: FontWeight.w900,
         height: 1.1,
       ),
@@ -547,7 +587,7 @@ class _ReportHeader extends StatelessWidget {
         Text(
           data.propertyName,
           style: theme.textTheme.titleLarge?.copyWith(
-            color: _ReportTokens.green,
+            color: colorScheme.primary,
             fontWeight: FontWeight.w800,
             height: 1.15,
           ),
@@ -588,6 +628,7 @@ class _HeaderMetaLine extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
 
     return Padding(
       padding: const EdgeInsets.only(top: 4),
@@ -597,14 +638,14 @@ class _HeaderMetaLine extends StatelessWidget {
             TextSpan(
               text: '$label: ',
               style: theme.textTheme.bodyMedium?.copyWith(
-                color: _ReportTokens.green,
+                color: colorScheme.primary,
                 fontWeight: FontWeight.w800,
               ),
             ),
             TextSpan(
               text: value,
               style: theme.textTheme.bodyMedium?.copyWith(
-                color: _ReportTokens.muted,
+                color: colorScheme.onSurfaceVariant,
                 fontWeight: FontWeight.w600,
               ),
             ),
@@ -648,11 +689,10 @@ class _ReportStatCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
 
     return AppCard(
       borderRadius: 16,
-      borderColor: _ReportTokens.border,
-      backgroundColor: _ReportTokens.documentSurface,
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 16),
       child: SizedBox(
         height: 68,
@@ -665,7 +705,7 @@ class _ReportStatCard extends StatelessWidget {
                 stat.label,
                 maxLines: 1,
                 style: theme.textTheme.bodyMedium?.copyWith(
-                  color: _ReportTokens.muted,
+                  color: colorScheme.onSurfaceVariant,
                   fontWeight: FontWeight.w600,
                 ),
               ),
@@ -677,7 +717,7 @@ class _ReportStatCard extends StatelessWidget {
                 stat.value,
                 maxLines: 1,
                 style: theme.textTheme.headlineSmall?.copyWith(
-                  color: _ReportTokens.green,
+                  color: colorScheme.primary,
                   fontWeight: FontWeight.w900,
                   height: 1,
                 ),
@@ -698,11 +738,10 @@ class _NextStepsSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
 
     return AppCard(
       borderRadius: 18,
-      borderColor: _ReportTokens.border,
-      backgroundColor: _ReportTokens.documentSurface,
       padding: const EdgeInsets.all(20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -720,7 +759,7 @@ class _NextStepsSection extends StatelessWidget {
             Text(
               'Nenhum próximo passo informado.',
               style: theme.textTheme.bodyMedium?.copyWith(
-                color: _ReportTokens.muted,
+                color: colorScheme.onSurfaceVariant,
               ),
             ),
         ],
@@ -737,6 +776,7 @@ class _NextStepTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
 
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -748,14 +788,14 @@ class _NextStepTile extends StatelessWidget {
                 TextSpan(
                   text: '${step.dateLabel} - ',
                   style: theme.textTheme.bodyMedium?.copyWith(
-                    color: _ReportTokens.ink,
+                    color: colorScheme.onSurface,
                     fontWeight: FontWeight.w800,
                   ),
                 ),
                 TextSpan(
                   text: step.description,
                   style: theme.textTheme.bodyMedium?.copyWith(
-                    color: _ReportTokens.muted,
+                    color: colorScheme.onSurfaceVariant,
                     height: 1.35,
                   ),
                 ),
@@ -775,6 +815,8 @@ class _ProceduresSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -782,7 +824,6 @@ class _ProceduresSection extends StatelessWidget {
         const SizedBox(height: 12),
         // TODO(frontend-only): Ajustar bordas das tabelas para seguir o padrao visual.
         AppTable<_ProcedureReportRow>(
-          borderColor: _ReportTokens.border,
           borderRadius: 18,
           mobileBreakpoint: 0,
           rows: rows,
@@ -790,7 +831,7 @@ class _ProceduresSection extends StatelessWidget {
           mobileTitleBuilder: (context, item) => Text(
             item.procedure,
             style: Theme.of(context).textTheme.titleSmall?.copyWith(
-              color: _ReportTokens.ink,
+              color: colorScheme.onSurface,
               fontWeight: FontWeight.w800,
             ),
           ),
@@ -817,9 +858,7 @@ class _ProceduresSection extends StatelessWidget {
               flex: 2,
               cellBuilder: (context, item) => _StrongCell(
                 item.result,
-                color: item.highlightResult
-                    ? _ReportTokens.green
-                    : _ReportTokens.ink,
+                color: item.highlightResult ? colorScheme.primary : null,
               ),
             ),
           ],
@@ -836,13 +875,14 @@ class _ConfirmedAnimalsSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         const _ReportSectionTitle(title: 'Animais Confirmados na Visita'),
         const SizedBox(height: 12),
         AppTable<_ConfirmedAnimalReportRow>(
-          borderColor: _ReportTokens.border,
           borderRadius: 18,
           mobileBreakpoint: 0,
           rows: rows,
@@ -850,7 +890,7 @@ class _ConfirmedAnimalsSection extends StatelessWidget {
           mobileTitleBuilder: (context, item) => Text(
             item.identification,
             style: Theme.of(context).textTheme.titleSmall?.copyWith(
-              color: _ReportTokens.ink,
+              color: colorScheme.onSurface,
               fontWeight: FontWeight.w800,
             ),
           ),
@@ -880,9 +920,7 @@ class _ConfirmedAnimalsSection extends StatelessWidget {
               flex: 2,
               cellBuilder: (context, item) => _StrongCell(
                 item.result,
-                color: item.highlightResult
-                    ? _ReportTokens.green
-                    : _ReportTokens.ink,
+                color: item.highlightResult ? colorScheme.primary : null,
               ),
             ),
             AppTableColumn<_ConfirmedAnimalReportRow>(
@@ -905,11 +943,10 @@ class _ObservationsSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
 
     return AppCard(
       borderRadius: 18,
-      borderColor: _ReportTokens.border,
-      backgroundColor: _ReportTokens.documentSurface,
       padding: const EdgeInsets.all(20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -926,7 +963,7 @@ class _ObservationsSection extends StatelessWidget {
                 Container(
                   width: 4,
                   decoration: BoxDecoration(
-                    color: _ReportTokens.green,
+                    color: colorScheme.primary,
                     borderRadius: BorderRadius.circular(999),
                   ),
                 ),
@@ -935,7 +972,7 @@ class _ObservationsSection extends StatelessWidget {
                   child: Text(
                     observations,
                     style: theme.textTheme.bodyLarge?.copyWith(
-                      color: _ReportTokens.ink,
+                      color: colorScheme.onSurface,
                       height: 1.55,
                       fontStyle: FontStyle.italic,
                     ),
@@ -958,11 +995,12 @@ class _ReportFooter extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const Divider(color: _ReportTokens.green, thickness: 1.2),
+        Divider(color: colorScheme.primary, thickness: 1.2),
         const SizedBox(height: 18),
         Row(
           crossAxisAlignment: CrossAxisAlignment.center,
@@ -974,7 +1012,7 @@ class _ReportFooter extends StatelessWidget {
                 textAlign: TextAlign.left,
                 overflow: TextOverflow.ellipsis,
                 style: theme.textTheme.bodySmall?.copyWith(
-                  color: _ReportTokens.muted,
+                  color: colorScheme.onSurfaceVariant,
                   fontWeight: FontWeight.w700,
                 ),
               ),
@@ -988,7 +1026,7 @@ class _ReportFooter extends StatelessWidget {
                 textAlign: TextAlign.center,
                 overflow: TextOverflow.ellipsis,
                 style: theme.textTheme.bodySmall?.copyWith(
-                  color: _ReportTokens.green,
+                  color: colorScheme.primary,
                   fontWeight: FontWeight.w900,
                   letterSpacing: 0,
                 ),
@@ -1002,7 +1040,7 @@ class _ReportFooter extends StatelessWidget {
                 textAlign: TextAlign.right,
                 overflow: TextOverflow.ellipsis,
                 style: theme.textTheme.bodySmall?.copyWith(
-                  color: _ReportTokens.muted,
+                  color: colorScheme.onSurfaceVariant,
                 ),
               ),
             ),
@@ -1022,18 +1060,19 @@ class _ReportSectionTitle extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
 
     return Row(
       children: [
         if (icon != null) ...[
-          Icon(icon, color: _ReportTokens.green, size: 24),
+          Icon(icon, color: colorScheme.primary, size: 24),
           const SizedBox(width: 12),
         ],
         Expanded(
           child: Text(
             title,
             style: theme.textTheme.titleMedium?.copyWith(
-              color: _ReportTokens.green,
+              color: colorScheme.primary,
               fontWeight: FontWeight.w900,
             ),
           ),
@@ -1052,11 +1091,13 @@ class _StrongCell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
     return Text(
       value,
       textAlign: textAlign,
       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-        color: color ?? _ReportTokens.ink,
+        color: color ?? colorScheme.onSurface,
         fontWeight: FontWeight.w800,
       ),
     );
@@ -1443,4 +1484,13 @@ T? _firstWhereOrNull<T>(Iterable<T> items, bool Function(T item) test) {
   }
 
   return null;
+}
+
+String _safeVisitReportBackRoute(String? route) {
+  final trimmed = route?.trim();
+  if (trimmed == '/visitas' || trimmed?.startsWith('/propriedades/') == true) {
+    return trimmed!;
+  }
+
+  return '/visitas';
 }
