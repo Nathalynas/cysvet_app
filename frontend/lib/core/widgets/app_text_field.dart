@@ -134,6 +134,12 @@ class _AppTextFieldState extends State<AppTextField> {
     return _focused || _hasValue;
   }
 
+  double get _centeredLabelTop {
+    const labelHeight = 14.0;
+
+    return (_effectiveHeight - labelHeight) / 2;
+  }
+
   @override
   void initState() {
     super.initState();
@@ -303,7 +309,7 @@ class _AppTextFieldState extends State<AppTextField> {
           left: 0,
           right: 0,
 
-          top: _shouldFloatLabel ? -6 : 11,
+          top: _shouldFloatLabel ? -6 : _centeredLabelTop,
 
           child: IgnorePointer(
             child: _shouldFloatLabel

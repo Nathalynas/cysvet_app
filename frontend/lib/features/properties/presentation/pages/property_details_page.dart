@@ -76,7 +76,7 @@ final propertyDetailsAnimalsProvider = FutureProvider.autoDispose
       final repository = ref.watch(animalsRepositoryProvider);
 
       if (session == null) {
-        throw StateError('Sessao indisponivel.');
+        throw StateError('Sessão indisponível.');
       }
 
       final property = await propertyFuture;
@@ -107,7 +107,7 @@ final propertyDetailsVisitsProvider = FutureProvider.autoDispose
       final repository = ref.watch(visitsRepositoryProvider);
 
       if (session == null) {
-        throw StateError('Sessao indisponivel.');
+        throw StateError('Sessão indisponível.');
       }
 
       final property = await propertyFuture;
@@ -407,7 +407,7 @@ class _PropertyDetailsPageState extends ConsumerState<PropertyDetailsPage> {
           if (!mounted) return;
           await navigator.maybePop();
           router.go('/propriedades');
-          showAppSuccess('Propriedade excluida com sucesso.');
+          showAppSuccess('Propriedade excluída com sucesso.');
         } catch (error) {
           showAppError(error);
         }
@@ -1059,20 +1059,20 @@ class _PropertyGeneralTab extends StatelessWidget {
       fields: [
         _DetailField(label: 'Nome', value: _dashIfBlank(property.nome)),
         _DetailField(
-          label: 'Responsavel',
+          label: 'Responsável',
           value: _dashIfBlank(property.nomeProprietario),
         ),
         _DetailField(label: 'Contato', value: _dashIfBlank(property.contato)),
         _DetailField(label: 'Cidade', value: _dashIfBlank(property.cidade)),
         _DetailField(label: 'UF', value: _dashIfBlank(property.estado)),
-        _DetailField(label: 'Localizacao', value: _locationLabel(property)),
+        _DetailField(label: 'Localização', value: _locationLabel(property)),
         _DetailField(label: 'Status', value: property.status.label),
         _DetailField(
           label: 'ID externo',
           value: _dashIfBlank(property.idExterno),
         ),
         _DetailField(
-          label: 'Observacoes',
+          label: 'Observações',
           value: _dashIfBlank(property.observacoes),
           wide: true,
         ),
@@ -1102,7 +1102,7 @@ class _PropertyAnimalsTab extends StatelessWidget {
         loading: true,
       ),
       error: (error, stackTrace) => _InlineFeedback(
-        message: 'Nao foi possivel carregar os animais desta propriedade.',
+        message: 'Não foi possivel carregar os animais desta propriedade.',
         onRetry: onRetry,
       ),
     );
@@ -1130,7 +1130,7 @@ class _PropertyVisitsTab extends StatelessWidget {
         loading: true,
       ),
       error: (error, stackTrace) => _InlineFeedback(
-        message: 'Nao foi possivel carregar as visitas desta propriedade.',
+        message: 'Não foi possivel carregar as visitas desta propriedade.',
         onRetry: onRetry,
       ),
     );
@@ -1177,7 +1177,7 @@ class _PropertyAnimalsTable extends StatelessWidget {
           ),
         ),
         _DetailsTableColumn<AnimalSummaryModel>(
-          label: 'Reproducao',
+          label: 'Reprodução',
           flex: 2,
           cellBuilder: (context, animal) {
             final status = IndicadorReprodutivoCalculator.resolveAnimalStatus(
@@ -1191,13 +1191,13 @@ class _PropertyAnimalsTable extends StatelessWidget {
           },
         ),
         _DetailsTableColumn<AnimalSummaryModel>(
-          label: 'Ultima IA',
+          label: 'Última IA',
           flex: 2,
           cellBuilder: (context, animal) =>
               Text(formatDate(animal.dataInseminacao)),
         ),
         _DetailsTableColumn<AnimalSummaryModel>(
-          label: 'Ultimo parto',
+          label: 'Último parto',
           flex: 2,
           cellBuilder: (context, animal) =>
               Text(formatDate(animal.dataUltimoParto)),
@@ -1235,7 +1235,7 @@ class _PropertyVisitsTable extends StatelessWidget {
           cellBuilder: (context, visit) => Text(formatDate(visit.dataVisita)),
         ),
         _DetailsTableColumn<VisitSummaryModel>(
-          label: 'Veterinario',
+          label: 'Veterinário',
           flex: 3,
           cellBuilder: (context, visit) =>
               Text(_dashIfBlank(visit.veterinarioResponsavel)),
