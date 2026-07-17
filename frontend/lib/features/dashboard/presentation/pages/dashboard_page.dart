@@ -681,9 +681,7 @@ class _MetricSummaryCard extends StatelessWidget {
     final expandedRows = Column(
       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
       crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        for (final item in items) _MetricSummaryRow(item: item),
-      ],
+      children: [for (final item in items) _MetricSummaryRow(item: item)],
     );
 
     return AppCard(
@@ -917,7 +915,7 @@ class _AgendaTable extends StatelessWidget {
           label: 'Data',
           flex: 2,
           alignment: Alignment.center,
-          cellBuilder: (context, item) => Text(formatDate(item.date)),
+          cellBuilder: (context, item) => _AgendaDateCell(item: item),
         ),
         AppTableColumn<_AgendaItem>(
           label: 'Tipo',
@@ -940,6 +938,53 @@ class _AgendaTable extends StatelessWidget {
             cellBuilder: (context, item) => Text(_dashIfBlank(item.animalCode)),
           ),
       ],
+    );
+  }
+}
+
+class _AgendaDateCell extends StatelessWidget {
+  const _AgendaDateCell({required this.item});
+
+  final _AgendaItem item;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final width = constraints.hasBoundedWidth
+            ? constraints.maxWidth
+            : 136.0;
+
+        return SizedBox(
+          width: width,
+          child: Row(
+            children: [
+              SizedBox(
+                width: 24,
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: Icon(
+                    Icons.event_available_rounded,
+                    size: 18,
+                    color: colorScheme.primary,
+                  ),
+                ),
+              ),
+              Expanded(
+                child: Text(
+                  formatDate(item.date),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.center,
+                ),
+              ),
+              const SizedBox(width: 24),
+            ],
+          ),
+        );
+      },
     );
   }
 }
@@ -975,10 +1020,7 @@ class _CompactAgendaCard extends StatelessWidget {
                   height: 18,
                   color: colorScheme.outline.withValues(alpha: 0.18),
                 ),
-              _CompactAgendaRow(
-                item: items[index],
-                showProperty: showProperty,
-              ),
+              _CompactAgendaRow(item: items[index], showProperty: showProperty),
             ],
           ],
           Divider(
@@ -1009,6 +1051,21 @@ class _CompactAgendaRow extends StatelessWidget {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     final related = showProperty ? item.property : item.animalCode;
+    final relatedLabel = _dashIfBlank(related);
+    final textStyle = theme.textTheme.bodySmall?.copyWith(
+      color: colorScheme.onSurface,
+      fontWeight: FontWeight.w700,
+    );
+
+    double textWidth(String value) {
+      final painter = TextPainter(
+        text: TextSpan(text: value, style: textStyle),
+        maxLines: 1,
+        textDirection: Directionality.of(context),
+      )..layout();
+
+      return painter.width;
+    }
 
     return Row(
       children: [
@@ -1018,34 +1075,60 @@ class _CompactAgendaRow extends StatelessWidget {
           formatDate(item.date),
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
-          style: theme.textTheme.bodySmall?.copyWith(
-            color: colorScheme.onSurface,
-            fontWeight: FontWeight.w900,
-          ),
+          style: textStyle,
         ),
         const SizedBox(width: 10),
         Expanded(
-          child: Text(
-            item.type,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: colorScheme.onSurface,
-              fontWeight: FontWeight.w800,
-            ),
-          ),
-        ),
-        const SizedBox(width: 8),
-        Flexible(
-          child: Text(
-            _dashIfBlank(related),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            textAlign: TextAlign.right,
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: colorScheme.onSurfaceVariant,
-              fontWeight: FontWeight.w700,
-            ),
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final inlineWidth =
+                  textWidth(item.type) + textWidth(relatedLabel) + 8;
+              final shouldStack = inlineWidth > constraints.maxWidth;
+
+              if (shouldStack) {
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      item.type,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: textStyle,
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      relatedLabel,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: textStyle,
+                    ),
+                  ],
+                );
+              }
+
+              return Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      item.type,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: textStyle,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Flexible(
+                    child: Text(
+                      relatedLabel,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      textAlign: TextAlign.right,
+                      style: textStyle,
+                    ),
+                  ),
+                ],
+              );
+            },
           ),
         ),
       ],
@@ -1505,7 +1588,6 @@ class _RateLegend extends StatelessWidget {
   }
 }
 
-
 class _RateGaugeChart extends StatelessWidget {
   const _RateGaugeChart({required this.items});
 
@@ -1533,7 +1615,10 @@ class _RateGaugeChart extends StatelessWidget {
             runSpacing: spacing,
             children: [
               for (final item in items)
-                SizedBox(width: itemWidth, child: _GaugeTile(item: item)),
+                SizedBox(
+                  width: itemWidth,
+                  child: _GaugeTile(item: item),
+                ),
             ],
           );
         },
@@ -1763,9 +1848,9 @@ class _ChartCard extends StatelessWidget {
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
             style: theme.textTheme.titleSmall?.copyWith(
-          color: colorScheme.onSurface,
-          fontWeight: FontWeight.w900,
-        ),
+              color: colorScheme.onSurface,
+              fontWeight: FontWeight.w900,
+            ),
           ),
           if (subtitle != null) ...[
             const SizedBox(height: 4),
@@ -1845,7 +1930,9 @@ class _LegendItem extends StatelessWidget {
             child: Text(
               '$label: $value',
               maxLines: allowWrap ? 3 : 1,
-              overflow: allowWrap ? TextOverflow.visible : TextOverflow.ellipsis,
+              overflow: allowWrap
+                  ? TextOverflow.visible
+                  : TextOverflow.ellipsis,
               softWrap: allowWrap,
               style: theme.textTheme.bodySmall?.copyWith(
                 color: colorScheme.onSurfaceVariant,
@@ -2249,17 +2336,20 @@ class _VisitHistoryTable extends StatelessWidget {
         AppTableColumn<_VisitHistoryRow>(
           label: 'Data',
           flex: 2,
+          alignment: Alignment.center,
           cellBuilder: (context, row) => Text(row.date),
         ),
         if (showProperty)
           AppTableColumn<_VisitHistoryRow>(
             label: 'Propriedade',
             flex: 3,
+            alignment: Alignment.center,
             cellBuilder: (context, row) => Text(row.property),
           ),
         AppTableColumn<_VisitHistoryRow>(
           label: 'Veterinário',
           flex: 3,
+          alignment: Alignment.center,
           cellBuilder: (context, row) => Text(row.veterinarian),
         ),
         AppTableColumn<_VisitHistoryRow>(
@@ -2270,6 +2360,7 @@ class _VisitHistoryTable extends StatelessWidget {
         AppTableColumn<_VisitHistoryRow>(
           label: 'Observações',
           flex: 5,
+          alignment: Alignment.center,
           cellBuilder: (context, row) => Text(row.observations),
         ),
       ],
@@ -2311,10 +2402,7 @@ class _CompactVisitHistoryCard extends StatelessWidget {
                   height: 18,
                   color: colorScheme.outline.withValues(alpha: 0.18),
                 ),
-              _CompactVisitRow(
-                row: rows[index],
-                showProperty: showProperty,
-              ),
+              _CompactVisitRow(row: rows[index], showProperty: showProperty),
             ],
           ],
           Divider(
@@ -3380,7 +3468,11 @@ List<_ChartCountItem> _buildParityChartItems(List<_AnimalRecord> records) {
           value: 0,
           color: _ChartColors.purple,
         ),
-        _ChartCountItem(label: 'Novilhas', value: 0, color: _ChartColors.warning),
+        _ChartCountItem(
+          label: 'Novilhas',
+          value: 0,
+          color: _ChartColors.warning,
+        ),
       ]
       .asMap()
       .entries
@@ -3972,7 +4064,6 @@ String _formatNullableInt(int? value) {
   if (value == null) return '--';
   return value.toString();
 }
-
 
 String _recordsLabel(
   int count, {

@@ -10,6 +10,7 @@ import 'package:go_router/go_router.dart';
 import '../core/constants/app_constants.dart';
 import '../core/widgets/app_button.dart';
 import '../features/auth/application/auth_state.dart';
+import 'theme.dart';
 
 class AppShell extends ConsumerWidget {
   const AppShell({super.key, required this.child});
@@ -254,20 +255,29 @@ class _MainHeader extends ConsumerWidget {
                         ),
                         Align(
                           alignment: Alignment.centerRight,
-                          child: _UserAvatarMenu(
-                            userName: userName,
-                            userEmail: userEmail,
-                            onProfile: () => context.go('/configuracoes'),
-                            onCompany: () => context.go('/configuracoes'),
-                            onLogout: () async {
-                              await ref.read(authControllerProvider).logout();
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const _HeaderThemeModeSelector(),
+                              const SizedBox(width: 8),
+                              _UserAvatarMenu(
+                                userName: userName,
+                                userEmail: userEmail,
+                                onProfile: () => context.go('/configuracoes'),
+                                onCompany: () => context.go('/configuracoes'),
+                                onLogout: () async {
+                                  await ref
+                                      .read(authControllerProvider)
+                                      .logout();
 
-                              if (!context.mounted) {
-                                return;
-                              }
+                                  if (!context.mounted) {
+                                    return;
+                                  }
 
-                              context.go('/login');
-                            },
+                                  context.go('/login');
+                                },
+                              ),
+                            ],
                           ),
                         ),
                       ],
@@ -300,6 +310,8 @@ class _MainHeader extends ConsumerWidget {
                             userName: userName,
                           ),
                         ),
+                        const _HeaderThemeModeSelector(),
+                        const SizedBox(width: 10),
                         _UserAvatarMenu(
                           userName: userName,
                           userEmail: userEmail,
@@ -320,6 +332,43 @@ class _MainHeader extends ConsumerWidget {
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _HeaderThemeModeSelector extends ConsumerWidget {
+  const _HeaderThemeModeSelector();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final themeMode = ref.watch(appThemeModeProvider);
+    final selectedMode = themeMode == ThemeMode.dark
+        ? ThemeMode.dark
+        : ThemeMode.light;
+    final colorScheme = Theme.of(context).colorScheme;
+    final isDark = selectedMode == ThemeMode.dark;
+    final nextMode = isDark ? ThemeMode.light : ThemeMode.dark;
+
+    return Tooltip(
+      message: isDark ? 'Tema claro' : 'Tema escuro',
+      child: AppButton(
+        width: 34,
+        height: 34,
+        shadow: false,
+        outlined: false,
+        color: Colors.transparent,
+        textColor: colorScheme.primary,
+        borderColor: Colors.transparent,
+        borderRadius: 12,
+        padding: EdgeInsets.zero,
+        icon: Icon(
+          isDark ? Icons.wb_sunny_outlined : Icons.dark_mode_outlined,
+          size: 19,
+        ),
+        onPressed: () {
+          ref.read(appThemeModeProvider.notifier).setThemeMode(nextMode);
+        },
       ),
     );
   }
