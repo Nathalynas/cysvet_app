@@ -7,7 +7,8 @@ class AppTableColumn<T> {
     required this.cellBuilder,
     this.mobileCellBuilder,
     this.flex = 1,
-    this.alignment = Alignment.centerLeft,
+    this.alignment = Alignment.center,
+    this.headerAlignment,
     this.mobileLabel,
   });
 
@@ -17,6 +18,7 @@ class AppTableColumn<T> {
   final Widget Function(BuildContext context, T item)? mobileCellBuilder;
   final int flex;
   final AlignmentGeometry alignment;
+  final AlignmentGeometry? headerAlignment;
 }
 
 class AppTable<T> extends StatelessWidget {
@@ -33,6 +35,7 @@ class AppTable<T> extends StatelessWidget {
     this.borderRadius = 20,
     this.shadow = true,
     this.onRowTap,
+    this.enableRowHover = true,
   });
 
   final List<T> rows;
@@ -46,6 +49,7 @@ class AppTable<T> extends StatelessWidget {
   final double borderRadius;
   final bool shadow;
   final ValueChanged<T>? onRowTap;
+  final bool enableRowHover;
 
   @override
   Widget build(BuildContext context) {
@@ -62,6 +66,7 @@ class AppTable<T> extends StatelessWidget {
             borderRadius: borderRadius,
             shadow: shadow,
             onRowTap: onRowTap,
+            enableRowHover: enableRowHover,
           );
         }
 
@@ -75,6 +80,7 @@ class AppTable<T> extends StatelessWidget {
           borderRadius: borderRadius,
           shadow: shadow,
           onRowTap: onRowTap,
+          enableRowHover: enableRowHover,
         );
       },
     );
@@ -92,6 +98,7 @@ class _AppTableGrid<T> extends StatelessWidget {
     required this.borderRadius,
     required this.shadow,
     required this.onRowTap,
+    required this.enableRowHover,
   });
 
   final List<T> rows;
@@ -103,6 +110,7 @@ class _AppTableGrid<T> extends StatelessWidget {
   final double borderRadius;
   final bool shadow;
   final ValueChanged<T>? onRowTap;
+  final bool enableRowHover;
 
   @override
   Widget build(BuildContext context) {
@@ -123,6 +131,7 @@ class _AppTableGrid<T> extends StatelessWidget {
             isHeader: true,
             backgroundColor: colorScheme.surface,
             equalColumnWidth: equalColumnWidth,
+            enableHover: false,
           ),
           if (rows.isEmpty)
             Padding(
@@ -148,6 +157,7 @@ class _AppTableGrid<T> extends StatelessWidget {
                       ),
                 equalColumnWidth: equalColumnWidth,
                 onTap: onRowTap,
+                enableHover: enableRowHover,
               ),
             ],
           if (footerLabel != null) ...[
@@ -178,6 +188,7 @@ class _AppTableRow<T> extends StatelessWidget {
     this.backgroundColor,
     this.equalColumnWidth = false,
     this.onTap,
+    this.enableHover = true,
   });
 
   final List<AppTableColumn<T>> columns;
@@ -186,6 +197,7 @@ class _AppTableRow<T> extends StatelessWidget {
   final Color? backgroundColor;
   final bool equalColumnWidth;
   final ValueChanged<T>? onTap;
+  final bool enableHover;
 
   @override
   Widget build(BuildContext context) {
@@ -204,7 +216,7 @@ class _AppTableRow<T> extends StatelessWidget {
               flex: equalColumnWidth ? 1 : columns[index].flex,
               child: Align(
                 alignment: isHeader
-                    ? Alignment.center
+                    ? columns[index].headerAlignment ?? Alignment.center
                     : columns[index].alignment,
                 child: isHeader
                     ? Text(
@@ -234,21 +246,83 @@ class _AppTableRow<T> extends StatelessWidget {
       ),
     );
 
-    if (isHeader || item == null || onTap == null) {
+    if (isHeader || item == null) {
       return ColoredBox(
         color: backgroundColor ?? Colors.transparent,
         child: content,
       );
     }
 
-    return Material(
-      color: backgroundColor ?? Colors.transparent,
-      child: InkWell(
-        hoverColor: colorScheme.primary.withValues(alpha: 0.04),
-        splashColor: colorScheme.primary.withValues(alpha: 0.08),
-        onTap: () => onTap!(item as T),
+    if (!enableHover && onTap == null) {
+      return ColoredBox(
+        color: backgroundColor ?? Colors.transparent,
         child: content,
-      ),
+      );
+    }
+
+    return _HoverableAppTableRow<T>(
+      item: item as T,
+      backgroundColor: backgroundColor ?? Colors.transparent,
+      hoverColor: colorScheme.primary.withValues(alpha: 0.045),
+      enableHover: enableHover,
+      onTap: onTap,
+      child: content,
+    );
+  }
+}
+
+class _HoverableAppTableRow<T> extends StatefulWidget {
+  const _HoverableAppTableRow({
+    required this.item,
+    required this.child,
+    required this.backgroundColor,
+    required this.hoverColor,
+    required this.enableHover,
+    required this.onTap,
+  });
+
+  final T item;
+  final Widget child;
+  final Color backgroundColor;
+  final Color hoverColor;
+  final bool enableHover;
+  final ValueChanged<T>? onTap;
+
+  @override
+  State<_HoverableAppTableRow<T>> createState() =>
+      _HoverableAppTableRowState<T>();
+}
+
+class _HoverableAppTableRowState<T> extends State<_HoverableAppTableRow<T>> {
+  bool _hovered = false;
+
+  void _setHovered(bool value) {
+    if (_hovered == value) return;
+    setState(() => _hovered = value);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final canTap = widget.onTap != null;
+    final color = widget.enableHover && _hovered
+        ? widget.hoverColor
+        : widget.backgroundColor;
+
+    Widget row = ColoredBox(color: color, child: widget.child);
+
+    if (canTap) {
+      row = GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: () => widget.onTap!(widget.item),
+        child: row,
+      );
+    }
+
+    return MouseRegion(
+      cursor: canTap ? SystemMouseCursors.click : SystemMouseCursors.basic,
+      onEnter: widget.enableHover ? (_) => _setHovered(true) : null,
+      onExit: widget.enableHover ? (_) => _setHovered(false) : null,
+      child: row,
     );
   }
 }
@@ -264,6 +338,7 @@ class _AppTableCards<T> extends StatelessWidget {
     required this.borderRadius,
     required this.shadow,
     required this.onRowTap,
+    required this.enableRowHover,
   });
 
   final List<T> rows;
@@ -275,6 +350,7 @@ class _AppTableCards<T> extends StatelessWidget {
   final double borderRadius;
   final bool shadow;
   final ValueChanged<T>? onRowTap;
+  final bool enableRowHover;
 
   @override
   Widget build(BuildContext context) {
@@ -305,6 +381,7 @@ class _AppTableCards<T> extends StatelessWidget {
             item: rows[index],
             onTap: onRowTap,
             borderRadius: borderRadius,
+            enableHover: enableRowHover,
             child: AppCard(
               padding: const EdgeInsets.all(16),
               borderRadius: borderRadius,
@@ -374,17 +451,19 @@ class _TappableTableCard<T> extends StatelessWidget {
     required this.item,
     required this.child,
     required this.borderRadius,
+    required this.enableHover,
     this.onTap,
   });
 
   final T item;
   final Widget child;
   final double borderRadius;
+  final bool enableHover;
   final ValueChanged<T>? onTap;
 
   @override
   Widget build(BuildContext context) {
-    if (onTap == null) {
+    if (onTap == null && !enableHover) {
       return child;
     }
 
@@ -392,10 +471,10 @@ class _TappableTableCard<T> extends StatelessWidget {
       color: Colors.transparent,
       child: InkWell(
         borderRadius: BorderRadius.circular(borderRadius),
-        hoverColor: Theme.of(
-          context,
-        ).colorScheme.primary.withValues(alpha: 0.04),
-        onTap: () => onTap!(item),
+        hoverColor: enableHover
+            ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.04)
+            : Colors.transparent,
+        onTap: onTap == null ? null : () => onTap!(item),
         child: child,
       ),
     );

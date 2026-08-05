@@ -4,6 +4,8 @@ import '../../../../app/theme.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/widgets/app_card.dart';
 
+const _authPrimaryColor = AppTheme.primary1Color;
+
 class AuthPageShell extends StatelessWidget {
   const AuthPageShell({super.key, required this.form});
 
@@ -15,9 +17,7 @@ class AuthPageShell extends StatelessWidget {
     final cardContent = _AuthCardContent(form: form, isMobile: isMobile);
 
     return Scaffold(
-      backgroundColor: isMobile
-          ? AppTheme.primaryColor
-          : AppTheme.backgroundColor,
+      backgroundColor: isMobile ? _authPrimaryColor : AppTheme.backgroundColor,
       body: isMobile
           ? _MobileAuthLayout(form: cardContent)
           : _DesktopAuthLayout(form: cardContent),
@@ -128,7 +128,7 @@ class _MobileAuthLayout extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      color: AppTheme.primaryColor,
+      color: _authPrimaryColor,
       child: CustomScrollView(
         physics: const AlwaysScrollableScrollPhysics(),
         slivers: [
@@ -194,7 +194,7 @@ class _HeroPanel extends StatelessWidget {
               fit: BoxFit.cover,
               alignment: Alignment.centerLeft,
             ),
-            Container(color: AppTheme.primaryColor.withValues(alpha: 0.35)),
+            Container(color: _authPrimaryColor.withValues(alpha: 0.35)),
             const _HeroGradientOverlay(),
             const _HeroContent(),
           ],
@@ -218,9 +218,9 @@ class _HeroGradientOverlay extends StatelessWidget {
               begin: Alignment.centerLeft,
               end: Alignment.centerRight,
               colors: [
-                AppTheme.primaryColor.withValues(alpha: 0.18),
-                AppTheme.primaryColor.withValues(alpha: 0.78),
-                AppTheme.primaryColor,
+                _authPrimaryColor.withValues(alpha: 0.18),
+                _authPrimaryColor.withValues(alpha: 0.78),
+                _authPrimaryColor,
               ],
               stops: const [0.0, 0.72, 1.0],
             ),
@@ -232,9 +232,9 @@ class _HeroGradientOverlay extends StatelessWidget {
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
               colors: [
-                AppTheme.primaryColor.withValues(alpha: 0.10),
+                _authPrimaryColor.withValues(alpha: 0.10),
                 Colors.transparent,
-                AppTheme.primaryColor.withValues(alpha: 0.78),
+                _authPrimaryColor.withValues(alpha: 0.78),
               ],
               stops: const [0.0, 0.45, 1.0],
             ),
@@ -333,16 +333,16 @@ class _MobileHeaderImage extends StatelessWidget {
           fit: BoxFit.cover,
           alignment: const Alignment(0, 0.35),
         ),
-        Container(color: AppTheme.primaryColor.withValues(alpha: 0.35)),
+        Container(color: _authPrimaryColor.withValues(alpha: 0.35)),
         DecoratedBox(
           decoration: BoxDecoration(
             gradient: LinearGradient(
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
               colors: [
-                AppTheme.primaryColor.withValues(alpha: 0.05),
-                AppTheme.primaryColor.withValues(alpha: 0.25),
-                AppTheme.primaryColor.withValues(alpha: 0.55),
+                _authPrimaryColor.withValues(alpha: 0.05),
+                _authPrimaryColor.withValues(alpha: 0.25),
+                _authPrimaryColor.withValues(alpha: 0.55),
               ],
               stops: const [0.0, 0.58, 1.0],
             ),
@@ -359,10 +359,17 @@ class _OfflineFirstBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final foregroundColor = isDark
+        ? AppTheme.syncBadgeDarkForegroundColor
+        : AppTheme.syncBadgeForegroundColor;
+    final backgroundColor = isDark
+        ? AppTheme.syncBadgeDarkBackgroundColor
+        : AppTheme.syncBadgeBackgroundColor;
 
     return DecoratedBox(
       decoration: BoxDecoration(
-        color: AppTheme.tertiary.withValues(alpha: 0.10),
+        color: backgroundColor,
         borderRadius: BorderRadius.circular(999),
       ),
       child: Padding(
@@ -370,16 +377,12 @@ class _OfflineFirstBadge extends StatelessWidget {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(
-              Icons.sync,
-              size: 12,
-              color: AppTheme.primaryColor.withValues(alpha: 0.85),
-            ),
+            Icon(Icons.sync, size: 12, color: foregroundColor),
             const SizedBox(width: 7),
             Text(
               'MODO OFFLINE-FIRST ATIVO',
               style: theme.textTheme.labelSmall?.copyWith(
-                color: AppTheme.primaryColor,
+                color: foregroundColor,
                 fontSize: 8.8,
                 fontWeight: FontWeight.w800,
                 letterSpacing: 0,

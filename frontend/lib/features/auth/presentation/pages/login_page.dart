@@ -11,6 +11,8 @@ import '../../../../core/widgets/app_form.dart';
 import '../../../../core/widgets/app_text_field.dart';
 import '../../application/auth_state.dart';
 
+const _authPrimaryColor = AppTheme.primary1Color;
+
 class LoginPage extends ConsumerStatefulWidget {
   const LoginPage({super.key});
 
@@ -136,7 +138,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
           Text(
             'Acesso ao Sistema',
             style: theme.textTheme.titleMedium?.copyWith(
-              color: AppTheme.primaryColor,
+              color: _authPrimaryColor,
               fontSize: 16,
               fontWeight: FontWeight.w800,
               height: 1.1,
@@ -161,7 +163,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
             textInputAction: TextInputAction.next,
             fillColor: Colors.white,
             borderColor: AppTheme.borderColor.withValues(alpha: 0.7),
-            focusedBorderColor: AppTheme.primaryColor,
+            focusedBorderColor: _authPrimaryColor,
             suffixIcon: const Icon(
               Icons.email_outlined,
               size: 17,
@@ -179,7 +181,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
             textInputAction: TextInputAction.done,
             fillColor: Colors.white,
             borderColor: AppTheme.borderColor.withValues(alpha: 0.7),
-            focusedBorderColor: AppTheme.primaryColor,
+            focusedBorderColor: _authPrimaryColor,
             suffixIcon: GestureDetector(
               behavior: HitTestBehavior.opaque,
               onTap: isBusy
@@ -266,15 +268,13 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                 child: Text(
                   'Esqueceu a senha?',
                   style: theme.textTheme.labelMedium?.copyWith(
-                    color: isBusy
-                        ? AppTheme.mutedTextColor
-                        : AppTheme.primaryColor,
+                    color: isBusy ? AppTheme.mutedTextColor : _authPrimaryColor,
                     fontSize: 11.5,
                     fontWeight: FontWeight.w700,
                     decoration: _forgotPasswordHovered
                         ? TextDecoration.underline
                         : TextDecoration.none,
-                    decorationColor: AppTheme.primaryColor,
+                    decorationColor: _authPrimaryColor,
                     decorationThickness: 1.4,
                   ),
                 ),
@@ -300,7 +300,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                           _keepConnected = value ?? false;
                         });
                       },
-                activeColor: AppTheme.primaryColor,
+                activeColor: _authPrimaryColor,
                 visualDensity: VisualDensity.compact,
                 materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                 side: const BorderSide(

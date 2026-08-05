@@ -186,7 +186,9 @@ class _ReportPageContent extends StatelessWidget {
                               shadow: true,
                               color: colorScheme.surface,
                               textColor: colorScheme.primary,
-                              borderColor: Colors.transparent,
+                              borderColor: colorScheme.outline.withValues(
+                                alpha: 0.55,
+                              ),
                               icon: Icon(
                                 Icons.arrow_back,
                                 size: 18,
@@ -497,30 +499,38 @@ class _ReportPdfActionsState extends ConsumerState<_ReportPdfActions> {
             child: AppButton(
               text: 'Compartilhar',
               outlined: true,
-              height: 36,
-              width: 138,
-              borderRadius: 8,
-              fontSize: 12.5,
+              height: 40,
+              width: 166,
+              borderRadius: 10,
+              fontSize: 14,
+              fontWeight: FontWeight.w700,
+              color: Theme.of(context).colorScheme.primary,
+              backgroundColor: Theme.of(context).colorScheme.surface,
+              borderColor: Theme.of(
+                context,
+              ).colorScheme.outline.withValues(alpha: 0.75),
               loading: _runningAction == _ReportPdfAction.share,
               disabled: !canUsePdf || isBusy,
-              icon: const Icon(Icons.share_outlined, size: 17),
+              icon: const Icon(Icons.share_outlined, size: 18),
               onPressed: canUsePdf && !isBusy
                   ? () => _runPdfAction(_ReportPdfAction.share)
                   : null,
             ),
           ),
-          const SizedBox(width: 10),
+          const SizedBox(width: 12),
           Tooltip(
-            message: unavailableMessage ?? 'Baixar relatorio em PDF',
+            message: unavailableMessage ?? 'Exportar relatorio em PDF',
             child: AppButton(
-              text: 'Baixar PDF',
-              height: 36,
-              width: 126,
-              borderRadius: 8,
-              fontSize: 12.5,
+              text: 'Exportar PDF',
+              height: 40,
+              width: 166,
+              borderRadius: 10,
+              fontSize: 14,
+              fontWeight: FontWeight.w700,
+              color: Theme.of(context).colorScheme.primary,
               loading: _runningAction == _ReportPdfAction.download,
               disabled: !canUsePdf || isBusy,
-              icon: const Icon(Icons.picture_as_pdf_outlined, size: 17),
+              icon: const Icon(Icons.file_download_outlined, size: 18),
               onPressed: canUsePdf && !isBusy
                   ? () => _runPdfAction(_ReportPdfAction.download)
                   : null,
@@ -839,6 +849,7 @@ class _ProceduresSection extends StatelessWidget {
             AppTableColumn<_ProcedureReportRow>(
               label: 'Procedimento',
               flex: 3,
+              alignment: Alignment.centerLeft,
               cellBuilder: (context, item) => _StrongCell(item.procedure),
             ),
             AppTableColumn<_ProcedureReportRow>(
@@ -898,6 +909,7 @@ class _ConfirmedAnimalsSection extends StatelessWidget {
             AppTableColumn<_ConfirmedAnimalReportRow>(
               label: 'Identificação',
               flex: 2,
+              alignment: Alignment.centerLeft,
               cellBuilder: (context, item) => _StrongCell(item.identification),
             ),
             AppTableColumn<_ConfirmedAnimalReportRow>(

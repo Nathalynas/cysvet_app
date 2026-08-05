@@ -8,6 +8,8 @@ import '../../../../core/widgets/app_button.dart';
 import '../../../../core/widgets/app_text_field.dart';
 import '../../application/auth_state.dart';
 
+const _authPrimaryColor = AppTheme.primary1Color;
+
 class RegisterPage extends ConsumerStatefulWidget {
   const RegisterPage({super.key});
 
@@ -82,7 +84,7 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
           Text(
             'Cadastro',
             style: theme.textTheme.titleMedium?.copyWith(
-              color: AppTheme.primaryColor,
+              color: _authPrimaryColor,
               fontSize: 16,
               fontWeight: FontWeight.w800,
               height: 1.1,
@@ -106,7 +108,7 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
             textInputAction: TextInputAction.next,
             fillColor: Colors.white,
             borderColor: AppTheme.borderColor.withValues(alpha: 0.7),
-            focusedBorderColor: AppTheme.primaryColor,
+            focusedBorderColor: _authPrimaryColor,
             suffixIcon: const Icon(
               Icons.person_outline,
               size: 17,
@@ -124,7 +126,7 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
             textInputAction: TextInputAction.next,
             fillColor: Colors.white,
             borderColor: AppTheme.borderColor.withValues(alpha: 0.7),
-            focusedBorderColor: AppTheme.primaryColor,
+            focusedBorderColor: _authPrimaryColor,
             suffixIcon: const Icon(
               Icons.email_outlined,
               size: 17,
@@ -142,7 +144,7 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
             textInputAction: TextInputAction.next,
             fillColor: Colors.white,
             borderColor: AppTheme.borderColor.withValues(alpha: 0.7),
-            focusedBorderColor: AppTheme.primaryColor,
+            focusedBorderColor: _authPrimaryColor,
             suffixIcon: GestureDetector(
               behavior: HitTestBehavior.opaque,
               onTap: isBusy
@@ -170,7 +172,7 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
             textInputAction: TextInputAction.done,
             fillColor: Colors.white,
             borderColor: AppTheme.borderColor.withValues(alpha: 0.7),
-            focusedBorderColor: AppTheme.primaryColor,
+            focusedBorderColor: _authPrimaryColor,
             suffixIcon: GestureDetector(
               behavior: HitTestBehavior.opaque,
               onTap: isBusy

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../app/theme.dart';
+
 class _TextFieldControlStyle {
   static const double height = 42;
   static const double multilineHeight = 82;
@@ -226,11 +228,12 @@ class _AppTextFieldState extends State<AppTextField> {
   Widget _buildShell(BuildContext context, FormFieldState<String> field) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
+    final focusColor = AppTheme.primary1For(theme.brightness);
 
     final borderColor = field.hasError
         ? colorScheme.error
         : _focused
-        ? widget.focusedBorderColor ?? colorScheme.primary
+        ? widget.focusedBorderColor ?? focusColor
         : widget.borderColor ?? colorScheme.outline.withValues(alpha: 0.75);
 
     final fillColor = widget.fillColor ?? colorScheme.surface;
@@ -245,9 +248,9 @@ class _AppTextFieldState extends State<AppTextField> {
         border: Border.all(color: borderColor, width: _focused ? 1.2 : 1),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 18,
-            offset: const Offset(0, 4),
+            color: Colors.black.withValues(alpha: 0.025),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
           ),
         ],
       ),
@@ -388,12 +391,13 @@ class _AppTextFieldState extends State<AppTextField> {
   TextStyle _labelStyle(BuildContext context, {required bool floating}) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
+    final focusColor = AppTheme.primary1For(theme.brightness);
 
     return theme.textTheme.bodySmall!.copyWith(
       fontSize: floating ? _TextFieldControlStyle.floatingLabelFontSize : 14,
       height: 1,
       fontWeight: floating ? FontWeight.w500 : FontWeight.w400,
-      color: _focused ? colorScheme.primary : colorScheme.onSurfaceVariant,
+      color: _focused ? focusColor : colorScheme.onSurfaceVariant,
     );
   }
 

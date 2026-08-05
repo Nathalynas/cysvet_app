@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
 
 import '../../../../app/app_shell.dart';
+import '../../../../app/theme.dart';
 import '../../../../core/enums/user_status.dart';
 import '../../../../core/presentation/app_scaffold_messenger.dart';
 import '../../../../core/presentation/async_value_view.dart';
@@ -516,9 +517,21 @@ class _UserRoleBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = Theme.of(context).colorScheme;
+    final foregroundColor = user.isAdmin
+        ? AppTheme.indigoColor
+        : colorScheme.onSurfaceVariant;
+    final backgroundColor = theme.brightness == Brightness.dark
+        ? colorScheme.surfaceContainerHighest.withValues(alpha: 0.72)
+        : const Color(0xFFECEFEC);
+
     return StatusBadge(
       label: user.displayRole,
-      type: user.isAdmin ? StatusBadgeType.info : StatusBadgeType.neutral,
+      type: StatusBadgeType.neutral,
+      backgroundColor: backgroundColor,
+      foregroundColor: foregroundColor,
+      borderColor: Colors.transparent,
       icon: user.isAdmin
           ? Icons.admin_panel_settings_outlined
           : Icons.badge_outlined,

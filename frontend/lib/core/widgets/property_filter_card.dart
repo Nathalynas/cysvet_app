@@ -1,4 +1,5 @@
 import 'package:cysvet_app/core/widgets/app_button.dart';
+import 'package:cysvet_app/app/theme.dart';
 import 'package:cysvet_app/core/widgets/app_card.dart';
 import 'package:cysvet_app/core/widgets/app_dropdown.dart';
 import 'package:cysvet_app/features/properties/domain/property_summary_model.dart';
@@ -214,16 +215,15 @@ class _PropertySegmentButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
+    final selectedColor = AppTheme.primary1For(theme.brightness);
 
     return AppButton(
       text: label,
       height: 30,
       shadow: false,
       outlined: false,
-      color: selected ? colorScheme.secondary : Colors.transparent,
-      textColor: selected
-          ? colorScheme.onSecondary
-          : colorScheme.onSurfaceVariant,
+      color: selected ? selectedColor : Colors.transparent,
+      textColor: selected ? Colors.white : colorScheme.onSurfaceVariant,
       borderColor: Colors.transparent,
       borderRadius: 9,
       padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
@@ -350,7 +350,8 @@ class _PropertyMenuCardState extends State<_PropertyMenuCard> {
                     shrinkWrap: true,
                     padding: EdgeInsets.zero,
                     itemCount: filteredProperties.length,
-                    separatorBuilder: (_, __) => const SizedBox(height: 2),
+                    separatorBuilder: (context, index) =>
+                        const SizedBox(height: 2),
                     itemBuilder: (context, index) {
                       final property = filteredProperties[index];
                       final selected = property.id == widget.selectedPropertyId;

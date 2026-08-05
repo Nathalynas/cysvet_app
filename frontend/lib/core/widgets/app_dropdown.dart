@@ -206,8 +206,8 @@ class _AppDropdownState<T> extends State<AppDropdown<T>> {
               offset: Offset(0, size.height + 6),
               child: Material(
                 color: colorScheme.surface,
-                elevation: 8,
-                shadowColor: theme.shadowColor,
+                elevation: 3,
+                shadowColor: Colors.black.withValues(alpha: 0.08),
                 borderRadius: BorderRadius.circular(widget.borderRadius),
                 clipBehavior: Clip.antiAlias,
                 child: ConstrainedBox(
@@ -305,8 +305,7 @@ class _AppDropdownState<T> extends State<AppDropdown<T>> {
                                 itemCount: filteredOptions.length,
                                 itemBuilder: (context, index) {
                                   final option = filteredOptions[index];
-                                  final selected =
-                                      option.value == widget.value;
+                                  final selected = option.value == widget.value;
 
                                   return InkWell(
                                     onTap: () {
@@ -409,8 +408,8 @@ class _DropdownShell<T> extends StatelessWidget {
     final borderColor = hasError
         ? colorScheme.error
         : isOpen
-            ? colorScheme.primary
-            : colorScheme.outline.withValues(alpha: 0.75);
+        ? colorScheme.primary
+        : colorScheme.outline.withValues(alpha: 0.75);
 
     return CompositedTransformTarget(
       link: layerLink,
@@ -428,15 +427,12 @@ class _DropdownShell<T> extends StatelessWidget {
             decoration: BoxDecoration(
               color: colorScheme.surface,
               borderRadius: BorderRadius.circular(borderRadius),
-              border: Border.all(
-                color: borderColor,
-                width: isOpen ? 1.2 : 1,
-              ),
+              border: Border.all(color: borderColor, width: isOpen ? 1.2 : 1),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.04),
-                  blurRadius: 18,
-                  offset: const Offset(0, 4),
+                  color: Colors.black.withValues(alpha: 0.025),
+                  blurRadius: 10,
+                  offset: const Offset(0, 2),
                 ),
               ],
             ),

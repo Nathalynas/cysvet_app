@@ -44,7 +44,7 @@ class _SplashPageState extends State<SplashPage> {
                       child: CircularProgressIndicator(
                         strokeWidth: 2.8,
                         valueColor: AlwaysStoppedAnimation<Color>(
-                          AppTheme.primaryColor,
+                          AppTheme.primary2Color,
                         ),
                       ),
                     ),

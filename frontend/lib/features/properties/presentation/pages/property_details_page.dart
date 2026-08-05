@@ -464,6 +464,7 @@ class _PropertyDetailsTop extends StatelessWidget {
           icon: Icons.arrow_back,
           color: colorScheme.primary,
           backgroundColor: colorScheme.surface,
+          borderColor: colorScheme.outline.withValues(alpha: 0.55),
           filled: true,
           shadow: true,
           onPressed: () => context.go('/propriedades'),
@@ -917,6 +918,7 @@ class _PropertyActionIconButton extends StatelessWidget {
     required this.onPressed,
     this.color,
     this.backgroundColor,
+    this.borderColor,
     this.filled = false,
     this.shadow = false,
   });
@@ -926,6 +928,7 @@ class _PropertyActionIconButton extends StatelessWidget {
   final VoidCallback onPressed;
   final Color? color;
   final Color? backgroundColor;
+  final Color? borderColor;
   final bool filled;
   final dynamic shadow;
 
@@ -945,7 +948,7 @@ class _PropertyActionIconButton extends StatelessWidget {
         shadow: shadow,
         color: backgroundColor ?? effectiveColor,
         textColor: effectiveColor,
-        borderColor: Colors.transparent,
+        borderColor: borderColor ?? Colors.transparent,
         icon: Icon(icon, size: 18, color: effectiveColor),
         onPressed: onPressed,
       ),

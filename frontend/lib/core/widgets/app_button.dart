@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../app/theme.dart';
+
 class _ButtonControlStyle {
   static const double height = 42;
   static const double radius = 12;
@@ -19,6 +21,7 @@ class AppButton extends StatelessWidget {
     this.disabled = false,
     this.upperCase = false,
     this.color,
+    this.backgroundColor,
     this.textColor,
     this.borderColor,
     this.outlined = false,
@@ -42,6 +45,7 @@ class AppButton extends StatelessWidget {
   final bool disabled;
   final bool upperCase;
   final Color? color;
+  final Color? backgroundColor;
   final Color? textColor;
   final Color? borderColor;
   final bool outlined;
@@ -100,9 +104,9 @@ class AppButton extends StatelessWidget {
               borderRadius: BorderRadius.circular(borderRadius),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.04),
-                  blurRadius: 18,
-                  offset: const Offset(0, 4),
+                  color: Colors.black.withValues(alpha: 0.025),
+                  blurRadius: 10,
+                  offset: const Offset(0, 2),
                 ),
               ],
             ),
@@ -124,12 +128,14 @@ class AppButton extends StatelessWidget {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
 
-    final effectiveColor = color ?? colorScheme.primary;
+    final effectiveColor = color ?? AppTheme.primary1For(theme.brightness);
 
     final effectiveTextColor =
-        textColor ?? (outlined ? effectiveColor : colorScheme.onPrimary);
+        textColor ?? (outlined ? effectiveColor : Colors.white);
 
     final effectiveBorderColor = borderColor ?? effectiveColor;
+    final effectiveBackgroundColor =
+        backgroundColor ?? (outlined ? colorScheme.surface : effectiveColor);
 
     final disabledBackgroundColor = colorScheme.onSurface.withValues(
       alpha: 0.12,
@@ -158,10 +164,12 @@ class AppButton extends StatelessWidget {
 
       backgroundColor: WidgetStateProperty.resolveWith((states) {
         if (states.contains(WidgetState.disabled)) {
-          return outlined ? Colors.transparent : disabledBackgroundColor;
+          return outlined
+              ? backgroundColor ?? colorScheme.surface
+              : disabledBackgroundColor;
         }
 
-        return outlined ? Colors.transparent : effectiveColor;
+        return effectiveBackgroundColor;
       }),
 
       foregroundColor: WidgetStateProperty.resolveWith((states) {
@@ -198,6 +206,10 @@ class AppButton extends StatelessWidget {
             : effectiveBorderColor;
 
         if (outlined) {
+          return BorderSide(color: effectiveSideColor, width: 1);
+        }
+
+        if (borderColor != null && borderColor != Colors.transparent) {
           return BorderSide(color: effectiveSideColor, width: 1);
         }
 
@@ -292,10 +304,11 @@ class AppButton extends StatelessWidget {
   Color _contentColor(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
 
-    final effectiveColor = color ?? colorScheme.primary;
+    final effectiveColor =
+        color ?? AppTheme.primary1For(Theme.of(context).brightness);
 
     final effectiveTextColor =
-        textColor ?? (outlined ? effectiveColor : colorScheme.onPrimary);
+        textColor ?? (outlined ? effectiveColor : Colors.white);
 
     final disabledForegroundColor = colorScheme.onSurface.withValues(
       alpha: 0.38,

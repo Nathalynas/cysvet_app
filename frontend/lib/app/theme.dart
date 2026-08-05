@@ -16,7 +16,25 @@ class AppThemeModeNotifier extends Notifier<ThemeMode> {
 }
 
 class AppTheme {
-  static const Color primaryColor = Color(0xFF002209);
+  static const Color primary1Color = Color(0xFF002209);
+  static const Color primary2Color = Color(0xFF12684A);
+  static const Color primaryDarkColor = Color(0xFF177930);
+  static const Color primaryColor = primary1Color;
+  static const Color accentColor = Color(0xFF1F9D67);
+  static const Color greenColor = Color(0xFF12805B);
+  static const Color amberColor = Color(0xFFA76A08);
+  static const Color blueColor = Color(0xFF25628F);
+  static const Color indigoColor = Color(0xFF4A4FA8);
+  static const Color roseColor = Color(0xFFAC3350);
+  static const Color syncBadgeForegroundColor = Color(0xFF007957);
+  static const Color syncBadgeBackgroundColor = Color(0xFFE9F4EE);
+  static const Color syncBadgeDarkForegroundColor = Color(0xFF1FBC7C);
+  static const Color syncBadgeDarkBackgroundColor = Color(0xFF143425);
+  static const Color offlineBadgeForegroundColor = amberColor;
+  static const Color offlineBadgeBackgroundColor = Color(0xFFFFF4DD);
+  static const Color offlineBadgeDarkForegroundColor = Color(0xFFF2A72B);
+  static const Color offlineBadgeDarkBackgroundColor = Color(0xFF3A2A10);
+
   static const Color secondary = Color(0xFF005115);
   static const Color tertiary = Color(0xFF177930);
   static const Color secondaryColor = Color(0xFFD8F3DC);
@@ -32,13 +50,21 @@ class AppTheme {
   static const Color invertedColor = Color(0xFF303331);
   static const Color dangerColor = Color(0xFFD11F1F);
 
+  static Color primary1For(Brightness brightness) {
+    return brightness == Brightness.dark ? primaryDarkColor : primary1Color;
+  }
+
+  static Color primary2For(Brightness brightness) {
+    return brightness == Brightness.dark ? primaryDarkColor : primary2Color;
+  }
+
   static ThemeData get lightTheme => _buildTheme(
     palette: const _AppPalette(
       brightness: Brightness.light,
-      primary: primaryColor,
+      primary: primary1Color,
       onPrimary: Colors.white,
       secondary: secondaryColor,
-      onSecondary: primaryColor,
+      onSecondary: primary1Color,
       tertiary: tertiaryColor,
       neutral: neutralColor,
       background: backgroundColor,
@@ -54,25 +80,25 @@ class AppTheme {
   );
 
   static ThemeData get darkTheme => _buildTheme(
-  palette: const _AppPalette(
-    brightness: Brightness.dark,
-    primary: Color(0xFF177930),
-    onPrimary: Color(0xFF001F08),
-    secondary: Color(0xFF1B4332),
-    onSecondary: Color(0xFFE5F6EA),
-    tertiary: Color(0xFF111411),
-    neutral: Color(0xFF090C09),
-    background: Color(0xFF0B0E0B),
-    card: Color(0xFF050705) ,
-    text: Color(0xFFEAF0EA),
-    bodyText: Color(0xFFC9D3CB),
-    mutedText: Color(0xFF8F9B93),
-    border: Color(0xFF2A332C),
-    danger: Color(0xFFFFB4AB),
-    onDanger: Color(0xFF690005),
-    shadow: Color(0xCC000000),
-  ),
-);
+    palette: const _AppPalette(
+      brightness: Brightness.dark,
+      primary: primaryDarkColor,
+      onPrimary: Color(0xFF001F08),
+      secondary: Color(0xFF1B4332),
+      onSecondary: Color(0xFFE5F6EA),
+      tertiary: Color(0xFF111411),
+      neutral: Color(0xFF090C09),
+      background: Color(0xFF0B0E0B),
+      card: Color(0xFF050705),
+      text: Color(0xFFEAF0EA),
+      bodyText: Color(0xFFC9D3CB),
+      mutedText: Color(0xFF8F9B93),
+      border: Color(0xFF2A332C),
+      danger: Color(0xFFFFB4AB),
+      onDanger: Color(0xFF690005),
+      shadow: Color(0xCC000000),
+    ),
+  );
 
   static ThemeData _buildTheme({required _AppPalette palette}) {
     final colorScheme =
