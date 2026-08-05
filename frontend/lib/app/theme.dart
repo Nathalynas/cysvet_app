@@ -89,7 +89,7 @@ class AppTheme {
       tertiary: Color(0xFF111411),
       neutral: Color(0xFF090C09),
       background: Color(0xFF0B0E0B),
-      card: Color(0xFF050705),
+      card: Color(0xFF111611),
       text: Color(0xFFEAF0EA),
       bodyText: Color(0xFFC9D3CB),
       mutedText: Color(0xFF8F9B93),

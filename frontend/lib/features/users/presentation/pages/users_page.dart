@@ -517,20 +517,20 @@ class _UserRoleBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colorScheme = Theme.of(context).colorScheme;
-    final foregroundColor = user.isAdmin
-        ? AppTheme.indigoColor
-        : colorScheme.onSurfaceVariant;
-    final backgroundColor = theme.brightness == Brightness.dark
-        ? colorScheme.surfaceContainerHighest.withValues(alpha: 0.72)
-        : const Color(0xFFECEFEC);
-
     return StatusBadge(
       label: user.displayRole,
       type: StatusBadgeType.neutral,
-      backgroundColor: backgroundColor,
-      foregroundColor: foregroundColor,
+      backgroundColor: Theme.of(context).brightness == Brightness.dark
+          ? Theme.of(context)
+              .colorScheme
+              .surfaceContainerHighest
+              .withValues(alpha: 0.72)
+          : const Color(0xFFECEFEC),
+      foregroundColor: user.isAdmin
+          ? Theme.of(context).brightness == Brightness.dark
+              ? const Color(0xFF9096E6)
+              : AppTheme.indigoColor
+          : Theme.of(context).colorScheme.onSurfaceVariant,
       borderColor: Colors.transparent,
       icon: user.isAdmin
           ? Icons.admin_panel_settings_outlined
@@ -551,6 +551,19 @@ class _UserStatusBadge extends StatelessWidget {
       type: user.status == UserStatus.active
           ? StatusBadgeType.success
           : StatusBadgeType.neutral,
+      backgroundColor: user.status == UserStatus.active
+          ? Theme.of(context).brightness == Brightness.dark
+              ? AppTheme.syncBadgeDarkBackgroundColor
+              : AppTheme.syncBadgeBackgroundColor
+          : null,
+      foregroundColor: user.status == UserStatus.active
+          ? Theme.of(context).brightness == Brightness.dark
+              ? AppTheme.syncBadgeDarkForegroundColor
+              : AppTheme.syncBadgeForegroundColor
+          : null,
+      borderColor: user.status == UserStatus.active
+          ? Colors.transparent
+          : null,
     );
   }
 }

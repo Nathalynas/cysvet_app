@@ -2490,17 +2490,25 @@ class _DesktopDashboardVisitRow extends StatelessWidget {
         const SizedBox(width: 18),
         Expanded(
           flex: 2,
-          child: _VisitHistoryText(value: row.date),
+          child: _VisitHistoryText(label: 'Data', value: row.date),
         ),
         const SizedBox(width: 18),
         Expanded(
           flex: 3,
-          child: _VisitHistoryText(value: row.protocol, maxLines: 2),
+          child: _VisitHistoryText(
+            label: 'Protocolo',
+            value: row.protocol,
+            maxLines: 2,
+          ),
         ),
         const SizedBox(width: 18),
         Expanded(
           flex: 4,
-          child: _VisitHistoryText(value: row.nextStep, maxLines: 2),
+          child: _VisitHistoryText(
+            label: 'Próximo passo',
+            value: row.nextStep,
+            maxLines: 2,
+          ),
         ),
         const SizedBox(width: 18),
         _VisitHistoryMetric(value: row.animals, label: 'Animais'),
@@ -2538,10 +2546,7 @@ class _CompactDashboardVisitRow extends StatelessWidget {
           ],
         ),
         const SizedBox(height: 10),
-        Divider(
-          height: 1,
-          color: colorScheme.outline.withValues(alpha: 0.18),
-        ),
+        Divider(height: 1, color: colorScheme.outline.withValues(alpha: 0.18)),
         const SizedBox(height: 10),
         Row(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -2610,11 +2615,7 @@ class _DashboardVisitIdentity extends StatelessWidget {
             color: iconColor.withValues(alpha: isDark ? 0.16 : 0.10),
             borderRadius: BorderRadius.circular(11),
           ),
-          child: Icon(
-            Icons.description_outlined,
-            size: 19,
-            color: iconColor,
-          ),
+          child: Icon(Icons.description_outlined, size: 19, color: iconColor),
         ),
         const SizedBox(width: 12),
         Expanded(
@@ -2652,8 +2653,13 @@ class _DashboardVisitIdentity extends StatelessWidget {
 }
 
 class _VisitHistoryText extends StatelessWidget {
-  const _VisitHistoryText({required this.value, this.maxLines = 1});
+  const _VisitHistoryText({
+    required this.label,
+    required this.value,
+    this.maxLines = 1,
+  });
 
+  final String label;
   final String value;
   final int maxLines;
 
@@ -2663,7 +2669,7 @@ class _VisitHistoryText extends StatelessWidget {
     final colorScheme = theme.colorScheme;
 
     return Tooltip(
-      message: value,
+      message: label,
       child: Text(
         value,
         maxLines: maxLines,
@@ -3191,7 +3197,7 @@ class _FeedbackCard extends StatelessWidget {
           AppButton(
             text: 'Tentar novamente',
             icon: const Icon(Icons.refresh_rounded, size: 18),
-            color: AppTheme.primary2For(theme.brightness),
+            color: AppTheme.primary1For(theme.brightness),
             height: 40,
             onPressed: onRetry,
           ),

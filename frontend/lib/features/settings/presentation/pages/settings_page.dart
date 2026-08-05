@@ -104,13 +104,15 @@ class _ConfiguracoesPageState extends ConsumerState<ConfiguracoesPage> {
                     onCancel: () => _cancelUserEditing(session),
                     onSubmit: _saveUserData,
                     fields: [
-                      userFields.first,
-                      _InfoRow(
-                        label: 'Perfil',
-                        value: session.user.displayRole,
+                      _SettingsFieldsLayout(
+                        left: userFields.first,
+                        right: userFields.last,
+                        fullWidth: _InfoRow(
+                          label: 'Perfil',
+                          value: session.user.displayRole,
+                        ),
                       ),
                     ],
-                    rightFields: [userFields.last],
                   ),
 
                   const SizedBox(height: 16),
@@ -743,6 +745,57 @@ class _LogoutCard extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _SettingsFieldsLayout extends StatelessWidget {
+  const _SettingsFieldsLayout({
+    required this.left,
+    required this.right,
+    required this.fullWidth,
+  });
+
+  final Widget left;
+  final Widget right;
+  final Widget fullWidth;
+
+  static const double _dualColumnBreakpoint = 720;
+  static const double _spacing = 16;
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        if (constraints.maxWidth < _dualColumnBreakpoint) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              left,
+              const SizedBox(height: _spacing),
+              right,
+              const SizedBox(height: _spacing),
+              fullWidth,
+            ],
+          );
+        }
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(child: left),
+                const SizedBox(width: _spacing),
+                Expanded(child: right),
+              ],
+            ),
+            const SizedBox(height: _spacing),
+            fullWidth,
+          ],
+        );
+      },
     );
   }
 }
