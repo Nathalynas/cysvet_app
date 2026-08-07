@@ -1,7 +1,7 @@
+import 'package:cysvet_app/app/theme.dart';
 import 'package:cysvet_app/core/constants/app_constants.dart';
 import 'package:cysvet_app/core/widgets/property_filter_card.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_material_design_icons/flutter_material_design_icons.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
 import 'package:go_router/go_router.dart';
@@ -274,7 +274,7 @@ class _VisitsGrid extends StatelessWidget {
             crossAxisCount: columns,
             crossAxisSpacing: 22,
             mainAxisSpacing: 22,
-            mainAxisExtent: 372,
+            mainAxisExtent: 395,
           ),
           itemBuilder: (context, index) {
             final visit = visits[index];
@@ -307,6 +307,7 @@ class _VisitCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
+
     final pregnantCount = visit.animais.where(_isPregnant).length;
 
     return MouseRegion(
@@ -315,80 +316,181 @@ class _VisitCard extends StatelessWidget {
         onTap: onTap,
         behavior: HitTestBehavior.opaque,
         child: AppCard(
-          borderRadius: 12,
+          borderRadius: 18,
           padding: const EdgeInsets.all(18),
-          borderColor: colorScheme.outline.withValues(alpha: 0.28),
+          shadow: false,
+          borderColor: colorScheme.outline.withValues(alpha: 0.22),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Text(
-                _dashIfBlank(propertyName),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: theme.textTheme.titleMedium?.copyWith(
-                  color: colorScheme.primary,
-                  fontWeight: FontWeight.w900,
-                  fontSize: 18,
-                ),
-              ),
-              const SizedBox(height: 18),
-              _VisitInfoLine(
-                icon: Icons.calendar_today_outlined,
-                text: formatDate(visit.dataVisita),
-              ),
-              const SizedBox(height: 10),
-              _VisitInfoLine(
-                icon: Icons.person_pin_outlined,
-                text: 'Veterinário: ${_dashIfBlank(visit.nomeUsuario)}',
-              ),
-              const SizedBox(height: 10),
-              _VisitInfoLine(
-                icon: Icons.menu_book_outlined,
-                text: 'Protocolo: ${_protocolLabel(visit)}',
-              ),
-              const SizedBox(height: 22),
+              /// Cabeçalho
               Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
+                  _VisitDateBadge(date: visit.dataVisita),
+                  const SizedBox(width: 14),
+
                   Expanded(
-                    child: _VisitMetricTile(
-                      icon: MdiIcons.cow,
-                      label: 'Animais',
-                      value: visit.animais.length.toString(),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: _VisitMetricTile(
-                      icon: MdiIcons.cow,
-                      label: 'Prenhas',
-                      value: pregnantCount == 0 ? '--' : '$pregnantCount',
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: _VisitMetricTile(
-                      icon: Icons.percent_outlined,
-                      label: 'Taxa de Prenhez',
-                      value: _pregnancyRateLabel(visit),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          _dashIfBlank(propertyName),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: theme.textTheme.titleMedium?.copyWith(
+                            color: colorScheme.onSurface,
+                            fontSize: 18,
+                            fontWeight: FontWeight.w900,
+                            height: 1.1,
+                          ),
+                        ),
+                        const SizedBox(height: 5),
+                        Text(
+                          _protocolLabel(visit),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: colorScheme.onSurfaceVariant,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ],
               ),
-              const SizedBox(height: 18),
+
+              const SizedBox(height: 16),
+
+              /// Veterinário
+              _VisitInfoLine(
+                icon: Icons.badge_outlined,
+                text: _dashIfBlank(visit.nomeUsuario),
+              ),
+
+              const SizedBox(height: 8),
+
+              /// Data
+              _VisitInfoLine(
+                icon: Icons.calendar_today_outlined,
+                text: formatDate(visit.dataVisita),
+              ),
+
+              const SizedBox(height: 16),
+
+              /// Indicadores
+              Row(
+                children: [
+                  Expanded(
+                    child: _VisitMetricTile(
+                      label: 'Animais',
+                      value: visit.animais.length.toString(),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: _VisitMetricTile(
+                      label: 'Prenhas',
+                      value: pregnantCount == 0
+                          ? '--'
+                          : pregnantCount.toString(),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: _VisitMetricTile(
+                      label: 'Prenhez',
+                      value: _pregnancyRateLabel(visit),
+                      highlighted: true,
+                    ),
+                  ),
+                ],
+              ),
+
+              const SizedBox(height: 14),
+
+              /// Próximo passo
               _NextStepPreview(text: _nextStepText(visit)),
-              const Spacer(),
+
+              const SizedBox(height: 16),
+
               AppButton(
                 text: 'Ver relatório',
-                height: 40,
+                height: 46,
                 expanded: true,
-                borderRadius: 8,
+                outlined: true,
+                borderRadius: 10,
                 icon: const Icon(Icons.description_outlined, size: 18),
-                trailingIcon: const Icon(Icons.chevron_right, size: 22),
+                trailingIcon: const Icon(Icons.chevron_right_rounded, size: 22),
                 onPressed: onTap,
               ),
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _VisitDateBadge extends StatelessWidget {
+  const _VisitDateBadge({required this.date});
+
+  final DateTime? date;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final primary2 = AppTheme.primary2Color;
+
+    const months = [
+      'JAN',
+      'FEV',
+      'MAR',
+      'ABR',
+      'MAI',
+      'JUN',
+      'JUL',
+      'AGO',
+      'SET',
+      'OUT',
+      'NOV',
+      'DEZ',
+    ];
+
+    final day = date?.day.toString().padLeft(2, '0') ?? '--';
+    final month = date != null ? months[date!.month - 1] : '---';
+
+    return Container(
+      width: 66,
+      height: 58,
+      decoration: BoxDecoration(
+        color: primary2.withValues(alpha: 0.10),
+        borderRadius: BorderRadius.circular(15),
+      ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Text(
+            day,
+            style: theme.textTheme.titleLarge?.copyWith(
+              color: primary2,
+              fontWeight: FontWeight.w900,
+              height: 1,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            month,
+            style: theme.textTheme.labelSmall?.copyWith(
+              color: primary2,
+              fontSize: 10,
+              fontWeight: FontWeight.w900,
+              letterSpacing: 0.7,
+              height: 1,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -405,17 +507,19 @@ class _VisitInfoLine extends StatelessWidget {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
 
+    final textColor = colorScheme.onSurfaceVariant;
+
     return Row(
       children: [
-        Icon(icon, size: 15, color: colorScheme.onSurfaceVariant),
-        const SizedBox(width: 9),
+        Icon(icon, size: 17, color: textColor),
+        const SizedBox(width: 10),
         Expanded(
           child: Text(
             text,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: colorScheme.onSurface,
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: textColor,
               fontWeight: FontWeight.w600,
             ),
           ),
@@ -427,63 +531,69 @@ class _VisitInfoLine extends StatelessWidget {
 
 class _VisitMetricTile extends StatelessWidget {
   const _VisitMetricTile({
-    required this.icon,
     required this.label,
     required this.value,
+    this.highlighted = false,
   });
 
-  final IconData icon;
   final String label;
   final String value;
+  final bool highlighted;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
+    final primary2 = AppTheme.primary2Color;
 
-    return AppCard(
-      borderRadius: 9,
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
-      shadow: false,
-      borderColor: colorScheme.outline.withValues(alpha: 0.35),
-      child: SizedBox(
-        height: 56,
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(icon, size: 14, color: colorScheme.onSurfaceVariant),
-                const SizedBox(width: 5),
-                Flexible(
-                  child: Text(
-                    label.toUpperCase(),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    textAlign: TextAlign.center,
-                    style: theme.textTheme.labelSmall?.copyWith(
-                      color: colorScheme.onSurfaceVariant,
-                      fontSize: 8.5,
-                      fontWeight: FontWeight.w900,
-                      height: 1.05,
-                    ),
-                  ),
-                ),
-              ],
+    final backgroundColor = highlighted
+        ? primary2
+        : colorScheme.surfaceContainerHighest.withValues(alpha: 0.38);
+
+    final valueColor = highlighted ? Colors.white : colorScheme.onSurface;
+
+    final labelColor = highlighted
+        ? Colors.white.withValues(alpha: 0.88)
+        : colorScheme.onSurfaceVariant;
+
+    return Container(
+      height: 64,
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 7),
+      decoration: BoxDecoration(
+        color: backgroundColor,
+        borderRadius: BorderRadius.circular(12),
+        border: highlighted
+            ? null
+            : Border.all(color: colorScheme.outline.withValues(alpha: 0.22)),
+      ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Text(
+            value,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: theme.textTheme.titleMedium?.copyWith(
+              color: valueColor,
+              fontWeight: FontWeight.w900,
+              height: 1,
             ),
-            const SizedBox(height: 8),
-            Text(
-              value,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: theme.textTheme.titleMedium?.copyWith(
-                color: colorScheme.primary,
-                fontWeight: FontWeight.w900,
-              ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            label.toUpperCase(),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.center,
+            style: theme.textTheme.labelSmall?.copyWith(
+              color: labelColor,
+              fontSize: 9,
+              fontWeight: FontWeight.w900,
+              letterSpacing: 0.4,
+              height: 1,
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -498,39 +608,50 @@ class _NextStepPreview extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
+    final primary2 = AppTheme.primary2Color;
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Icon(
-              Icons.event_available_outlined,
-              size: 16,
-              color: colorScheme.primary,
-            ),
-            const SizedBox(width: 8),
-            Text(
-              'Próximo passo',
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: colorScheme.primary,
-                fontWeight: FontWeight.w900,
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: primary2.withValues(alpha: 0.075),
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                Icons.flag_outlined,
+                size: 17,
+                color: colorScheme.onSurfaceVariant,
               ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 8),
-        Text(
-          text,
-          maxLines: 2,
-          overflow: TextOverflow.ellipsis,
-          style: theme.textTheme.bodySmall?.copyWith(
-            color: colorScheme.onSurface,
-            fontWeight: FontWeight.w600,
-            height: 1.25,
+              const SizedBox(width: 8),
+              Text(
+                'PRÓXIMO PASSO',
+                style: theme.textTheme.labelSmall?.copyWith(
+                  color: colorScheme.onSurfaceVariant,
+                  fontWeight: FontWeight.w900,
+                  fontSize: 10,
+                  letterSpacing: 0.6,
+                ),
+              ),
+            ],
           ),
-        ),
-      ],
+          const SizedBox(height: 10),
+          Text(
+            text,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: colorScheme.onSurface,
+              fontWeight: FontWeight.w500,
+              height: 1.35,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

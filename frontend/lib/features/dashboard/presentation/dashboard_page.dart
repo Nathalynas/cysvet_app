@@ -437,7 +437,7 @@ class _DashboardHeader extends ConsumerWidget {
         ? 'Empresa não informada'
         : rawCompanyName;
 
-    final primary = AppTheme.primary2For(theme.brightness);
+    final primary = AppTheme.primary2Color;
 
     return AppCard(
       borderRadius: 20,
