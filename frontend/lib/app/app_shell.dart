@@ -194,7 +194,7 @@ class _MainHeader extends ConsumerWidget {
     final isMobile = MediaQuery.of(context).size.width < MOBILE_WIDTH;
 
     final logoAsset = Theme.of(context).brightness == Brightness.dark
-        ? 'assets/images/logo_branco.png'
+        ? 'assets/images/logo_verde.png'
         : 'assets/images/logo.png';
 
     dynamic activeCompany;
@@ -759,7 +759,7 @@ class _SidebarLogo extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final logoAsset = Theme.of(context).brightness == Brightness.dark
-        ? 'assets/images/logo_branco.png'
+        ? 'assets/images/logo_verde.png'
         : 'assets/images/logo.png';
 
     return Padding(
