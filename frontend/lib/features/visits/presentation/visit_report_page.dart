@@ -150,6 +150,7 @@ class _ReportPageContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final horizontal = PageTitle.horizontalPadding(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -215,7 +216,9 @@ class _ReportPageContent extends StatelessWidget {
                   },
                 ),
                 Padding(
-                  padding: const EdgeInsets.fromLTRB(24, 10, 24, 8),
+                  padding: EdgeInsets.symmetric(
+                    horizontal: horizontal,
+                  ).copyWith(top: 10, bottom: 8),
                   child: Align(
                     alignment: Alignment.centerLeft,
                     child: _ReportPdfActions(
@@ -325,6 +328,12 @@ class _ReportDocumentViewportState extends State<_ReportDocumentViewport> {
     // TODO(frontend-only): Usar scroll horizontal/vertical quando a tela for menor que o documento.
     return LayoutBuilder(
       builder: (context, constraints) {
+        final isMobile = constraints.maxWidth < MOBILE_WIDTH;
+
+        final horizontalPadding = isMobile
+            ? PageTitle.horizontalPadding(context)
+            : 24.0;
+
         return Scrollbar(
           controller: _verticalController,
           thumbVisibility: true,
@@ -334,6 +343,7 @@ class _ReportDocumentViewportState extends State<_ReportDocumentViewport> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 if (widget.header != null) widget.header!,
+
                 Scrollbar(
                   controller: _horizontalController,
                   thumbVisibility: true,
@@ -349,9 +359,16 @@ class _ReportDocumentViewportState extends State<_ReportDocumentViewport> {
                         minHeight: constraints.maxHeight,
                       ),
                       child: Padding(
-                        padding: const EdgeInsets.fromLTRB(24, 18, 24, 32),
+                        padding: EdgeInsets.fromLTRB(
+                          horizontalPadding,
+                          18,
+                          horizontalPadding,
+                          32,
+                        ),
                         child: Align(
-                          alignment: Alignment.topCenter,
+                          alignment: isMobile
+                              ? Alignment.topLeft
+                              : Alignment.topCenter,
                           child: Listener(
                             onPointerSignal: _handlePointerSignal,
                             child: SizedBox(
@@ -500,7 +517,6 @@ class _ReportPdfActionsState extends ConsumerState<_ReportPdfActions> {
               text: 'Compartilhar',
               outlined: true,
               height: 40,
-              width: 166,
               borderRadius: 10,
               fontSize: 14,
               fontWeight: FontWeight.w700,
@@ -523,7 +539,6 @@ class _ReportPdfActionsState extends ConsumerState<_ReportPdfActions> {
             child: AppButton(
               text: 'Exportar PDF',
               height: 40,
-              width: 166,
               borderRadius: 10,
               fontSize: 14,
               fontWeight: FontWeight.w700,

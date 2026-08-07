@@ -310,124 +310,115 @@ class _VisitCard extends StatelessWidget {
 
     final pregnantCount = visit.animais.where(_isPregnant).length;
 
-    return MouseRegion(
-      cursor: SystemMouseCursors.click,
-      child: GestureDetector(
-        onTap: onTap,
-        behavior: HitTestBehavior.opaque,
-        child: AppCard(
-          borderRadius: 18,
-          padding: const EdgeInsets.all(18),
-          shadow: false,
-          borderColor: colorScheme.outline.withValues(alpha: 0.22),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
+    return AppCard(
+      borderRadius: 18,
+      padding: const EdgeInsets.all(18),
+      shadow: false,
+      borderColor: colorScheme.outline.withValues(alpha: 0.22),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          /// Cabeçalho
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              /// Cabeçalho
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  _VisitDateBadge(date: visit.dataVisita),
-                  const SizedBox(width: 14),
+              _VisitDateBadge(date: visit.dataVisita),
+              const SizedBox(width: 14),
 
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          _dashIfBlank(propertyName),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: theme.textTheme.titleMedium?.copyWith(
-                            color: colorScheme.onSurface,
-                            fontSize: 18,
-                            fontWeight: FontWeight.w900,
-                            height: 1.1,
-                          ),
-                        ),
-                        const SizedBox(height: 5),
-                        Text(
-                          _protocolLabel(visit),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: colorScheme.onSurfaceVariant,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ],
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      _dashIfBlank(propertyName),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        color: colorScheme.onSurface,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w900,
+                        height: 1.1,
+                      ),
                     ),
-                  ),
-                ],
-              ),
-
-              const SizedBox(height: 16),
-
-              /// Veterinário
-              _VisitInfoLine(
-                icon: Icons.badge_outlined,
-                text: _dashIfBlank(visit.nomeUsuario),
-              ),
-
-              const SizedBox(height: 8),
-
-              /// Data
-              _VisitInfoLine(
-                icon: Icons.calendar_today_outlined,
-                text: formatDate(visit.dataVisita),
-              ),
-
-              const SizedBox(height: 16),
-
-              /// Indicadores
-              Row(
-                children: [
-                  Expanded(
-                    child: _VisitMetricTile(
-                      label: 'Animais',
-                      value: visit.animais.length.toString(),
+                    const SizedBox(height: 5),
+                    Text(
+                      _protocolLabel(visit),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: colorScheme.onSurfaceVariant,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: _VisitMetricTile(
-                      label: 'Prenhas',
-                      value: pregnantCount == 0
-                          ? '--'
-                          : pregnantCount.toString(),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: _VisitMetricTile(
-                      label: 'Prenhez',
-                      value: _pregnancyRateLabel(visit),
-                      highlighted: true,
-                    ),
-                  ),
-                ],
-              ),
-
-              const SizedBox(height: 14),
-
-              /// Próximo passo
-              _NextStepPreview(text: _nextStepText(visit)),
-
-              const SizedBox(height: 16),
-
-              AppButton(
-                text: 'Ver relatório',
-                height: 46,
-                expanded: true,
-                outlined: true,
-                borderRadius: 10,
-                icon: const Icon(Icons.description_outlined, size: 18),
-                trailingIcon: const Icon(Icons.chevron_right_rounded, size: 22),
-                onPressed: onTap,
+                  ],
+                ),
               ),
             ],
           ),
-        ),
+
+          const SizedBox(height: 16),
+
+          /// Veterinário
+          _VisitInfoLine(
+            icon: Icons.badge_outlined,
+            text: _dashIfBlank(visit.nomeUsuario),
+          ),
+
+          const SizedBox(height: 8),
+
+          /// Data
+          _VisitInfoLine(
+            icon: Icons.calendar_today_outlined,
+            text: formatDate(visit.dataVisita),
+          ),
+
+          const SizedBox(height: 16),
+
+          /// Indicadores
+          Row(
+            children: [
+              Expanded(
+                child: _VisitMetricTile(
+                  label: 'Animais',
+                  value: visit.animais.length.toString(),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _VisitMetricTile(
+                  label: 'Prenhas',
+                  value: pregnantCount == 0 ? '--' : pregnantCount.toString(),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _VisitMetricTile(
+                  label: 'Prenhez',
+                  value: _pregnancyRateLabel(visit),
+                  highlighted: true,
+                ),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 14),
+
+          /// Próximo passo
+          _NextStepPreview(text: _nextStepText(visit)),
+
+          const SizedBox(height: 16),
+
+          AppButton(
+            text: 'Ver relatório',
+            height: 46,
+            expanded: true,
+            outlined: true,
+            borderRadius: 10,
+            icon: const Icon(Icons.description_outlined, size: 18),
+            trailingIcon: const Icon(Icons.chevron_right_rounded, size: 22),
+            onPressed: onTap,
+          ),
+        ],
       ),
     );
   }
