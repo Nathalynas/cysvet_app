@@ -3,13 +3,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../../core/network/api_error.dart';
-import '../../../../core/presentation/app_scaffold_messenger.dart';
-import '../../../../core/widgets/app_button.dart';
-import '../../../../core/widgets/app_dialog.dart';
-import '../../../../core/widgets/app_form.dart';
-import '../../../../core/widgets/app_text_field.dart';
-import '../../application/auth_state.dart';
+import '../../../core/network/api_error.dart';
+import '../../../core/presentation/app_scaffold_messenger.dart';
+import '../../../core/widgets/app_button.dart';
+import '../../../core/widgets/app_dialog.dart';
+import '../../../core/widgets/app_form.dart';
+import '../../../core/widgets/app_text_field.dart';
+import '../application/auth_state.dart';
 
 const _authPrimaryColor = AppTheme.primary1Color;
 

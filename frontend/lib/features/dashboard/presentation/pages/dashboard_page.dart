@@ -26,7 +26,7 @@ import '../../../animals/data/animals_repository.dart';
 import '../../../animals/domain/animal_summary_model.dart';
 import '../../../auth/application/auth_state.dart';
 import '../../../auth/domain/auth_session_model.dart';
-import '../../../indicators/domain/indicador_reprodutivo_calculator.dart';
+import '../../../indicators/indicador_reprodutivo_calculator.dart';
 import '../../../properties/application/properties_provider.dart';
 import '../../../properties/domain/property_summary_model.dart';
 import '../../../users/application/users_provider.dart';

@@ -2,17 +2,17 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../../app/app_shell.dart';
-import '../../../../app/theme.dart';
-import '../../../../core/network/api_error.dart';
-import '../../../../core/widgets/app_button.dart';
-import '../../../../core/widgets/app_card.dart';
-import '../../../../core/widgets/app_dropdown.dart';
-import '../../../../core/widgets/app_form.dart';
-import '../../../../core/widgets/app_text_field.dart';
-import '../../../auth/application/auth_state.dart';
-import '../../../auth/data/auth_repository.dart';
-import '../../../auth/domain/auth_session_model.dart';
+import '../../app/app_shell.dart';
+import '../../app/theme.dart';
+import '../../core/network/api_error.dart';
+import '../../core/widgets/app_button.dart';
+import '../../core/widgets/app_card.dart';
+import '../../core/widgets/app_dropdown.dart';
+import '../../core/widgets/app_form.dart';
+import '../../core/widgets/app_text_field.dart';
+import '../auth/application/auth_state.dart';
+import '../auth/data/auth_repository.dart';
+import '../auth/domain/auth_session_model.dart';
 
 class ConfiguracoesPage extends ConsumerStatefulWidget {
   const ConfiguracoesPage({super.key});

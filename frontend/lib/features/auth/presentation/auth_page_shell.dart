@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 
-import '../../../../app/theme.dart';
-import '../../../../core/constants/app_constants.dart';
-import '../../../../core/widgets/app_card.dart';
+import '../../../app/theme.dart';
+import '../../../core/constants/app_constants.dart';
+import '../../../core/widgets/app_card.dart';
 
 const _authPrimaryColor = AppTheme.primary1Color;
 

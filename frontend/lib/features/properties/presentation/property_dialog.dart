@@ -2,18 +2,18 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
 
-import '../../../../core/enums/property_status.dart';
-import '../../../../core/presentation/app_scaffold_messenger.dart';
-import '../../../../core/utils/formatters.dart';
-import '../../../../core/widgets/app_dialog.dart';
-import '../../../../core/widgets/app_dropdown.dart';
-import '../../../../core/widgets/app_form.dart';
-import '../../../../core/widgets/app_text_field.dart';
-import '../../application/ibge_provider.dart';
-import '../../application/properties_provider.dart';
-import '../../domain/ibge_municipio_model.dart';
-import '../../domain/ibge_uf_model.dart';
-import '../../domain/property_summary_model.dart';
+import '../../../core/enums/property_status.dart';
+import '../../../core/presentation/app_scaffold_messenger.dart';
+import '../../../core/utils/formatters.dart';
+import '../../../core/widgets/app_dialog.dart';
+import '../../../core/widgets/app_dropdown.dart';
+import '../../../core/widgets/app_form.dart';
+import '../../../core/widgets/app_text_field.dart';
+import '../application/ibge_provider.dart';
+import '../application/properties_provider.dart';
+import '../domain/ibge_municipio_model.dart';
+import '../domain/ibge_uf_model.dart';
+import '../domain/property_summary_model.dart';
 
 class PropertyDialog extends StatelessWidget {
   const PropertyDialog({super.key, this.property, this.fromDetails = false});

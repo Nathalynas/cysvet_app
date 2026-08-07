@@ -1,15 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../../core/enums/user_status.dart';
-import '../../../../core/presentation/app_scaffold_messenger.dart';
-import '../../../../core/widgets/app_dialog.dart';
-import '../../../../core/widgets/app_form.dart';
-import '../../../../core/widgets/app_text_field.dart';
-import '../../../auth/application/auth_state.dart';
-import '../../../auth/domain/auth_session_model.dart';
-import '../../application/users_provider.dart';
-import '../../domain/user_summary_model.dart';
+import '../../../core/enums/user_status.dart';
+import '../../../core/presentation/app_scaffold_messenger.dart';
+import '../../../core/widgets/app_dialog.dart';
+import '../../../core/widgets/app_form.dart';
+import '../../../core/widgets/app_text_field.dart';
+import '../../auth/application/auth_state.dart';
+import '../../auth/domain/auth_session_model.dart';
+import '../application/users_provider.dart';
+import '../domain/user_summary_model.dart';
 
 class UserDialog extends StatelessWidget {
   const UserDialog({super.key, this.user});

@@ -15,17 +15,17 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
 
-import '../../../../app/app_shell.dart';
-import '../../../../core/presentation/async_value_view.dart';
-import '../../../../core/utils/formatters.dart';
-import '../../../indicators/domain/indicador_reprodutivo_calculator.dart';
-import '../../../properties/application/properties_provider.dart';
-import '../../../properties/domain/property_summary_model.dart';
-import '../../application/animals_csv_importer.dart';
-import '../../application/animals_provider.dart';
-import '../../domain/animal_summary_model.dart';
-import '../widgets/animal_dialog.dart';
-import '../widgets/animal_history_dialog.dart';
+import '../../../app/app_shell.dart';
+import '../../../core/presentation/async_value_view.dart';
+import '../../../core/utils/formatters.dart';
+import '../../indicators/indicador_reprodutivo_calculator.dart';
+import '../../properties/application/properties_provider.dart';
+import '../../properties/domain/property_summary_model.dart';
+import '../application/animals_csv_importer.dart';
+import '../application/animals_provider.dart';
+import '../domain/animal_summary_model.dart';
+import 'animal_dialog.dart';
+import 'animal_history_dialog.dart';
 
 final animalsSearchQueryProvider = StateProvider.autoDispose<String>(
   (ref) => '',

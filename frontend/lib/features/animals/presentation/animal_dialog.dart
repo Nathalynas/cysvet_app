@@ -2,17 +2,17 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
 
-import '../../../../core/constants/app_constants.dart';
-import '../../../../core/enums/animal_status.dart';
-import '../../../../core/presentation/app_scaffold_messenger.dart';
-import '../../../../core/utils/formatters.dart';
-import '../../../../core/widgets/app_dialog.dart';
-import '../../../../core/widgets/app_dropdown.dart';
-import '../../../../core/widgets/app_form.dart';
-import '../../../../core/widgets/app_text_field.dart';
-import '../../../properties/domain/property_summary_model.dart';
-import '../../application/animals_provider.dart';
-import '../../domain/animal_summary_model.dart';
+import '../../../core/constants/app_constants.dart';
+import '../../../core/enums/animal_status.dart';
+import '../../../core/presentation/app_scaffold_messenger.dart';
+import '../../../core/utils/formatters.dart';
+import '../../../core/widgets/app_dialog.dart';
+import '../../../core/widgets/app_dropdown.dart';
+import '../../../core/widgets/app_form.dart';
+import '../../../core/widgets/app_text_field.dart';
+import '../../properties/domain/property_summary_model.dart';
+import '../application/animals_provider.dart';
+import '../domain/animal_summary_model.dart';
 
 class AnimalDialog extends StatelessWidget {
   const AnimalDialog({super.key, required this.properties, this.animal});

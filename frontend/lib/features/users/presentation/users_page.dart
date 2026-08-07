@@ -3,21 +3,21 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
 
-import '../../../../app/app_shell.dart';
-import '../../../../app/theme.dart';
-import '../../../../core/enums/user_status.dart';
-import '../../../../core/presentation/app_scaffold_messenger.dart';
-import '../../../../core/presentation/async_value_view.dart';
-import '../../../../core/widgets/app_button.dart';
-import '../../../../core/widgets/app_card.dart';
-import '../../../../core/widgets/app_dialog.dart';
-import '../../../../core/widgets/app_dropdown.dart';
-import '../../../../core/widgets/app_table.dart';
-import '../../../../core/widgets/search_card.dart';
-import '../../../../core/widgets/status_badge.dart';
-import '../../application/users_provider.dart';
-import '../../domain/user_summary_model.dart';
-import '../widgets/user_dialog.dart';
+import '../../../app/app_shell.dart';
+import '../../../app/theme.dart';
+import '../../../core/enums/user_status.dart';
+import '../../../core/presentation/app_scaffold_messenger.dart';
+import '../../../core/presentation/async_value_view.dart';
+import '../../../core/widgets/app_button.dart';
+import '../../../core/widgets/app_card.dart';
+import '../../../core/widgets/app_dialog.dart';
+import '../../../core/widgets/app_dropdown.dart';
+import '../../../core/widgets/app_table.dart';
+import '../../../core/widgets/search_card.dart';
+import '../../../core/widgets/status_badge.dart';
+import '../application/users_provider.dart';
+import '../domain/user_summary_model.dart';
+import 'user_dialog.dart';
 
 final usersSearchQueryProvider = StateProvider.autoDispose<String>((ref) => '');
 final usersStatusFilterProvider = StateProvider.autoDispose<UserStatusFilter>((

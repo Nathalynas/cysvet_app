@@ -16,7 +16,7 @@ import '../../../../core/widgets/app_dropdown.dart';
 import '../../../../core/widgets/app_text_field.dart';
 import '../../../animals/data/animals_repository.dart';
 import '../../../animals/domain/animal_summary_model.dart';
-import '../../../indicators/domain/indicador_reprodutivo_calculator.dart';
+import '../../../indicators/indicador_reprodutivo_calculator.dart';
 import '../../../properties/application/properties_provider.dart';
 import '../../../properties/domain/property_summary_model.dart';
 import '../../data/visits_repository.dart';

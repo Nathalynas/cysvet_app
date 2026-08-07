@@ -12,18 +12,18 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../../app/app_shell.dart';
-import '../../../../core/presentation/async_value_view.dart';
-import '../../../animals/application/animals_provider.dart';
-import '../../../animals/data/animals_repository.dart';
-import '../../../animals/domain/animal_summary_model.dart';
-import '../../../auth/application/auth_state.dart';
-import '../../../visits/application/visits_provider.dart';
-import '../../../visits/data/visits_repository.dart';
-import '../../../visits/domain/visit_summary_model.dart';
-import '../../application/properties_provider.dart';
-import '../../domain/property_summary_model.dart';
-import '../widgets/property_dialog.dart';
+import '../../../app/app_shell.dart';
+import '../../../core/presentation/async_value_view.dart';
+import '../../animals/application/animals_provider.dart';
+import '../../animals/data/animals_repository.dart';
+import '../../animals/domain/animal_summary_model.dart';
+import '../../auth/application/auth_state.dart';
+import '../../visits/application/visits_provider.dart';
+import '../../visits/data/visits_repository.dart';
+import '../../visits/domain/visit_summary_model.dart';
+import '../application/properties_provider.dart';
+import '../domain/property_summary_model.dart';
+import 'property_dialog.dart';
 
 final propertiesSearchQueryProvider = StateProvider.autoDispose<String>(
   (ref) => '',
