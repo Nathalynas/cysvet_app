@@ -1261,12 +1261,16 @@ class _ParityDonutChart extends StatelessWidget {
       child: hasData
           ? LayoutBuilder(
               builder: (context, constraints) {
-                final compact = constraints.maxWidth < 360;
-                final chartDimension = math.min(
-                  compact ? 160.0 : 176.0,
-                  constraints.maxWidth,
-                );
                 final total = _chartTotal(items);
+
+                final chartDimension = math.min(
+                  176.0,
+                  math.max(
+                    120.0,
+                    constraints.maxWidth * 0.42,
+                  ),
+                );
+
                 final chart = SizedBox.square(
                   dimension: chartDimension,
                   child: PieChart(
@@ -1288,32 +1292,27 @@ class _ParityDonutChart extends StatelessWidget {
                   ),
                 );
 
-                if (compact) {
-                  return Column(
+                return Center(
+                  child: Row(
                     mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
                       chart,
-                      const SizedBox(height: 16),
-                      _ParityLegend(items: items, total: total),
+                      const SizedBox(width: 24),
+                      _ParityLegend(
+                        items: items,
+                        total: total,
+                      ),
                     ],
-                  );
-                }
-
-                return Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Flexible(child: chart),
-                    const SizedBox(width: 28),
-                    Flexible(
-                      child: _ParityLegend(items: items, total: total),
-                    ),
-                  ],
+                  ),
                 );
               },
             )
           : const SizedBox(
               height: 185,
-              child: _EmptyChart(message: 'Sem dados de categoria do rebanho.'),
+              child: _EmptyChart(
+                message: 'Sem dados de categoria do rebanho.',
+              ),
             ),
     );
   }
