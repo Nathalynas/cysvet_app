@@ -6,17 +6,17 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../../app/app_shell.dart';
-import '../../../../core/presentation/app_scaffold_messenger.dart';
-import '../../../../core/presentation/async_value_view.dart';
-import '../../../../core/utils/formatters.dart';
-import '../../../../core/widgets/app_button.dart';
-import '../../../../core/widgets/app_card.dart';
-import '../../../../core/widgets/search_card.dart';
-import '../../../properties/application/properties_provider.dart';
-import '../../../properties/domain/property_summary_model.dart';
-import '../../application/visits_provider.dart';
-import '../../domain/visit_summary_model.dart';
+import '../../../app/app_shell.dart';
+import '../../../core/presentation/app_scaffold_messenger.dart';
+import '../../../core/presentation/async_value_view.dart';
+import '../../../core/utils/formatters.dart';
+import '../../../core/widgets/app_button.dart';
+import '../../../core/widgets/app_card.dart';
+import '../../../core/widgets/search_card.dart';
+import '../../properties/application/properties_provider.dart';
+import '../../properties/domain/property_summary_model.dart';
+import '../application/visits_provider.dart';
+import '../domain/visit_summary_model.dart';
 import 'visit_report_page.dart';
 
 final visitsSearchQueryProvider = StateProvider.autoDispose<String>(

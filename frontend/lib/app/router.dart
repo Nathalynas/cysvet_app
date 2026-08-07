@@ -8,14 +8,14 @@ import '../features/auth/presentation/login_page.dart';
 import '../features/auth/presentation/register_page.dart';
 import '../features/auth/presentation/auth_page_shell.dart';
 import '../features/settings/settings_page.dart';
-import '../features/dashboard/presentation/pages/dashboard_page.dart';
+import '../features/dashboard/presentation/dashboard_page.dart';
 import '../features/properties/presentation/property_details_page.dart';
 import '../features/properties/presentation/properties_page.dart';
 import '../features/splash/splash_page.dart';
 import '../features/users/presentation/users_page.dart';
-import '../features/visits/presentation/pages/visit_form_page.dart';
-import '../features/visits/presentation/pages/visit_report_page.dart';
-import '../features/visits/presentation/pages/visits_page.dart';
+import '../features/visits/presentation/visit_form_page.dart';
+import '../features/visits/presentation/visit_report_page.dart';
+import '../features/visits/presentation/visits_page.dart';
 import 'app_shell.dart';
 import 'theme.dart';
 

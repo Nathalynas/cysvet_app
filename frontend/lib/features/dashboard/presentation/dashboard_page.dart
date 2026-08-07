@@ -17,26 +17,26 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../../app/app_shell.dart';
-import '../../../../app/theme.dart';
-import '../../../../core/presentation/async_value_view.dart';
-import '../../../../core/utils/formatters.dart';
-import '../../../animals/application/animals_provider.dart';
-import '../../../animals/data/animals_repository.dart';
-import '../../../animals/domain/animal_summary_model.dart';
-import '../../../auth/application/auth_state.dart';
-import '../../../auth/domain/auth_session_model.dart';
-import '../../../indicators/indicador_reprodutivo_calculator.dart';
-import '../../../properties/application/properties_provider.dart';
-import '../../../properties/domain/property_summary_model.dart';
-import '../../../users/application/users_provider.dart';
-import '../../../users/domain/user_summary_model.dart';
-import '../../../visits/application/visits_provider.dart';
-import '../../../visits/data/visits_repository.dart';
-import '../../../visits/domain/visit_summary_model.dart';
-import '../../../visits/presentation/pages/visit_report_page.dart';
-import '../../application/dashboard_provider.dart';
-import '../../domain/dashboard_metrics_model.dart';
+import '../../../app/app_shell.dart';
+import '../../../app/theme.dart';
+import '../../../core/presentation/async_value_view.dart';
+import '../../../core/utils/formatters.dart';
+import '../../animals/application/animals_provider.dart';
+import '../../animals/data/animals_repository.dart';
+import '../../animals/domain/animal_summary_model.dart';
+import '../../auth/application/auth_state.dart';
+import '../../auth/domain/auth_session_model.dart';
+import '../../indicators/indicador_reprodutivo_calculator.dart';
+import '../../properties/application/properties_provider.dart';
+import '../../properties/domain/property_summary_model.dart';
+import '../../users/application/users_provider.dart';
+import '../../users/domain/user_summary_model.dart';
+import '../../visits/application/visits_provider.dart';
+import '../../visits/data/visits_repository.dart';
+import '../../visits/domain/visit_summary_model.dart';
+import '../../visits/presentation/visit_report_page.dart';
+import '../application/dashboard_provider.dart';
+import '../domain/dashboard_metrics_model.dart';
 
 final dashboardPeriodFilterProvider =
     NotifierProvider<DashboardPeriodFilterNotifier, DashboardPeriodFilter>(

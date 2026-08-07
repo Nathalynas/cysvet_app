@@ -5,21 +5,21 @@ import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:printing/printing.dart';
 
-import '../../../../app/app_shell.dart';
-import '../../../../core/constants/app_constants.dart';
-import '../../../../core/presentation/app_scaffold_messenger.dart';
-import '../../../../core/presentation/async_value_view.dart';
-import '../../../../core/utils/formatters.dart';
-import '../../../../core/widgets/app_button.dart';
-import '../../../../core/widgets/app_card.dart';
-import '../../../../core/widgets/app_table.dart';
-import '../../../auth/application/auth_state.dart';
-import '../../../auth/domain/auth_session_model.dart';
-import '../../../properties/application/properties_provider.dart';
-import '../../../properties/domain/property_summary_model.dart';
-import '../../application/visits_provider.dart';
-import '../../data/visits_repository.dart';
-import '../../domain/visit_summary_model.dart';
+import '../../../app/app_shell.dart';
+import '../../../core/constants/app_constants.dart';
+import '../../../core/presentation/app_scaffold_messenger.dart';
+import '../../../core/presentation/async_value_view.dart';
+import '../../../core/utils/formatters.dart';
+import '../../../core/widgets/app_button.dart';
+import '../../../core/widgets/app_card.dart';
+import '../../../core/widgets/app_table.dart';
+import '../../auth/application/auth_state.dart';
+import '../../auth/domain/auth_session_model.dart';
+import '../../properties/application/properties_provider.dart';
+import '../../properties/domain/property_summary_model.dart';
+import '../application/visits_provider.dart';
+import '../data/visits_repository.dart';
+import '../domain/visit_summary_model.dart';
 
 final visitReportDataProvider =
     FutureProvider.family<VisitReportRouteData, int>((ref, visitId) async {

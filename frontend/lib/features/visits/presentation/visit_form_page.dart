@@ -5,23 +5,23 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:uuid/uuid.dart';
 
-import '../../../../app/app_shell.dart';
-import '../../../../core/enums/animal_status.dart';
-import '../../../../core/presentation/app_scaffold_messenger.dart';
-import '../../../../core/utils/formatters.dart';
-import '../../../../core/widgets/app_button.dart';
-import '../../../../core/widgets/app_card.dart';
-import '../../../../core/widgets/app_dialog.dart';
-import '../../../../core/widgets/app_dropdown.dart';
-import '../../../../core/widgets/app_text_field.dart';
-import '../../../animals/data/animals_repository.dart';
-import '../../../animals/domain/animal_summary_model.dart';
-import '../../../indicators/indicador_reprodutivo_calculator.dart';
-import '../../../properties/application/properties_provider.dart';
-import '../../../properties/domain/property_summary_model.dart';
-import '../../data/visits_repository.dart';
-import '../../application/visits_provider.dart';
-import '../../domain/visit_summary_model.dart';
+import '../../../app/app_shell.dart';
+import '../../../core/enums/animal_status.dart';
+import '../../../core/presentation/app_scaffold_messenger.dart';
+import '../../../core/utils/formatters.dart';
+import '../../../core/widgets/app_button.dart';
+import '../../../core/widgets/app_card.dart';
+import '../../../core/widgets/app_dialog.dart';
+import '../../../core/widgets/app_dropdown.dart';
+import '../../../core/widgets/app_text_field.dart';
+import '../../animals/data/animals_repository.dart';
+import '../../animals/domain/animal_summary_model.dart';
+import '../../indicators/indicador_reprodutivo_calculator.dart';
+import '../../properties/application/properties_provider.dart';
+import '../../properties/domain/property_summary_model.dart';
+import '../data/visits_repository.dart';
+import '../application/visits_provider.dart';
+import '../domain/visit_summary_model.dart';
 
 List<DateTime> _iaDatesFromEntry(VisitAnimalEntryModel entry) {
   final dates = <DateTime>[

@@ -22,7 +22,7 @@ import 'package:cysvet_app/features/properties/presentation/property_dialog.dart
 import 'package:cysvet_app/features/visits/application/visits_provider.dart';
 import 'package:cysvet_app/features/visits/data/visits_repository.dart';
 import 'package:cysvet_app/features/visits/domain/visit_summary_model.dart';
-import 'package:cysvet_app/features/visits/presentation/pages/visit_report_page.dart';
+import 'package:cysvet_app/features/visits/presentation/visit_report_page.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
