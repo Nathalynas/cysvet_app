@@ -45,6 +45,18 @@ public class VisitaController {
         return visitService.list(idPropriedade);
     }
 
+    @GetMapping("/{id}")
+    @Operation(summary = "Detalha uma visita")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Visita encontrada com sucesso"),
+            @ApiResponse(responseCode = "401", description = "Nao autorizado"),
+            @ApiResponse(responseCode = "404", description = "Visita nao encontrada"),
+            @ApiResponse(responseCode = "500", description = "Erro interno no servidor")
+    })
+    public VisitaResponse get(@PathVariable("id") Long id) {
+        return visitService.get(id);
+    }
+
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     @Operation(summary = "Cadastra uma visita")

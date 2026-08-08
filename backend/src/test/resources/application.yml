@@ -18,6 +18,25 @@ spring:
     locations: classpath:db/migration
 
 app:
+  cors:
+    allowed-origins:
+      - http://localhost:3000
+      - http://127.0.0.1:3000
+      - http://localhost:8080
+      - http://127.0.0.1:8080
+    allowed-methods:
+      - GET
+      - POST
+      - PUT
+      - PATCH
+      - DELETE
+      - OPTIONS
+    allowed-headers:
+      - Authorization
+      - Content-Type
+      - Accept
+      - empresaid
+    allow-credentials: true
   jwt:
     secret: cysvet-super-secret-key-for-development-only-change-me
     expiration-ms: 3600000

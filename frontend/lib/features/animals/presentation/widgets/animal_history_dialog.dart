@@ -9,7 +9,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/utils/formatters.dart';
 import '../../../indicators/domain/indicador_reprodutivo_calculator.dart';
 import '../../../visits/application/visits_provider.dart';
-import '../../../visits/data/visits_repository.dart';
 import '../../../visits/domain/visit_summary_model.dart';
 import '../../data/animals_repository.dart';
 import '../../domain/animal_history_event_model.dart';
@@ -33,25 +32,19 @@ final _animalHistoryProvider = FutureProvider.autoDispose
       // Temporario: eventos vêm de /api/events?idAnimal; visitas vêm de
       // /api/visits?idPropriedade e sao filtradas no front. Movimentacoes e
       // alteracoes ainda usam somente o estado atual de AnimalSummaryModel.
-      final eventsFuture = animal.id > 0
-          ? ref
+      final historyPayload = animal.id > 0
+          ? await ref
                 .watch(animalsRepositoryProvider)
-                .listHistoryEvents(animalId: animal.id)
-          : Future.value(const <AnimalHistoryEventModel>[]);
-      final remoteVisitsFuture = ref
-          .watch(visitsRepositoryProvider)
-          .list(
-            propertyId: animal.idPropriedade > 0 ? animal.idPropriedade : null,
-          );
+                .getHistory(animalId: animal.id)
+          : AnimalHistoryPayload(
+              animal: animal,
+              events: const <AnimalHistoryEventModel>[],
+              visits: const <VisitSummaryModel>[],
+            );
       final localVisits = ref.watch(localVisitsProvider).values;
 
-      final results = await Future.wait<Object>([
-        eventsFuture,
-        remoteVisitsFuture,
-      ]);
-      final events = [...(results[0] as List<AnimalHistoryEventModel>)]
-        ..sort(_compareHistoryEventsDesc);
-      final remoteVisits = results[1] as List<VisitSummaryModel>;
+      final events = [...historyPayload.events]..sort(_compareHistoryEventsDesc);
+      final remoteVisits = historyPayload.visits;
       final visitsById = {
         for (final visit in remoteVisits) visit.id: visit,
         for (final visit in localVisits)
@@ -64,7 +57,7 @@ final _animalHistoryProvider = FutureProvider.autoDispose
             ..sort(_compareVisitRecordsDesc);
 
       return _AnimalHistoryData(
-        animal: animal,
+        animal: historyPayload.animal.id > 0 ? historyPayload.animal : animal,
         events: events,
         visits: visitRecords,
       );

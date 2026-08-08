@@ -2,8 +2,10 @@ package com.cysvet.backend.controller;
 
 import com.cysvet.backend.config.SwaggerConfig;
 import com.cysvet.backend.dto.animal.AnimalRequest;
+import com.cysvet.backend.dto.animal.AnimalHistoryResponse;
 import com.cysvet.backend.dto.animal.AnimalResponse;
 import com.cysvet.backend.dto.animal.AnimalStatusRequest;
+import com.cysvet.backend.service.AnimalHistoryService;
 import com.cysvet.backend.service.AnimalService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -34,6 +36,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class AnimalController {
 
     private final AnimalService animalService;
+    private final AnimalHistoryService animalHistoryService;
 
     @GetMapping
     @Operation(summary = "Lista animais")
@@ -50,6 +53,18 @@ public class AnimalController {
             @RequestParam(name = "status", required = false) String status
     ) {
         return animalService.list(idPropriedade, idLote, search, status);
+    }
+
+    @GetMapping("/{id}/history")
+    @Operation(summary = "Retorna o historico consolidado de um animal")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Historico retornado com sucesso"),
+            @ApiResponse(responseCode = "401", description = "Nao autorizado"),
+            @ApiResponse(responseCode = "404", description = "Animal nao encontrado"),
+            @ApiResponse(responseCode = "500", description = "Erro interno no servidor")
+    })
+    public AnimalHistoryResponse history(@PathVariable("id") Long id) {
+        return animalHistoryService.getHistory(id);
     }
 
     @PostMapping

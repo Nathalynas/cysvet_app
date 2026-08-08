@@ -72,6 +72,14 @@ class PropertyAnimalIntegrationTest {
                 .andExpect(jsonPath("$[0].contato").value("51999999999"))
                 .andExpect(jsonPath("$[0].status").value("ATIVO"));
 
+        mockMvc.perform(get("/api/properties/{id}", propertyId)
+                        .header("Authorization", auth.authorization())
+                        .header("empresaid", auth.tenantId()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(propertyId))
+                .andExpect(jsonPath("$.contato").value("51999999999"))
+                .andExpect(jsonPath("$.status").value("ATIVO"));
+
         mockMvc.perform(get("/api/lots")
                         .header("Authorization", auth.authorization())
                         .header("empresaid", auth.tenantId())
@@ -194,7 +202,7 @@ class PropertyAnimalIntegrationTest {
                 .andExpect(jsonPath("$[0].nomeLote").value("Lote 1"))
                 .andExpect(jsonPath("$[0].sexo").value("Femea"))
                 .andExpect(jsonPath("$[0].dataInseminacao").value("2026-05-01"))
-                .andExpect(jsonPath("$[0].statusReprodutivo").value("pregnant"))
+                .andExpect(jsonPath("$[0].statusReprodutivo").value("prenha"))
                 .andExpect(jsonPath("$[0].status").value("ATIVO"));
 
         mockMvc.perform(patch("/api/animals/{id}/status", animalId)
@@ -426,20 +434,58 @@ class PropertyAnimalIntegrationTest {
                                       "animalCodigo": "46344",
                                       "animalCategoria": "VACA",
                                       "idadeMeses": 83,
+                                      "dataNascimento": "2020-01-15",
                                       "situacaoProdutiva": "lactante",
                                       "situacaoReprodutiva": "inseminada",
                                       "decisao": "ST cef+pg",
+                                      "dataPrimeiroParto": "2022-03-01",
+                                      "dataUltimoParto": "2026-03-03",
+                                      "dataPartoAnterior": "2025-02-02",
+                                      "numeroPartos": 3,
+                                      "dataPrimeiraIa": "2025-09-10",
+                                      "dataSegundaIa": "2025-10-01",
                                       "numeroIaRecebida": 1,
+                                      "dataSecagemEfetiva": "2026-04-20",
+                                      "entradaPreParto": "2026-05-29",
+                                      "controleLeiteiro": 29.5,
                                       "diasPrenhez": 22,
                                       "diagnostico": "pg",
-                                      "del": 76
+                                      "del": 76,
+                                      "idadePrimeiroPartoMeses": 25.5,
+                                      "idadePrimeiraIa": 16.4,
+                                      "mesParto": "Marco",
+                                      "anoUltimoParto": 2026,
+                                      "iepAtual": 12.3,
+                                      "classificacaoPartos": "Multipara",
+                                      "vacaApta": true,
+                                      "intervalo1e2Ia": 21,
+                                      "mediaIntervaloIa": 21.0,
+                                      "previsaoRetornoCio": "2026-06-10",
+                                      "delPrimeiraIa": 62,
+                                      "periodoServico": 118,
+                                      "diasParaSecar": 168,
+                                      "previsaoSecagem": "2026-10-31",
+                                      "mesSecagem": "Outubro",
+                                      "diferencaSecagem": 12,
+                                      "periodoLactacao": 305,
+                                      "dataPreParto": "2026-11-20",
+                                      "mesPreParto": "Novembro",
+                                      "duracaoPreParto": 30,
+                                      "previsaoParto": "2026-12-20",
+                                      "mesPrevistoParto": "Dezembro",
+                                      "iepProjetado": 13.1,
+                                      "controleLeiteiroComDesconto": 27.4
                                     }
                                   ]
                                 }
                                 """.formatted(propertyId, animalId)))
                 .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.idUsuario").isNumber())
+                .andExpect(jsonPath("$.nomeUsuario").value("Teste Integracao"))
                 .andExpect(jsonPath("$.animais[0].animalId").value(animalId))
                 .andExpect(jsonPath("$.animais[0].animalCodigo").value("46344"))
+                .andExpect(jsonPath("$.animais[0].dataNascimento").value("2020-01-15"))
+                .andExpect(jsonPath("$.animais[0].dataPrimeiraIa").value("2025-09-10"))
                 .andExpect(jsonPath("$.animais[0].situacaoReprodutiva").value("inseminada"))
                 .andExpect(jsonPath("$.animais[0].numeroIaRecebida").value(1))
                 .andReturn();
@@ -452,9 +498,48 @@ class PropertyAnimalIntegrationTest {
                         .queryParam("idPropriedade", Long.toString(propertyId)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].idExterno").value("visit-001"))
+                .andExpect(jsonPath("$[0].nomeUsuario").value("Teste Integracao"))
                 .andExpect(jsonPath("$[0].animais[0].animalCodigo").value("46344"))
                 .andExpect(jsonPath("$[0].animais[0].numeroIaRecebida").value(1))
                 .andExpect(jsonPath("$[0].animais[0].decisao").value("ST cef+pg"));
+
+        mockMvc.perform(get("/api/visits/{id}", visitId)
+                        .header("Authorization", auth.authorization())
+                        .header("empresaid", auth.tenantId()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(visitId))
+                .andExpect(jsonPath("$.nomeUsuario").value("Teste Integracao"))
+                .andExpect(jsonPath("$.animais[0].controleLeiteiro").value(29.5))
+                .andExpect(jsonPath("$.animais[0].controleLeiteiroComDesconto").value(27.4))
+                .andExpect(jsonPath("$.animais[0].previsaoParto").value("2026-12-20"));
+
+        mockMvc.perform(post("/api/events")
+                        .header("Authorization", auth.authorization())
+                        .header("empresaid", auth.tenantId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "idExterno": "evt-visit-1",
+                                  "idPropriedade": %d,
+                                  "idAnimal": %d,
+                                  "tipo": "PREGNANCY_DIAGNOSIS",
+                                  "dataEvento": "2026-05-20",
+                                  "prenhezConfirmada": true,
+                                  "observacoes": "Confirmada por US"
+                                }
+                                """.formatted(propertyId, animalId)))
+                .andExpect(status().isCreated());
+
+        mockMvc.perform(get("/api/animals/{id}/history", animalId)
+                        .header("Authorization", auth.authorization())
+                        .header("empresaid", auth.tenantId()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.animal.id").value(animalId))
+                .andExpect(jsonPath("$.animal.statusReprodutivo").value("prenha"))
+                .andExpect(jsonPath("$.eventos[0].tipo").value("PREGNANCY_DIAGNOSIS"))
+                .andExpect(jsonPath("$.visitas[0].id").value(visitId))
+                .andExpect(jsonPath("$.visitas[0].animais[0].animalId").value(animalId))
+                .andExpect(jsonPath("$.visitas[0].animais[0].previsaoSecagem").value("2026-10-31"));
 
         MvcResult report = mockMvc.perform(get("/api/reports/visit/{visitId}/pdf", visitId)
                         .header("Authorization", auth.authorization())

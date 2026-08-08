@@ -50,6 +50,18 @@ public class PropriedadeController {
         return propriedadeService.list(search, status);
     }
 
+    @GetMapping("/{id}")
+    @Operation(summary = "Detalha uma propriedade")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Propriedade encontrada com sucesso"),
+            @ApiResponse(responseCode = "401", description = "Nao autorizado"),
+            @ApiResponse(responseCode = "404", description = "Propriedade nao encontrada"),
+            @ApiResponse(responseCode = "500", description = "Erro interno no servidor")
+    })
+    public PropriedadeResponse get(@PathVariable("id") Long id) {
+        return propriedadeService.get(id);
+    }
+
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     @Operation(summary = "Cadastra uma propriedade")

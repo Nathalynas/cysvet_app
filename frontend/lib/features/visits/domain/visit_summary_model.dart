@@ -23,8 +23,6 @@ class VisitSummaryModel with VisitSummaryModelMappable {
   @MappableField(hook: _NullableDateTimeHook())
   final DateTime? dataVisita;
   final String? observacoes;
-  // Frontend-only nesta etapa. A API atual ainda nao retorna o usuario
-  // que cadastrou a visita; o repositorio normaliza esse campo quando existir.
   final int? idUsuario;
   final String? nomeUsuario;
   final List<VisitAnimalEntryModel> animais;

@@ -47,6 +47,11 @@ public class PropriedadeService {
     }
 
     @Transactional(readOnly = true)
+    public PropriedadeResponse get(Long id) {
+        return toResponse(getEntity(id));
+    }
+
+    @Transactional(readOnly = true)
     public Propriedade getByExternalId(String idExterno) {
         return farmPropertyRepository.findByIdExterno(idExterno)
                 .orElseThrow(() -> new ResourceNotFoundException("Propriedade nao encontrada"));

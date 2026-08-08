@@ -22,12 +22,10 @@ class PropertySummaryModel with PropertySummaryModelMappable {
   final String idExterno;
   final String nome;
   final String nomeProprietario;
-  // Frontend-only nesta etapa. Depende de campo equivalente no backend futuro.
   final String? contato;
   final String? cidade;
   final String? estado;
   final String? observacoes;
-  // Frontend-only nesta etapa. A API atual nao persiste status de propriedade.
   @MappableField(hook: _PropertyStatusHook())
   final PropertyStatus status;
 

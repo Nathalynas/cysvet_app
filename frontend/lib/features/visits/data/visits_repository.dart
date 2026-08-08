@@ -27,6 +27,11 @@ class VisitsRepository {
     return items.map(_toVisitModel).toList(growable: false);
   }
 
+  Future<VisitSummaryModel> getById(int id) async {
+    final response = await _dio.get<Object?>('/api/visits/$id');
+    return _toVisitModel(_asMap(response.data));
+  }
+
   Future<VisitSummaryModel> create(VisitSummaryModel visit) async {
     final response = await _dio.post<Object?>(
       '/api/visits',
@@ -83,9 +88,6 @@ class VisitsRepository {
   }
 
   Map<String, dynamic> _normalizeVisitUser(Map<String, dynamic> map) {
-    // Frontend-only nesta etapa: VisitaResponse ainda nao expoe o usuario.
-    // Quando o backend retornar o usuario criador, esses aliases ja alimentam
-    // o card de propriedade e o dialog de detalhes.
     final rawUser = map['usuario'];
     final user = rawUser is Map
         ? rawUser.map((key, value) => MapEntry(key.toString(), value))
@@ -135,14 +137,6 @@ class VisitsRepository {
   }
 
   Map<String, dynamic> _toAnimalItemRequest(VisitAnimalEntryModel item) {
-    // TODO Backend: os campos de base/calculo da planilha que ainda nao
-    // existem em VisitaAnimalItemDto ficam somente no front-end por enquanto.
-    // Eles devem ser incluidos aqui quando o payload/API de visitas persistir:
-    // dataNascimento, dataPrimeiroParto, dataUltimoParto, dataPartoAnterior,
-    // numeroPartos, historico dinamico de IAs, dataPrimeiraIa..dataQuintaIa,
-    // dataSecagemEfetiva, entradaPreParto, controleLeiteiro e os indicadores
-    // calculados derivados.
-    // TODO Backend: persistir/sincronizar o historico de IA sem limite fixo.
     return {
       'animalId': item.animalId == 0 ? null : item.animalId,
       'animalIdExterno': item.animalIdExterno.isEmpty
@@ -151,18 +145,54 @@ class VisitsRepository {
       'animalCodigo': item.animalCodigo,
       'animalCategoria': item.animalCategoria,
       'idadeMeses': item.idadeMeses?.round(),
+      'dataNascimento': _toDate(item.dataNascimento),
       'situacaoProdutiva': item.situacaoProdutiva,
       'situacaoReprodutiva': item.situacaoReprodutiva,
       'decisao': item.decisao,
+      'dataPrimeiroParto': _toDate(item.dataPrimeiroParto),
+      'dataUltimoParto': _toDate(item.dataUltimoParto),
+      'dataPartoAnterior': _toDate(item.dataPartoAnterior),
+      'numeroPartos': item.numeroPartos,
+      'dataPrimeiraIa': _toDate(item.dataPrimeiraIa),
+      'dataSegundaIa': _toDate(item.dataSegundaIa),
+      'dataTerceiraIa': _toDate(item.dataTerceiraIa),
+      'dataQuartaIa': _toDate(item.dataQuartaIa),
+      'dataQuintaIa': _toDate(item.dataQuintaIa),
       'dataUltimaIa': _toDate(item.dataUltimaIa),
       'numeroIaRecebida': item.numeroIaRecebida,
+      'dataSecagemEfetiva': _toDate(item.dataSecagemEfetiva),
+      'entradaPreParto': _toDate(item.entradaPreParto),
+      'controleLeiteiro': item.controleLeiteiro,
       'diasPrenhez': item.diasPrenhez,
       'diagnostico': item.diagnostico,
       'del': item.del,
+      'idadePrimeiroPartoMeses': item.idadePrimeiroPartoMeses,
+      'idadePrimeiraIa': item.idadePrimeiraIa,
+      'mesParto': item.mesParto,
+      'anoUltimoParto': item.anoUltimoParto,
+      'iepAtual': item.iepAtual,
+      'classificacaoPartos': item.classificacaoPartos,
+      'vacaApta': item.vacaApta,
+      'intervalo1e2Ia': item.intervalo1e2Ia,
+      'intervalo2e3Ia': item.intervalo2e3Ia,
+      'intervalo3e4Ia': item.intervalo3e4Ia,
+      'intervalo4e5Ia': item.intervalo4e5Ia,
+      'mediaIntervaloIa': item.mediaIntervaloIa,
+      'previsaoRetornoCio': _toDate(item.previsaoRetornoCio),
+      'delPrimeiraIa': item.delPrimeiraIa,
+      'periodoServico': item.periodoServico,
       'diasParaSecar': item.diasParaSecar,
       'previsaoSecagem': _toDate(item.previsaoSecagem),
+      'mesSecagem': item.mesSecagem,
+      'diferencaSecagem': item.diferencaSecagem,
+      'periodoLactacao': item.periodoLactacao,
       'dataPreParto': _toDate(item.dataPreParto),
+      'mesPreParto': item.mesPreParto,
+      'duracaoPreParto': item.duracaoPreParto,
       'previsaoParto': _toDate(item.previsaoParto),
+      'mesPrevistoParto': item.mesPrevistoParto,
+      'iepProjetado': item.iepProjetado,
+      'controleLeiteiroComDesconto': item.controleLeiteiroComDesconto,
     };
   }
 

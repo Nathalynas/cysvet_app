@@ -17,6 +17,7 @@ import 'package:cysvet_app/features/animals/presentation/widgets/animal_history_
 import 'package:cysvet_app/features/auth/application/auth_state.dart';
 import 'package:cysvet_app/features/indicators/domain/indicador_reprodutivo_calculator.dart';
 import 'package:cysvet_app/features/properties/application/properties_provider.dart';
+import 'package:cysvet_app/features/properties/data/properties_repository.dart';
 import 'package:cysvet_app/features/properties/domain/property_summary_model.dart';
 import 'package:cysvet_app/features/properties/presentation/widgets/property_dialog.dart';
 import 'package:cysvet_app/features/visits/application/visits_provider.dart';
@@ -54,15 +55,24 @@ final propertyDetailsProvider = FutureProvider.autoDispose
         throw StateError('Identificador de propriedade invalido.');
       }
 
-      // TODO(api): substituir a busca pela lista por GET /api/properties/:id
-      // quando o backend expuser o endpoint de detalhe.
-      final properties = await ref.watch(propertiesProvider.future);
+      final session = ref.watch(authSessionProvider);
+      final localItems = ref.watch(localPropertiesProvider);
+      final deletedIds = ref.watch(deletedPropertiesProvider);
 
-      for (final property in properties) {
-        if (property.id == propertyId) return property;
+      if (session == null) {
+        throw StateError('Sessao indisponivel.');
       }
 
-      throw StateError('Propriedade nao encontrada.');
+      if (deletedIds.contains(propertyId)) {
+        throw StateError('Propriedade nao encontrada.');
+      }
+
+      final localProperty = localItems[propertyId];
+      if (localProperty != null) {
+        return localProperty;
+      }
+
+      return ref.watch(propertiesRepositoryProvider).getById(propertyId);
     });
 
 final propertyDetailsAnimalsProvider = FutureProvider.autoDispose

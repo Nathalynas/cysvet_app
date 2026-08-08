@@ -50,6 +50,11 @@ public class VisitaService {
     }
 
     @Transactional(readOnly = true)
+    public VisitaResponse get(Long id) {
+        return toResponse(getEntity(id));
+    }
+
+    @Transactional(readOnly = true)
     public Visita getByExternalId(String idExterno) {
         return visitRepository.findByIdExterno(idExterno)
                 .orElseThrow(() -> new ResourceNotFoundException("Visita nao encontrada"));
@@ -111,6 +116,8 @@ public class VisitaService {
                 visit.getIdExterno(),
                 visit.getPropriedade().getId(),
                 visit.getPropriedade().getIdExterno(),
+                visit.getUsuario().getId(),
+                visit.getUsuario().getNome(),
                 visit.getDataVisita(),
                 visit.getObservacoes(),
                 readAnimalItems(visit),

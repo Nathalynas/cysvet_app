@@ -1,6 +1,11 @@
 package com.cysvet.backend.security;
 
+import com.cysvet.backend.config.AppProperties;
+import com.cysvet.backend.logging.RequestObservabilityFilter;
+import java.util.ArrayList;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -24,27 +29,45 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 @RequiredArgsConstructor
 public class SecurityConfig {
 
+    private final AppProperties appProperties;
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
+    private final RequestObservabilityFilter requestObservabilityFilter;
     private final CustomUserDetailService customUserDetailsService;
+    @Value("${spring.h2.console.enabled:false}")
+    private boolean h2ConsoleEnabled;
+    @Value("${app.docs.enabled:true}")
+    private boolean docsEnabled;
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+        List<String> publicMatchers = new ArrayList<>();
+        publicMatchers.add("/api/auth/**");
+        if (h2ConsoleEnabled) {
+            publicMatchers.add("/h2-console/**");
+        }
+        if (docsEnabled) {
+            publicMatchers.add("/v3/api-docs/**");
+            publicMatchers.add("/swagger-ui/**");
+            publicMatchers.add("/swagger-ui.html");
+        }
+
         http
                 .csrf(csrf -> csrf.disable())
                 .headers(headers -> headers.frameOptions(frameOptions -> frameOptions.sameOrigin()))
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/auth/**").permitAll()
-                        .requestMatchers("/h2-console/**").permitAll()
-                        .requestMatchers("/v3/api-docs/**").permitAll()
-                        .requestMatchers("/swagger-ui/**").permitAll()
-                        .requestMatchers("/swagger-ui.html").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/actuator/health").permitAll()
+                        .requestMatchers(publicMatchers.toArray(String[]::new)).permitAll()
+                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/actuator/health", "/actuator/health/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/actuator/liveness", "/actuator/readiness").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/actuator/tenant-policy").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/actuator/observability-policy").permitAll()
                         .anyRequest().authenticated()
                 )
                 .authenticationProvider(authenticationProvider())
-                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
+                .addFilterAfter(requestObservabilityFilter, JwtAuthenticationFilter.class);
 
         return http.build();
     }
@@ -70,10 +93,10 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
-        config.addAllowedOriginPattern("*");
-        config.addAllowedHeader("*");
-        config.addAllowedMethod("*");
-        config.setAllowCredentials(true);
+        config.setAllowedOrigins(appProperties.getCors().getAllowedOrigins());
+        config.setAllowedHeaders(appProperties.getCors().getAllowedHeaders());
+        config.setAllowedMethods(appProperties.getCors().getAllowedMethods());
+        config.setAllowCredentials(appProperties.getCors().isAllowCredentials());
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", config);

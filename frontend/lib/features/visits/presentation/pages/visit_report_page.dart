@@ -25,26 +25,12 @@ final visitReportDataProvider =
     FutureProvider.family<VisitReportRouteData, int>((ref, visitId) async {
       final localVisits = ref.watch(localVisitsProvider);
       final properties = await ref.watch(propertiesProvider.future);
-      var visit = localVisits[visitId];
+      final visit = localVisits[visitId] ??
+          await ref.watch(visitsRepositoryProvider).getById(visitId);
 
-      if (visit == null) {
-        final remoteVisits = await ref.watch(visitsRepositoryProvider).list();
-        final mergedVisits = {
-          for (final item in remoteVisits)
-            item.id: localVisits[item.id] ?? item,
-          ...localVisits,
-        }.values;
-        visit = _firstWhereOrNull(mergedVisits, (item) => item.id == visitId);
-      }
-
-      if (visit == null) {
-        throw StateError('Visita não encontrada.');
-      }
-
-      // TODO(api): Integrar dados completos da visita quando disponiveis.
       final property = _firstWhereOrNull(
         properties,
-        (item) => item.id == visit!.idPropriedade,
+        (item) => item.id == visit.idPropriedade,
       );
       final fallbackName = visit.idExternoPropriedade.trim().isEmpty
           ? 'Propriedade'
@@ -411,7 +397,6 @@ class VisitReportCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
-    // TODO(api): Manter o PDF oficial do back-end alinhado ao layout visual.
     final data = _VisitReportData.fromVisit(
       visit: visit,
       propertyName: propertyName,

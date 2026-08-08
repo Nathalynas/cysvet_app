@@ -2,7 +2,9 @@ package com.cysvet.backend.entity;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonValue;
+import java.text.Normalizer;
 import java.util.Arrays;
+import java.util.Locale;
 
 public enum StatusReprodutivoAnimal {
     PROTOCOL("em protocolo"),
@@ -47,10 +49,20 @@ public enum StatusReprodutivoAnimal {
     }
 
     private boolean matches(String candidate) {
-        if (value.equalsIgnoreCase(candidate)) {
+        String normalizedCandidate = normalize(candidate);
+        if (normalize(value).equals(normalizedCandidate)) {
             return true;
         }
 
-        return Arrays.stream(aliases).anyMatch(alias -> alias.equalsIgnoreCase(candidate));
+        return Arrays.stream(aliases)
+                .map(StatusReprodutivoAnimal::normalize)
+                .anyMatch(alias -> alias.equals(normalizedCandidate));
+    }
+
+    private static String normalize(String value) {
+        return Normalizer.normalize(value, Normalizer.Form.NFD)
+                .replaceAll("\\p{M}+", "")
+                .toLowerCase(Locale.ROOT)
+                .trim();
     }
 }

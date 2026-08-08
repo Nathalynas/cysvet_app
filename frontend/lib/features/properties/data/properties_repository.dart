@@ -22,6 +22,11 @@ class PropertiesRepository {
         .toList(growable: false);
   }
 
+  Future<PropertySummaryModel> getById(int id) async {
+    final response = await _dio.get<Object?>('/api/properties/$id');
+    return PropertySummaryModelMapper.fromMap(_asMap(response.data));
+  }
+
   Future<PropertySummaryModel> create(PropertySummaryModel property) async {
     final response = await _dio.post<Object?>(
       '/api/properties',
@@ -70,9 +75,11 @@ class PropertiesRepository {
       'idExterno': property.idExterno,
       'nome': property.nome,
       'nomeProprietario': property.nomeProprietario,
+      'contato': property.contato,
       'cidade': property.cidade,
       'estado': property.estado,
       'observacoes': property.observacoes,
+      'status': property.status.apiValue,
       'dataAtualizacaoCliente': DateTime.now().toUtc().toIso8601String(),
     };
   }

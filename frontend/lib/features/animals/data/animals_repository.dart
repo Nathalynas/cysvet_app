@@ -5,6 +5,7 @@ import '../../../core/enums/animal_status.dart';
 import '../../../core/network/api_client.dart';
 import '../domain/animal_history_event_model.dart';
 import '../domain/animal_summary_model.dart';
+import '../../visits/domain/visit_summary_model.dart';
 
 final animalsRepositoryProvider = Provider<AnimalsRepository>((ref) {
   return AnimalsRepository(ref.watch(apiClientProvider));
@@ -73,6 +74,21 @@ class AnimalsRepository {
     return items.map(AnimalHistoryEventModel.fromMap).toList(growable: false);
   }
 
+  Future<AnimalHistoryPayload> getHistory({required int animalId}) async {
+    final response = await _dio.get<Object?>('/api/animals/$animalId/history');
+    final map = _asMap(response.data);
+
+    return AnimalHistoryPayload(
+      animal: AnimalSummaryModelMapper.fromMap(_asMap(map['animal'])),
+      events: _asList(map['eventos'])
+          .map(AnimalHistoryEventModel.fromMap)
+          .toList(growable: false),
+      visits: _asList(map['visitas'])
+          .map(VisitSummaryModelMapper.fromMap)
+          .toList(growable: false),
+    );
+  }
+
   List<Map<String, dynamic>> _asList(Object? data) {
     if (data is List) {
       return data
@@ -122,4 +138,16 @@ class AnimalsRepository {
     final day = date.day.toString().padLeft(2, '0');
     return '$year-$month-$day';
   }
+}
+
+class AnimalHistoryPayload {
+  const AnimalHistoryPayload({
+    required this.animal,
+    required this.events,
+    required this.visits,
+  });
+
+  final AnimalSummaryModel animal;
+  final List<AnimalHistoryEventModel> events;
+  final List<VisitSummaryModel> visits;
 }

@@ -15,6 +15,10 @@ public record VisitaResponse(
         Long idPropriedade,
         @Schema(description = "Identificador externo da propriedade.", example = "prop-001")
         String idExternoPropriedade,
+        @Schema(description = "Identificador interno do usuario responsavel pela visita.", example = "8")
+        Long idUsuario,
+        @Schema(description = "Nome do usuario responsavel pela visita.", example = "Dr. Rafael")
+        String nomeUsuario,
         @Schema(description = "Data da visita.", example = "2026-05-12")
         LocalDate dataVisita,
         @Schema(description = "Observacoes da visita.")
