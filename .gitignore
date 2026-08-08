@@ -8,6 +8,10 @@ backend/.classpath
 backend/.factorypath
 backend/data/*.mv.db
 backend/data/*.trace.db
+backend/ops/db/backups/
+backend/validation-app.out
+backend/validation-app.err
+backend/validation-app.pid
 *.log
 .metadata/
 backend/.settings/

@@ -18,21 +18,105 @@
 
   <meta charset="UTF-8">
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
-  <meta name="description" content="A new Flutter project.">
+  <meta name="description" content="CYSVET - Gestão reprodutiva leiteira.">
+  <meta name="theme-color" content="#1B4332">
 
   <!-- iOS meta tags & icons -->
   <meta name="mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black">
-  <meta name="apple-mobile-web-app-title" content="cysvet_app">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="CYSVET">
   <link rel="apple-touch-icon" href="icons/Icon-192.png">
 
   <!-- Favicon -->
   <link rel="icon" type="image/png" href="favicon.png"/>
 
-  <title>cysvet_app</title>
+  <title>CYSVET</title>
   <link rel="manifest" href="manifest.json">
+  <style>
+    html,
+    body {
+      height: 100%;
+      margin: 0;
+      background: #FDFBF8;
+    }
+
+    #splash-screen {
+      position: fixed;
+      inset: 0;
+      z-index: 9999;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #FDFBF8;
+      transition: opacity 220ms ease;
+    }
+
+    #splash-screen.is-fading {
+      opacity: 0;
+    }
+
+    .splash-content {
+      display: flex;
+      width: min(520px, calc(100vw - 64px));
+      flex-direction: column;
+      align-items: center;
+      gap: 32px;
+    }
+
+    .splash-logo {
+      display: block;
+      width: 100%;
+      height: auto;
+    }
+
+    .splash-loader {
+      width: 28px;
+      height: 28px;
+      border: 3px solid rgba(27, 67, 50, 0.16);
+      border-top-color: #1B4332;
+      border-radius: 50%;
+      animation: splash-spin 800ms linear infinite;
+    }
+
+    @keyframes splash-spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+  </style>
 </head>
 <body>
+  <div id="splash-screen" role="status" aria-label="Carregando CYSVET">
+    <div class="splash-content">
+      <img class="splash-logo" src="assets/assets/images/logo.png" alt="CYSVET">
+      <span class="splash-loader" aria-hidden="true"></span>
+    </div>
+  </div>
+  <script>
+    const splashStartedAt = performance.now();
+    const minimumSplashMs = 700;
+
+    function removeSplashScreen() {
+      const splashScreen = document.getElementById('splash-screen');
+      if (!splashScreen) {
+        return;
+      }
+
+      const remainingMs = Math.max(
+        0,
+        minimumSplashMs - (performance.now() - splashStartedAt)
+      );
+
+      window.setTimeout(() => {
+        splashScreen.classList.add('is-fading');
+        window.setTimeout(() => splashScreen.remove(), 240);
+      }, remainingMs);
+    }
+
+    window.addEventListener('flutter-first-frame', removeSplashScreen, {
+      once: true,
+    });
+  </script>
   <!--
     You can customize the "flutter_bootstrap.js" script.
     This is useful to provide a custom configuration to the Flutter loader

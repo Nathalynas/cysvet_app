@@ -14,6 +14,9 @@ class _SplashPageState extends State<SplashPage> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final logoWidth = (MediaQuery.sizeOf(context).width - 64)
+        .clamp(220.0, 520.0)
+        .toDouble();
 
     return Scaffold(
       body: Container(
@@ -34,10 +37,10 @@ class _SplashPageState extends State<SplashPage> {
                   children: [
                     Image.asset(
                       AppAssets.companyLogo,
-                      width: 260,
-                      height: 260,
+                      width: logoWidth,
                       fit: BoxFit.contain,
                     ),
+                    const SizedBox(height: 32),
                     SizedBox(
                       width: 28,
                       height: 28,
