@@ -147,6 +147,23 @@ class PropertyAnimalIntegrationTest {
     }
 
     @Test
+    void propertyWithMaximumExternalIdShouldCreateItsDefaultLot() throws Exception {
+        AuthContext auth = registerAndAuthenticate("property.max-external-id@example.com");
+        String propertyExternalId = "p".repeat(64);
+
+        JsonNode property = createProperty(auth, """
+                {
+                  "idExterno": "%s",
+                  "nome": "Fazenda Limite",
+                  "nomeProprietario": "Maria"
+                }
+                """.formatted(propertyExternalId));
+
+        JsonNode lote = firstLotForProperty(auth, property.path("id").asLong());
+        assertTrue(lote.path("idExterno").asText().length() <= 64);
+    }
+
+    @Test
     void animalEndpointsShouldPersistSexoStatusAndSupportSoftDelete() throws Exception {
         AuthContext auth = registerAndAuthenticate("animal.status@example.com");
         JsonNode property = createProperty(auth, """

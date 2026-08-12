@@ -192,6 +192,6 @@ public class LoteService {
     }
 
     private String generateDefaultExternalId(Propriedade propriedade) {
-        return propriedade.getIdExterno() + "-lot-1-" + UUID.randomUUID();
+        return "lot-" + UUID.randomUUID();
     }
 }
