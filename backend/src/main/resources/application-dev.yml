@@ -12,3 +12,9 @@ spring:
 app:
   jwt:
     secret: ${JWT_SECRET:cysvet-super-secret-key-for-development-only-change-me}
+  cors:
+    # O Flutter Web usa uma porta aleatoria durante o desenvolvimento.
+    # Em producao, somente app.cors.allowed-origins e usado.
+    allowed-origin-patterns:
+      - http://localhost:*
+      - http://127.0.0.1:*

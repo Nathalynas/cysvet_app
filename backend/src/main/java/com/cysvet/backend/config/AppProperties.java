@@ -35,6 +35,7 @@ public class AppProperties {
     public static class Cors {
         @NotEmpty
         private List<String> allowedOrigins = new ArrayList<>();
+        private List<String> allowedOriginPatterns = new ArrayList<>();
         @NotEmpty
         private List<String> allowedMethods = new ArrayList<>();
         @NotEmpty
