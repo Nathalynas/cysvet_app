@@ -6,13 +6,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_material_design_icons/flutter_material_design_icons.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../../core/utils/formatters.dart';
-import '../../../indicators/domain/indicador_reprodutivo_calculator.dart';
-import '../../../visits/application/visits_provider.dart';
-import '../../../visits/domain/visit_summary_model.dart';
-import '../../data/animals_repository.dart';
-import '../../domain/animal_history_event_model.dart';
-import '../../domain/animal_summary_model.dart';
+import '../../../core/utils/formatters.dart';
+import '../../indicators/indicador_reprodutivo_calculator.dart';
+import '../../visits/application/visits_provider.dart';
+import '../../visits/data/visits_repository.dart';
+import '../../visits/domain/visit_summary_model.dart';
+import '../data/animals_repository.dart';
+import '../domain/animal_history_event_model.dart';
+import '../domain/animal_summary_model.dart';
 
 String _animalCodeLabel(String code) {
   if (code.trim().isEmpty) return '--';

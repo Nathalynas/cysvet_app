@@ -10,6 +10,7 @@ import 'package:go_router/go_router.dart';
 import '../core/constants/app_constants.dart';
 import '../core/widgets/app_button.dart';
 import '../features/auth/application/auth_state.dart';
+import 'theme.dart';
 
 class AppShell extends ConsumerWidget {
   const AppShell({super.key, required this.child});
@@ -193,7 +194,7 @@ class _MainHeader extends ConsumerWidget {
     final isMobile = MediaQuery.of(context).size.width < MOBILE_WIDTH;
 
     final logoAsset = Theme.of(context).brightness == Brightness.dark
-        ? 'assets/images/logo_branco.png'
+        ? 'assets/images/logo_verde.png'
         : 'assets/images/logo.png';
 
     dynamic activeCompany;
@@ -254,20 +255,27 @@ class _MainHeader extends ConsumerWidget {
                         ),
                         Align(
                           alignment: Alignment.centerRight,
-                          child: _UserAvatarMenu(
-                            userName: userName,
-                            userEmail: userEmail,
-                            onProfile: () => context.go('/configuracoes'),
-                            onCompany: () => context.go('/configuracoes'),
-                            onLogout: () async {
-                              await ref.read(authControllerProvider).logout();
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              _UserAvatarMenu(
+                                userName: userName,
+                                userEmail: userEmail,
+                                onProfile: () => context.go('/configuracoes'),
+                                onCompany: () => context.go('/configuracoes'),
+                                onLogout: () async {
+                                  await ref
+                                      .read(authControllerProvider)
+                                      .logout();
 
-                              if (!context.mounted) {
-                                return;
-                              }
+                                  if (!context.mounted) {
+                                    return;
+                                  }
 
-                              context.go('/login');
-                            },
+                                  context.go('/login');
+                                },
+                              ),
+                            ],
                           ),
                         ),
                       ],
@@ -300,6 +308,8 @@ class _MainHeader extends ConsumerWidget {
                             userName: userName,
                           ),
                         ),
+                        const _HeaderSyncStatusBadge(isOnline: true),
+                        const SizedBox(width: 12),
                         _UserAvatarMenu(
                           userName: userName,
                           userEmail: userEmail,
@@ -749,7 +759,7 @@ class _SidebarLogo extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final logoAsset = Theme.of(context).brightness == Brightness.dark
-        ? 'assets/images/logo_branco.png'
+        ? 'assets/images/logo_verde.png'
         : 'assets/images/logo.png';
 
     return Padding(
@@ -849,7 +859,7 @@ class _NavigationTileState extends State<_NavigationTile> {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    final primary = colorScheme.primary;
+    final primary = AppTheme.primary2For(Theme.of(context).brightness);
     final isSelected = widget.isSelected;
 
     final backgroundColor = isSelected
@@ -1012,8 +1022,8 @@ class _UserAvatarMenu extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final initials = getInitials(userName);
-    final primary = Theme.of(context).colorScheme.primary;
     final colorScheme = Theme.of(context).colorScheme;
+    final primary = AppTheme.primary1For(Theme.of(context).brightness);
 
     return PopupMenuButton<String>(
       offset: const Offset(0, 55),
@@ -1106,17 +1116,93 @@ class _UserAvatarMenu extends StatelessWidget {
       ],
       child: MouseRegion(
         cursor: SystemMouseCursors.click,
-        child: CircleAvatar(
-          radius: 19,
-          backgroundColor: primary,
-          child: Text(
-            initials,
-            style: const TextStyle(
-              color: Colors.white,
-              fontWeight: FontWeight.w600,
-              fontSize: 14,
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 40,
+              height: 40,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: primary,
+                borderRadius: BorderRadius.circular(13),
+              ),
+              child: Text(
+                initials,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w800,
+                  fontSize: 13,
+                  letterSpacing: 0.1,
+                ),
+              ),
             ),
-          ),
+            const SizedBox(width: 6),
+            const Icon(
+              Icons.keyboard_arrow_down_rounded,
+              size: 20,
+              color: Color(0xFF7B827E),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _HeaderSyncStatusBadge extends StatelessWidget {
+  const _HeaderSyncStatusBadge({required this.isOnline});
+
+  final bool isOnline;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final statusColor = isOnline
+        ? isDark
+              ? AppTheme.syncBadgeDarkForegroundColor
+              : AppTheme.syncBadgeForegroundColor
+        : isDark
+        ? AppTheme.offlineBadgeDarkForegroundColor
+        : AppTheme.offlineBadgeForegroundColor;
+    final backgroundColor = isOnline
+        ? isDark
+              ? AppTheme.syncBadgeDarkBackgroundColor
+              : AppTheme.syncBadgeBackgroundColor
+        : isDark
+        ? AppTheme.offlineBadgeDarkBackgroundColor
+        : AppTheme.offlineBadgeBackgroundColor;
+
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: backgroundColor,
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 8),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 7,
+              height: 7,
+              decoration: BoxDecoration(
+                color: statusColor,
+                shape: BoxShape.circle,
+              ),
+            ),
+            const SizedBox(width: 9),
+            Text(
+              isOnline ? 'SINCRONIZADO' : 'OFFLINE',
+              style: theme.textTheme.labelSmall?.copyWith(
+                color: statusColor,
+                fontSize: 11.5,
+                fontWeight: FontWeight.w800,
+                letterSpacing: 0.35,
+              ),
+            ),
+          ],
         ),
       ),
     );

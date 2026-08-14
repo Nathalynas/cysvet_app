@@ -1,7 +1,7 @@
-import '../../../core/constants/app_constants.dart';
-import '../../../core/enums/animal_status.dart';
-import '../../animals/domain/animal_summary_model.dart';
-import '../../visits/domain/visit_summary_model.dart';
+import '../../core/constants/app_constants.dart';
+import '../../core/enums/animal_status.dart';
+import '../animals/domain/animal_summary_model.dart';
+import '../visits/domain/visit_summary_model.dart';
 
 class IndicadorReprodutivoCalculator {
   const IndicadorReprodutivoCalculator._();

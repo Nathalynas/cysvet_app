@@ -13,17 +13,17 @@ import 'package:cysvet_app/core/widgets/status_badge.dart';
 import 'package:cysvet_app/features/animals/application/animals_provider.dart';
 import 'package:cysvet_app/features/animals/data/animals_repository.dart';
 import 'package:cysvet_app/features/animals/domain/animal_summary_model.dart';
-import 'package:cysvet_app/features/animals/presentation/widgets/animal_history_dialog.dart';
+import 'package:cysvet_app/features/animals/presentation/animal_history_dialog.dart';
 import 'package:cysvet_app/features/auth/application/auth_state.dart';
-import 'package:cysvet_app/features/indicators/domain/indicador_reprodutivo_calculator.dart';
+import 'package:cysvet_app/features/indicators/indicador_reprodutivo_calculator.dart';
 import 'package:cysvet_app/features/properties/application/properties_provider.dart';
 import 'package:cysvet_app/features/properties/data/properties_repository.dart';
 import 'package:cysvet_app/features/properties/domain/property_summary_model.dart';
-import 'package:cysvet_app/features/properties/presentation/widgets/property_dialog.dart';
+import 'package:cysvet_app/features/properties/presentation/property_dialog.dart';
 import 'package:cysvet_app/features/visits/application/visits_provider.dart';
 import 'package:cysvet_app/features/visits/data/visits_repository.dart';
 import 'package:cysvet_app/features/visits/domain/visit_summary_model.dart';
-import 'package:cysvet_app/features/visits/presentation/pages/visit_report_page.dart';
+import 'package:cysvet_app/features/visits/presentation/visit_report_page.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -86,7 +86,7 @@ final propertyDetailsAnimalsProvider = FutureProvider.autoDispose
       final repository = ref.watch(animalsRepositoryProvider);
 
       if (session == null) {
-        throw StateError('Sessao indisponivel.');
+        throw StateError('Sessão indisponível.');
       }
 
       final property = await propertyFuture;
@@ -117,7 +117,7 @@ final propertyDetailsVisitsProvider = FutureProvider.autoDispose
       final repository = ref.watch(visitsRepositoryProvider);
 
       if (session == null) {
-        throw StateError('Sessao indisponivel.');
+        throw StateError('Sessão indisponível.');
       }
 
       final property = await propertyFuture;
@@ -417,7 +417,7 @@ class _PropertyDetailsPageState extends ConsumerState<PropertyDetailsPage> {
           if (!mounted) return;
           await navigator.maybePop();
           router.go('/propriedades');
-          showAppSuccess('Propriedade excluida com sucesso.');
+          showAppSuccess('Propriedade excluída com sucesso.');
         } catch (error) {
           showAppError(error);
         }
@@ -474,6 +474,7 @@ class _PropertyDetailsTop extends StatelessWidget {
           icon: Icons.arrow_back,
           color: colorScheme.primary,
           backgroundColor: colorScheme.surface,
+          borderColor: colorScheme.outline.withValues(alpha: 0.55),
           filled: true,
           shadow: true,
           onPressed: () => context.go('/propriedades'),
@@ -927,6 +928,7 @@ class _PropertyActionIconButton extends StatelessWidget {
     required this.onPressed,
     this.color,
     this.backgroundColor,
+    this.borderColor,
     this.filled = false,
     this.shadow = false,
   });
@@ -936,6 +938,7 @@ class _PropertyActionIconButton extends StatelessWidget {
   final VoidCallback onPressed;
   final Color? color;
   final Color? backgroundColor;
+  final Color? borderColor;
   final bool filled;
   final dynamic shadow;
 
@@ -955,7 +958,7 @@ class _PropertyActionIconButton extends StatelessWidget {
         shadow: shadow,
         color: backgroundColor ?? effectiveColor,
         textColor: effectiveColor,
-        borderColor: Colors.transparent,
+        borderColor: borderColor ?? Colors.transparent,
         icon: Icon(icon, size: 18, color: effectiveColor),
         onPressed: onPressed,
       ),
@@ -1069,20 +1072,20 @@ class _PropertyGeneralTab extends StatelessWidget {
       fields: [
         _DetailField(label: 'Nome', value: _dashIfBlank(property.nome)),
         _DetailField(
-          label: 'Responsavel',
+          label: 'Responsável',
           value: _dashIfBlank(property.nomeProprietario),
         ),
         _DetailField(label: 'Contato', value: _dashIfBlank(property.contato)),
         _DetailField(label: 'Cidade', value: _dashIfBlank(property.cidade)),
         _DetailField(label: 'UF', value: _dashIfBlank(property.estado)),
-        _DetailField(label: 'Localizacao', value: _locationLabel(property)),
+        _DetailField(label: 'Localização', value: _locationLabel(property)),
         _DetailField(label: 'Status', value: property.status.label),
         _DetailField(
           label: 'ID externo',
           value: _dashIfBlank(property.idExterno),
         ),
         _DetailField(
-          label: 'Observacoes',
+          label: 'Observações',
           value: _dashIfBlank(property.observacoes),
           wide: true,
         ),
@@ -1112,7 +1115,7 @@ class _PropertyAnimalsTab extends StatelessWidget {
         loading: true,
       ),
       error: (error, stackTrace) => _InlineFeedback(
-        message: 'Nao foi possivel carregar os animais desta propriedade.',
+        message: 'Não foi possivel carregar os animais desta propriedade.',
         onRetry: onRetry,
       ),
     );
@@ -1140,7 +1143,7 @@ class _PropertyVisitsTab extends StatelessWidget {
         loading: true,
       ),
       error: (error, stackTrace) => _InlineFeedback(
-        message: 'Nao foi possivel carregar as visitas desta propriedade.',
+        message: 'Não foi possivel carregar as visitas desta propriedade.',
         onRetry: onRetry,
       ),
     );
@@ -1187,7 +1190,7 @@ class _PropertyAnimalsTable extends StatelessWidget {
           ),
         ),
         _DetailsTableColumn<AnimalSummaryModel>(
-          label: 'Reproducao',
+          label: 'Reprodução',
           flex: 2,
           cellBuilder: (context, animal) {
             final status = IndicadorReprodutivoCalculator.resolveAnimalStatus(
@@ -1201,13 +1204,13 @@ class _PropertyAnimalsTable extends StatelessWidget {
           },
         ),
         _DetailsTableColumn<AnimalSummaryModel>(
-          label: 'Ultima IA',
+          label: 'Última IA',
           flex: 2,
           cellBuilder: (context, animal) =>
               Text(formatDate(animal.dataInseminacao)),
         ),
         _DetailsTableColumn<AnimalSummaryModel>(
-          label: 'Ultimo parto',
+          label: 'Último parto',
           flex: 2,
           cellBuilder: (context, animal) =>
               Text(formatDate(animal.dataUltimoParto)),
@@ -1245,7 +1248,7 @@ class _PropertyVisitsTable extends StatelessWidget {
           cellBuilder: (context, visit) => Text(formatDate(visit.dataVisita)),
         ),
         _DetailsTableColumn<VisitSummaryModel>(
-          label: 'Veterinario',
+          label: 'Veterinário',
           flex: 3,
           cellBuilder: (context, visit) =>
               Text(_dashIfBlank(visit.veterinarioResponsavel)),

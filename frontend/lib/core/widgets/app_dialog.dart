@@ -184,8 +184,12 @@ class AppDialog extends StatelessWidget {
                 ],
                 if (effectiveFullscreen)
                   Expanded(child: bodyAndActions)
+                else if (height != null)
+                  Expanded(child: bodyAndActions)
+                else if (useInternalScroll)
+                  Flexible(fit: FlexFit.loose, child: bodyAndActions)
                 else
-                  Flexible(fit: FlexFit.loose, child: bodyAndActions),
+                  bodyAndActions,
               ],
             ),
           ),
@@ -400,7 +404,7 @@ class _CloseDialogButton extends StatelessWidget {
         tooltip: 'Fechar',
         mouseCursor: SystemMouseCursors.click,
         style: IconButton.styleFrom(
-          backgroundColor: colorScheme.surfaceContainerHighest,
+          backgroundColor: Colors.transparent,
           foregroundColor: colorScheme.primary,
           fixedSize: const Size.square(40),
           minimumSize: const Size.square(40),
@@ -433,7 +437,11 @@ class _DialogBody extends StatelessWidget {
         : child;
 
     if (!expanded) {
-      return Flexible(fit: FlexFit.loose, child: body);
+      if (useInternalScroll) {
+        return Flexible(fit: FlexFit.loose, child: body);
+      }
+
+      return body;
     }
 
     return Expanded(child: body);

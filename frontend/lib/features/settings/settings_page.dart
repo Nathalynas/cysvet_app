@@ -2,17 +2,17 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../../app/app_shell.dart';
-import '../../../../app/theme.dart';
-import '../../../../core/network/api_error.dart';
-import '../../../../core/widgets/app_button.dart';
-import '../../../../core/widgets/app_card.dart';
-import '../../../../core/widgets/app_dropdown.dart';
-import '../../../../core/widgets/app_form.dart';
-import '../../../../core/widgets/app_text_field.dart';
-import '../../../auth/application/auth_state.dart';
-import '../../../auth/data/auth_repository.dart';
-import '../../../auth/domain/auth_session_model.dart';
+import '../../app/app_shell.dart';
+import '../../app/theme.dart';
+import '../../core/network/api_error.dart';
+import '../../core/widgets/app_button.dart';
+import '../../core/widgets/app_card.dart';
+import '../../core/widgets/app_dropdown.dart';
+import '../../core/widgets/app_form.dart';
+import '../../core/widgets/app_text_field.dart';
+import '../auth/application/auth_state.dart';
+import '../auth/data/auth_repository.dart';
+import '../auth/domain/auth_session_model.dart';
 
 class ConfiguracoesPage extends ConsumerStatefulWidget {
   const ConfiguracoesPage({super.key});
@@ -68,6 +68,11 @@ class _ConfiguracoesPageState extends ConsumerState<ConfiguracoesPage> {
 
     final activeCompany = session.activeCompany;
     final canEditCompanyData = _canEditCompanyData(session.user);
+    final userFields = _buildUserFields(isEditing: _isEditingUser);
+    final companyFields = _buildCompanyFields(
+      canEdit: canEditCompanyData,
+      isEditing: _isEditingCompany,
+    );
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
@@ -99,10 +104,13 @@ class _ConfiguracoesPageState extends ConsumerState<ConfiguracoesPage> {
                     onCancel: () => _cancelUserEditing(session),
                     onSubmit: _saveUserData,
                     fields: [
-                      ..._buildUserFields(isEditing: _isEditingUser),
-                      _InfoRow(
-                        label: 'Perfil',
-                        value: session.user.displayRole,
+                      _SettingsFieldsLayout(
+                        left: userFields.first,
+                        right: userFields.last,
+                        fullWidth: _InfoRow(
+                          label: 'Perfil',
+                          value: session.user.displayRole,
+                        ),
                       ),
                     ],
                   ),
@@ -166,10 +174,8 @@ class _ConfiguracoesPageState extends ConsumerState<ConfiguracoesPage> {
                     onEdit: () => setState(() => _isEditingCompany = true),
                     onCancel: _cancelCompanyEditing,
                     onSubmit: _saveCompanyData,
-                    fields: _buildCompanyFields(
-                      canEdit: canEditCompanyData,
-                      isEditing: _isEditingCompany,
-                    ),
+                    fields: [companyFields.first],
+                    rightFields: [companyFields.last],
                   ),
 
                   const SizedBox(height: 20),
@@ -494,6 +500,7 @@ class _ThemeSegmentButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
+    final selectedColor = AppTheme.primary1For(theme.brightness);
 
     return IgnorePointer(
       ignoring: selected,
@@ -501,10 +508,8 @@ class _ThemeSegmentButton extends StatelessWidget {
         height: 30,
         shadow: false,
         outlined: false,
-        color: selected ? colorScheme.secondary : Colors.transparent,
-        textColor: selected
-            ? colorScheme.onSecondary
-            : colorScheme.onSurfaceVariant,
+        color: selected ? selectedColor : Colors.transparent,
+        textColor: selected ? Colors.white : colorScheme.onSurfaceVariant,
         borderColor: Colors.transparent,
         borderRadius: 9,
         padding: const EdgeInsets.symmetric(horizontal: 14),
@@ -519,10 +524,7 @@ class _ThemeSegmentButton extends StatelessWidget {
 }
 
 class _ThemeSegmentedSelector extends StatelessWidget {
-  const _ThemeSegmentedSelector({
-    required this.value,
-    required this.onChanged,
-  });
+  const _ThemeSegmentedSelector({required this.value, required this.onChanged});
 
   final ThemeMode value;
   final ValueChanged<ThemeMode> onChanged;
@@ -567,6 +569,7 @@ class _EditableSettingsCard extends StatelessWidget {
     required this.onCancel,
     required this.onSubmit,
     required this.fields,
+    this.rightFields,
     this.subtitle,
   });
 
@@ -579,6 +582,7 @@ class _EditableSettingsCard extends StatelessWidget {
   final VoidCallback onCancel;
   final VoidCallback onSubmit;
   final List<Widget> fields;
+  final List<Widget>? rightFields;
 
   static const double _actionButtonHeight = 34;
   static const double _actionButtonFontSize = 13;
@@ -602,6 +606,7 @@ class _EditableSettingsCard extends StatelessWidget {
       child: AppForm(
         padding: EdgeInsets.zero,
         fields: fields,
+        rightFields: rightFields,
         isLoading: isLoading,
         showDefaultActions: canEdit && isEditing,
         actionButtonHeight: _actionButtonHeight,
@@ -715,7 +720,7 @@ class _LogoutCard extends StatelessWidget {
       borderRadius: 18,
       padding: const EdgeInsets.all(16),
       shadow: true,
-      borderColor: colorScheme.error.withValues(alpha: 0.35),
+      borderColor: colorScheme.error,
       child: Row(
         children: [
           Expanded(
@@ -740,6 +745,57 @@ class _LogoutCard extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _SettingsFieldsLayout extends StatelessWidget {
+  const _SettingsFieldsLayout({
+    required this.left,
+    required this.right,
+    required this.fullWidth,
+  });
+
+  final Widget left;
+  final Widget right;
+  final Widget fullWidth;
+
+  static const double _dualColumnBreakpoint = 720;
+  static const double _spacing = 16;
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        if (constraints.maxWidth < _dualColumnBreakpoint) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              left,
+              const SizedBox(height: _spacing),
+              right,
+              const SizedBox(height: _spacing),
+              fullWidth,
+            ],
+          );
+        }
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(child: left),
+                const SizedBox(width: _spacing),
+                Expanded(child: right),
+              ],
+            ),
+            const SizedBox(height: _spacing),
+            fullWidth,
+          ],
+        );
+      },
     );
   }
 }

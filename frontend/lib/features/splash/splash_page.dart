@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../../../app/theme.dart';
-import '../../../../core/constants/app_constants.dart';
+import '../../app/theme.dart';
 
 class SplashPage extends StatefulWidget {
   const SplashPage({super.key});
@@ -13,16 +12,12 @@ class SplashPage extends StatefulWidget {
 class _SplashPageState extends State<SplashPage> {
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final logoWidth = (MediaQuery.sizeOf(context).width - 64)
-        .clamp(220.0, 520.0)
-        .toDouble();
 
     return Scaffold(
       body: Container(
         width: double.infinity,
         height: double.infinity,
-        color: theme.colorScheme.surface,
+        color: AppTheme.primaryColor,
         child: SafeArea(
           child: Center(
             child: SingleChildScrollView(
@@ -36,8 +31,9 @@ class _SplashPageState extends State<SplashPage> {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Image.asset(
-                      AppAssets.companyLogo,
-                      width: logoWidth,
+                      'assets/images/logo_verde.png',
+                      width: 260,
+                      height: 260,
                       fit: BoxFit.contain,
                     ),
                     const SizedBox(height: 32),
@@ -47,7 +43,7 @@ class _SplashPageState extends State<SplashPage> {
                       child: CircularProgressIndicator(
                         strokeWidth: 2.8,
                         valueColor: AlwaysStoppedAnimation<Color>(
-                          AppTheme.primaryColor,
+                          AppTheme.secondary,
                         ),
                       ),
                     ),

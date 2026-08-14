@@ -2,19 +2,20 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../features/animals/presentation/pages/animals_page.dart';
+import '../features/animals/presentation/animals_page.dart';
 import '../features/auth/application/auth_state.dart';
-import '../features/auth/presentation/pages/login_page.dart';
-import '../features/auth/presentation/pages/register_page.dart';
-import '../features/settings/presentation/pages/settings_page.dart';
-import '../features/dashboard/presentation/pages/dashboard_page.dart';
-import '../features/properties/presentation/pages/property_details_page.dart';
-import '../features/properties/presentation/pages/properties_page.dart';
-import '../features/splash/presentation/pages/splash_page.dart';
-import '../features/users/presentation/pages/users_page.dart';
-import '../features/visits/presentation/pages/visit_form_page.dart';
-import '../features/visits/presentation/pages/visit_report_page.dart';
-import '../features/visits/presentation/pages/visits_page.dart';
+import '../features/auth/presentation/login_page.dart';
+import '../features/auth/presentation/register_page.dart';
+import '../features/auth/presentation/auth_page_shell.dart';
+import '../features/settings/settings_page.dart';
+import '../features/dashboard/presentation/dashboard_page.dart';
+import '../features/properties/presentation/property_details_page.dart';
+import '../features/properties/presentation/properties_page.dart';
+import '../features/splash/splash_page.dart';
+import '../features/users/presentation/users_page.dart';
+import '../features/visits/presentation/visit_form_page.dart';
+import '../features/visits/presentation/visit_report_page.dart';
+import '../features/visits/presentation/visits_page.dart';
 import 'app_shell.dart';
 import 'theme.dart';
 
@@ -58,11 +59,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: '/login',
-        builder: (context, state) => _buildPublicRoute(const LoginPage()),
+        pageBuilder: (context, state) => _buildAuthPage(const LoginPage()),
       ),
       GoRoute(
         path: '/register',
-        builder: (context, state) => _buildPublicRoute(const RegisterPage()),
+        pageBuilder: (context, state) => _buildAuthPage(const RegisterPage()),
       ),
       ShellRoute(
         pageBuilder: (context, state, child) =>
@@ -168,6 +169,13 @@ Page<void> _buildShellChildPage(GoRouterState state, Widget child) {
     },
     restorationId: state.pageKey.value,
     child: child,
+  );
+}
+
+Page<void> _buildAuthPage(Widget form) {
+  return NoTransitionPage<void>(
+    key: const ValueKey('auth-page'),
+    child: _buildPublicRoute(AuthPageShell(form: form)),
   );
 }
 

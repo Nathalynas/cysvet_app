@@ -5,21 +5,21 @@ import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:printing/printing.dart';
 
-import '../../../../app/app_shell.dart';
-import '../../../../core/constants/app_constants.dart';
-import '../../../../core/presentation/app_scaffold_messenger.dart';
-import '../../../../core/presentation/async_value_view.dart';
-import '../../../../core/utils/formatters.dart';
-import '../../../../core/widgets/app_button.dart';
-import '../../../../core/widgets/app_card.dart';
-import '../../../../core/widgets/app_table.dart';
-import '../../../auth/application/auth_state.dart';
-import '../../../auth/domain/auth_session_model.dart';
-import '../../../properties/application/properties_provider.dart';
-import '../../../properties/domain/property_summary_model.dart';
-import '../../application/visits_provider.dart';
-import '../../data/visits_repository.dart';
-import '../../domain/visit_summary_model.dart';
+import '../../../app/app_shell.dart';
+import '../../../core/constants/app_constants.dart';
+import '../../../core/presentation/app_scaffold_messenger.dart';
+import '../../../core/presentation/async_value_view.dart';
+import '../../../core/utils/formatters.dart';
+import '../../../core/widgets/app_button.dart';
+import '../../../core/widgets/app_card.dart';
+import '../../../core/widgets/app_table.dart';
+import '../../auth/application/auth_state.dart';
+import '../../auth/domain/auth_session_model.dart';
+import '../../properties/application/properties_provider.dart';
+import '../../properties/domain/property_summary_model.dart';
+import '../application/visits_provider.dart';
+import '../data/visits_repository.dart';
+import '../domain/visit_summary_model.dart';
 
 final visitReportDataProvider =
     FutureProvider.family<VisitReportRouteData, int>((ref, visitId) async {
@@ -136,6 +136,7 @@ class _ReportPageContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final horizontal = PageTitle.horizontalPadding(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -172,7 +173,9 @@ class _ReportPageContent extends StatelessWidget {
                               shadow: true,
                               color: colorScheme.surface,
                               textColor: colorScheme.primary,
-                              borderColor: Colors.transparent,
+                              borderColor: colorScheme.outline.withValues(
+                                alpha: 0.55,
+                              ),
                               icon: Icon(
                                 Icons.arrow_back,
                                 size: 18,
@@ -199,7 +202,9 @@ class _ReportPageContent extends StatelessWidget {
                   },
                 ),
                 Padding(
-                  padding: const EdgeInsets.fromLTRB(24, 10, 24, 8),
+                  padding: EdgeInsets.symmetric(
+                    horizontal: horizontal,
+                  ).copyWith(top: 10, bottom: 8),
                   child: Align(
                     alignment: Alignment.centerLeft,
                     child: _ReportPdfActions(
@@ -309,6 +314,12 @@ class _ReportDocumentViewportState extends State<_ReportDocumentViewport> {
     // TODO(frontend-only): Usar scroll horizontal/vertical quando a tela for menor que o documento.
     return LayoutBuilder(
       builder: (context, constraints) {
+        final isMobile = constraints.maxWidth < MOBILE_WIDTH;
+
+        final horizontalPadding = isMobile
+            ? PageTitle.horizontalPadding(context)
+            : 24.0;
+
         return Scrollbar(
           controller: _verticalController,
           thumbVisibility: true,
@@ -318,6 +329,7 @@ class _ReportDocumentViewportState extends State<_ReportDocumentViewport> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 if (widget.header != null) widget.header!,
+
                 Scrollbar(
                   controller: _horizontalController,
                   thumbVisibility: true,
@@ -333,9 +345,16 @@ class _ReportDocumentViewportState extends State<_ReportDocumentViewport> {
                         minHeight: constraints.maxHeight,
                       ),
                       child: Padding(
-                        padding: const EdgeInsets.fromLTRB(24, 18, 24, 32),
+                        padding: EdgeInsets.fromLTRB(
+                          horizontalPadding,
+                          18,
+                          horizontalPadding,
+                          32,
+                        ),
                         child: Align(
-                          alignment: Alignment.topCenter,
+                          alignment: isMobile
+                              ? Alignment.topLeft
+                              : Alignment.topCenter,
                           child: Listener(
                             onPointerSignal: _handlePointerSignal,
                             child: SizedBox(
@@ -482,30 +501,36 @@ class _ReportPdfActionsState extends ConsumerState<_ReportPdfActions> {
             child: AppButton(
               text: 'Compartilhar',
               outlined: true,
-              height: 36,
-              width: 138,
-              borderRadius: 8,
-              fontSize: 12.5,
+              height: 40,
+              borderRadius: 10,
+              fontSize: 14,
+              fontWeight: FontWeight.w700,
+              color: Theme.of(context).colorScheme.primary,
+              backgroundColor: Theme.of(context).colorScheme.surface,
+              borderColor: Theme.of(
+                context,
+              ).colorScheme.outline.withValues(alpha: 0.75),
               loading: _runningAction == _ReportPdfAction.share,
               disabled: !canUsePdf || isBusy,
-              icon: const Icon(Icons.share_outlined, size: 17),
+              icon: const Icon(Icons.share_outlined, size: 18),
               onPressed: canUsePdf && !isBusy
                   ? () => _runPdfAction(_ReportPdfAction.share)
                   : null,
             ),
           ),
-          const SizedBox(width: 10),
+          const SizedBox(width: 12),
           Tooltip(
-            message: unavailableMessage ?? 'Baixar relatorio em PDF',
+            message: unavailableMessage ?? 'Exportar relatorio em PDF',
             child: AppButton(
-              text: 'Baixar PDF',
-              height: 36,
-              width: 126,
-              borderRadius: 8,
-              fontSize: 12.5,
+              text: 'Exportar PDF',
+              height: 40,
+              borderRadius: 10,
+              fontSize: 14,
+              fontWeight: FontWeight.w700,
+              color: Theme.of(context).colorScheme.primary,
               loading: _runningAction == _ReportPdfAction.download,
               disabled: !canUsePdf || isBusy,
-              icon: const Icon(Icons.picture_as_pdf_outlined, size: 17),
+              icon: const Icon(Icons.file_download_outlined, size: 18),
               onPressed: canUsePdf && !isBusy
                   ? () => _runPdfAction(_ReportPdfAction.download)
                   : null,
@@ -824,6 +849,7 @@ class _ProceduresSection extends StatelessWidget {
             AppTableColumn<_ProcedureReportRow>(
               label: 'Procedimento',
               flex: 3,
+              alignment: Alignment.centerLeft,
               cellBuilder: (context, item) => _StrongCell(item.procedure),
             ),
             AppTableColumn<_ProcedureReportRow>(
@@ -883,6 +909,7 @@ class _ConfirmedAnimalsSection extends StatelessWidget {
             AppTableColumn<_ConfirmedAnimalReportRow>(
               label: 'Identificação',
               flex: 2,
+              alignment: Alignment.centerLeft,
               cellBuilder: (context, item) => _StrongCell(item.identification),
             ),
             AppTableColumn<_ConfirmedAnimalReportRow>(

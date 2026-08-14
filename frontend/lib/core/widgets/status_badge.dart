@@ -8,15 +8,26 @@ class StatusBadge extends StatelessWidget {
     required this.label,
     this.type = StatusBadgeType.neutral,
     this.icon,
+    this.backgroundColor,
+    this.foregroundColor,
+    this.borderColor,
   });
 
   final String label;
   final StatusBadgeType type;
   final IconData? icon;
+  final Color? backgroundColor;
+  final Color? foregroundColor;
+  final Color? borderColor;
 
   @override
   Widget build(BuildContext context) {
-    final colors = _colorsFor(context, type);
+    final defaultColors = _colorsFor(context, type);
+    final colors = _StatusBadgeColors(
+      background: backgroundColor ?? defaultColors.background,
+      border: borderColor ?? defaultColors.border,
+      foreground: foregroundColor ?? defaultColors.foreground,
+    );
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),

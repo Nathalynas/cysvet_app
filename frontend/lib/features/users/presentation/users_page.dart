@@ -1,22 +1,24 @@
 import 'package:cysvet_app/core/constants/app_constants.dart';
+import 'package:cysvet_app/features/auth/application/auth_state.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
 
-import '../../../../app/app_shell.dart';
-import '../../../../core/enums/user_status.dart';
-import '../../../../core/presentation/app_scaffold_messenger.dart';
-import '../../../../core/presentation/async_value_view.dart';
-import '../../../../core/widgets/app_button.dart';
-import '../../../../core/widgets/app_card.dart';
-import '../../../../core/widgets/app_dialog.dart';
-import '../../../../core/widgets/app_dropdown.dart';
-import '../../../../core/widgets/app_table.dart';
-import '../../../../core/widgets/search_card.dart';
-import '../../../../core/widgets/status_badge.dart';
-import '../../application/users_provider.dart';
-import '../../domain/user_summary_model.dart';
-import '../widgets/user_dialog.dart';
+import '../../../app/app_shell.dart';
+import '../../../app/theme.dart';
+import '../../../core/enums/user_status.dart';
+import '../../../core/presentation/app_scaffold_messenger.dart';
+import '../../../core/presentation/async_value_view.dart';
+import '../../../core/widgets/app_button.dart';
+import '../../../core/widgets/app_card.dart';
+import '../../../core/widgets/app_dialog.dart';
+import '../../../core/widgets/app_dropdown.dart';
+import '../../../core/widgets/app_table.dart';
+import '../../../core/widgets/search_card.dart';
+import '../../../core/widgets/status_badge.dart';
+import '../application/users_provider.dart';
+import '../domain/user_summary_model.dart';
+import 'user_dialog.dart';
 
 final usersSearchQueryProvider = StateProvider.autoDispose<String>((ref) => '');
 final usersStatusFilterProvider = StateProvider.autoDispose<UserStatusFilter>((
@@ -472,36 +474,101 @@ class _UserMobileCard extends StatelessWidget {
   }
 }
 
-class _UserIdentityCell extends StatelessWidget {
+String _getUserInitials(String? name) {
+  if (name == null || name.trim().isEmpty) {
+    return '';
+  }
+
+  final names = name
+      .trim()
+      .split(' ')
+      .where((item) => item.isNotEmpty)
+      .toList();
+
+  if (names.isEmpty) {
+    return '';
+  }
+
+  if (names.length == 1) {
+    return names.first[0].toUpperCase();
+  }
+
+  return '${names.first[0]}${names.last[0]}'.toUpperCase();
+}
+
+class _UserIdentityCell extends ConsumerWidget {
   const _UserIdentityCell({required this.user});
 
   final UserSummaryModel user;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
+    final session = ref.watch(authSessionProvider);
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+    final isCurrentUser = session?.user.id == user.id;
+
+    final initials = _getUserInitials(user.name);
+
+    final avatarBackground = isCurrentUser
+        ? AppTheme.primary1For(theme.brightness)
+        : AppTheme.primary2Color.withValues(alpha: 0.10);
+
+    final avatarForeground = isCurrentUser
+        ? Colors.white
+        : AppTheme.primary2Color;
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        Text(
-          user.name,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: theme.textTheme.bodyMedium?.copyWith(
-            fontWeight: FontWeight.w800,
-            color: colorScheme.onSurface,
+        Container(
+          width: 40,
+          height: 40,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: avatarBackground,
+            borderRadius: BorderRadius.circular(13),
+          ),
+          child: Text(
+            initials,
+            style: theme.textTheme.labelMedium?.copyWith(
+              color: avatarForeground,
+              fontWeight: FontWeight.w800,
+              fontSize: 13,
+              letterSpacing: 0.1,
+            ),
           ),
         ),
-        const SizedBox(height: 3),
-        Text(
-          user.email,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: theme.textTheme.bodySmall?.copyWith(
-            color: colorScheme.onSurfaceVariant,
-            fontWeight: FontWeight.w500,
+
+        const SizedBox(width: 10),
+
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                user.name,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  fontWeight: FontWeight.w800,
+                  color: colorScheme.onSurface,
+                ),
+              ),
+
+              const SizedBox(height: 3),
+
+              Text(
+                user.email,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: colorScheme.onSurfaceVariant,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
           ),
         ),
       ],
@@ -518,7 +585,18 @@ class _UserRoleBadge extends StatelessWidget {
   Widget build(BuildContext context) {
     return StatusBadge(
       label: user.displayRole,
-      type: user.isAdmin ? StatusBadgeType.info : StatusBadgeType.neutral,
+      type: StatusBadgeType.neutral,
+      backgroundColor: Theme.of(context).brightness == Brightness.dark
+          ? Theme.of(
+              context,
+            ).colorScheme.surfaceContainerHighest.withValues(alpha: 0.72)
+          : const Color(0xFFECEFEC),
+      foregroundColor: user.isAdmin
+          ? Theme.of(context).brightness == Brightness.dark
+                ? const Color(0xFF9096E6)
+                : AppTheme.indigoColor
+          : Theme.of(context).colorScheme.onSurfaceVariant,
+      borderColor: Colors.transparent,
       icon: user.isAdmin
           ? Icons.admin_panel_settings_outlined
           : Icons.badge_outlined,
@@ -538,6 +616,17 @@ class _UserStatusBadge extends StatelessWidget {
       type: user.status == UserStatus.active
           ? StatusBadgeType.success
           : StatusBadgeType.neutral,
+      backgroundColor: user.status == UserStatus.active
+          ? Theme.of(context).brightness == Brightness.dark
+                ? AppTheme.syncBadgeDarkBackgroundColor
+                : AppTheme.syncBadgeBackgroundColor
+          : null,
+      foregroundColor: user.status == UserStatus.active
+          ? Theme.of(context).brightness == Brightness.dark
+                ? AppTheme.syncBadgeDarkForegroundColor
+                : AppTheme.syncBadgeForegroundColor
+          : null,
+      borderColor: user.status == UserStatus.active ? Colors.transparent : null,
     );
   }
 }

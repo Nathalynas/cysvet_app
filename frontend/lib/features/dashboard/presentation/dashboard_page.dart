@@ -12,26 +12,31 @@ import 'package:cysvet_app/core/widgets/property_filter_card.dart';
 import 'package:cysvet_app/core/widgets/status_badge.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_material_design_icons/flutter_material_design_icons.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:go_router/go_router.dart';
 
-import '../../../../app/app_shell.dart';
-import '../../../../core/presentation/async_value_view.dart';
-import '../../../../core/utils/formatters.dart';
-import '../../../animals/application/animals_provider.dart';
-import '../../../animals/data/animals_repository.dart';
-import '../../../animals/domain/animal_summary_model.dart';
-import '../../../auth/application/auth_state.dart';
-import '../../../auth/domain/auth_session_model.dart';
-import '../../../indicators/domain/indicador_reprodutivo_calculator.dart';
-import '../../../properties/application/properties_provider.dart';
-import '../../../properties/domain/property_summary_model.dart';
-import '../../../users/application/users_provider.dart';
-import '../../../users/domain/user_summary_model.dart';
-import '../../../visits/application/visits_provider.dart';
-import '../../../visits/data/visits_repository.dart';
-import '../../../visits/domain/visit_summary_model.dart';
-import '../../application/dashboard_provider.dart';
-import '../../domain/dashboard_metrics_model.dart';
+import '../../../app/app_shell.dart';
+import '../../../app/theme.dart';
+import '../../../core/presentation/async_value_view.dart';
+import '../../../core/utils/formatters.dart';
+import '../../animals/application/animals_provider.dart';
+import '../../animals/data/animals_repository.dart';
+import '../../animals/domain/animal_summary_model.dart';
+import '../../auth/application/auth_state.dart';
+import '../../auth/domain/auth_session_model.dart';
+import '../../indicators/indicador_reprodutivo_calculator.dart';
+import '../../properties/application/properties_provider.dart';
+import '../../properties/domain/property_summary_model.dart';
+import '../../users/application/users_provider.dart';
+import '../../users/domain/user_summary_model.dart';
+import '../../visits/application/visits_provider.dart';
+import '../../visits/data/visits_repository.dart';
+import '../../visits/domain/visit_summary_model.dart';
+import '../../visits/presentation/visit_report_page.dart';
+import '../application/dashboard_provider.dart';
+import '../domain/dashboard_metrics_model.dart';
 
 final dashboardPeriodFilterProvider =
     NotifierProvider<DashboardPeriodFilterNotifier, DashboardPeriodFilter>(
@@ -76,13 +81,28 @@ final dashboardRelatedDataProvider = FutureProvider.autoDispose
           }).toList();
       animals.sort((a, b) => a.codigo.compareTo(b.codigo));
 
+      PropertySummaryModel? selectedProperty;
+      if (propertyId != null) {
+        final availableProperties = await ref.watch(propertiesProvider.future);
+        for (final property in availableProperties) {
+          if (property.id == propertyId) {
+            selectedProperty = property;
+            break;
+          }
+        }
+      }
+
       final visits =
           {
             for (final visit in remoteVisits)
               visit.id: localVisits[visit.id] ?? visit,
             ...localVisits,
           }.values.where((visit) {
-            return _visitMatchesPropertyId(visit, propertyId);
+            return _visitMatchesProperty(
+              visit,
+              propertyId: propertyId,
+              propertyExternalId: selectedProperty?.idExterno,
+            );
           }).toList();
       visits.sort(_compareVisitsByDateDesc);
 
@@ -375,12 +395,12 @@ class _DashboardContent extends StatelessWidget {
           _FeedbackCard(onRetry: onRetryRelated),
         ] else ...[
           const SizedBox(height: 22),
+          _ChartsSection(insights: insights),
+          const SizedBox(height: 22),
           _AgendaSection(
             items: insights.agendaItems,
             showProperty: !isPropertyView,
           ),
-          const SizedBox(height: 22),
-          _ChartsSection(insights: insights),
           const SizedBox(height: 22),
           _MonthlyCalendarSection(rows: insights.monthlySchedule),
           if (isPropertyView) ...[
@@ -390,10 +410,7 @@ class _DashboardContent extends StatelessWidget {
             _VisitObservationsSection(items: insights.observations),
           ],
           const SizedBox(height: 22),
-          _VisitHistorySection(
-            rows: insights.visitHistoryRows,
-            showProperty: !isPropertyView,
-          ),
+          _VisitHistorySection(rows: insights.visitHistoryRows),
         ],
       ],
     );
@@ -408,7 +425,6 @@ class _DashboardHeader extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
     final property = insights.selectedProperty;
     final isMobile = MediaQuery.sizeOf(context).width < MOBILE_WIDTH;
 
@@ -420,6 +436,8 @@ class _DashboardHeader extends ConsumerWidget {
     final companyName = rawCompanyName == null || rawCompanyName.isEmpty
         ? 'Empresa não informada'
         : rawCompanyName;
+
+    final primary = AppTheme.primary2Color;
 
     return AppCard(
       borderRadius: 20,
@@ -436,9 +454,9 @@ class _DashboardHeader extends ConsumerWidget {
                     begin: Alignment.centerLeft,
                     end: Alignment.centerRight,
                     colors: [
-                      colorScheme.primary,
-                      colorScheme.primary.withValues(alpha: 0.92),
-                      colorScheme.primary.withValues(alpha: 0.78),
+                      primary,
+                      primary.withValues(alpha: 0.92),
+                      primary.withValues(alpha: 0.78),
                     ],
                   ),
                 ),
@@ -483,9 +501,9 @@ class _DashboardHeader extends ConsumerWidget {
                     end: Alignment.centerRight,
                     stops: const [0.0, 0.48, 1.0],
                     colors: [
-                      colorScheme.primary.withValues(alpha: 0.96),
-                      colorScheme.primary.withValues(alpha: 0.70),
-                      colorScheme.primary.withValues(alpha: 0.08),
+                      primary.withValues(alpha: 0.96),
+                      primary.withValues(alpha: 0.70),
+                      primary.withValues(alpha: 0.08),
                     ],
                   ),
                 ),
@@ -510,7 +528,7 @@ class _DashboardHeader extends ConsumerWidget {
                       overflow: TextOverflow.ellipsis,
                       style: theme.textTheme.headlineSmall?.copyWith(
                         color: Colors.white,
-                        fontWeight: FontWeight.w900,
+                        fontWeight: FontWeight.w500,
                         height: 1.08,
                       ),
                     ),
@@ -606,7 +624,10 @@ class _TopDashboardSection extends StatelessWidget {
         children: [
           _MetricSummaryCard(items: insights.mainMetrics),
           const SizedBox(height: 12),
-          _RateLineChart(items: insights.rateItems),
+          _RateEvolutionChart(
+            items: insights.rateItems,
+            points: insights.rateTrendPoints,
+          ),
         ],
       );
     }
@@ -631,7 +652,12 @@ class _TopDashboardSection extends StatelessWidget {
             child: _MetricSummaryCard(items: insights.mainMetrics),
           ),
           const SizedBox(width: 12),
-          Expanded(child: _RateLineChart(items: insights.rateItems)),
+          Expanded(
+            child: _RateEvolutionChart(
+              items: insights.rateItems,
+              points: insights.rateTrendPoints,
+            ),
+          ),
         ],
       ),
     );
@@ -651,7 +677,7 @@ class _MetricSummaryCard extends StatelessWidget {
 
     final header = [
       Text(
-        'Resumo do Rebanho',
+        'Resumo do rebanho',
         style: theme.textTheme.titleSmall?.copyWith(
           color: colorScheme.onSurface,
           fontWeight: FontWeight.w900,
@@ -659,7 +685,7 @@ class _MetricSummaryCard extends StatelessWidget {
       ),
       const SizedBox(height: 4),
       Text(
-        'Principais totais acompanhados no filtro atual.',
+        'Principais totais no filtro atual.',
         style: theme.textTheme.bodySmall?.copyWith(
           color: colorScheme.onSurfaceVariant,
           fontWeight: FontWeight.w600,
@@ -667,22 +693,28 @@ class _MetricSummaryCard extends StatelessWidget {
       ),
     ];
 
-    final compactRows = <Widget>[
-      for (var index = 0; index < items.length; index++) ...[
-        if (index > 0)
-          Divider(
-            height: 12,
-            color: colorScheme.outline.withValues(alpha: 0.18),
-          ),
-        _MetricSummaryRow(item: items[index]),
-      ],
-    ];
-
-    final expandedRows = Column(
-      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+    final rows = Column(
+      mainAxisAlignment: MainAxisAlignment.start,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        for (final item in items) _MetricSummaryRow(item: item),
+        Padding(
+          padding: EdgeInsets.only(top: isMobile ? 12 : 14, bottom: 12),
+          child: Divider(
+            height: 1,
+            color: colorScheme.outline.withValues(alpha: 0.24),
+          ),
+        ),
+        for (var index = 0; index < items.length; index++) ...[
+          if (index > 0)
+            Padding(
+              padding: EdgeInsets.symmetric(vertical: isMobile ? 10 : 12),
+              child: Divider(
+                height: 1,
+                color: colorScheme.outline.withValues(alpha: 0.24),
+              ),
+            ),
+          _MetricSummaryRow(item: items[index]),
+        ],
       ],
     );
 
@@ -693,8 +725,7 @@ class _MetricSummaryCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           ...header,
-          SizedBox(height: isMobile ? 10 : 6),
-          if (isMobile) ...compactRows else Expanded(child: expandedRows),
+          if (isMobile) rows else Expanded(child: rows),
         ],
       ),
     );
@@ -818,8 +849,8 @@ class _EqualHeightCardGrid extends StatelessWidget {
 
 IconData _metricIcon(String label) {
   final text = label.normalize();
-  if (text.contains('propriedade')) return Icons.home_work_rounded;
-  if (text.contains('animal')) return Icons.pets_rounded;
+  if (text.contains('propriedade')) return Icons.agriculture_outlined;
+  if (text.contains('animal')) return MdiIcons.cow;
   if (text.contains('lact')) return Icons.water_drop_rounded;
   if (text.contains('seca')) return Icons.grass_rounded;
   if (text.contains('novilha')) return Icons.spa_rounded;
@@ -873,7 +904,7 @@ class _AgendaSection extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         const _SectionTitle(
-          'Agenda Reprodutiva',
+          'Agenda reprodutiva',
           subtitle: 'Próximas visitas, eventos previstos e pendências.',
         ),
         const SizedBox(height: 10),
@@ -891,19 +922,14 @@ class _AgendaTable extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (MediaQuery.sizeOf(context).width < MOBILE_WIDTH) {
-      return _CompactAgendaCard(items: items, showProperty: showProperty);
-    }
-
     return AppTable<_AgendaItem>(
       rows: items,
       emptyMessage: 'Nenhuma ação reprodutiva encontrada.',
-      footerLabel: _recordsLabel(
-        items.length,
-        singular: 'ação',
-        plural: 'ações',
-      ),
+      footerLabel: _agendaRecordsLabel(items.length),
       mobileBreakpoint: 760,
+      borderRadius: 16,
+      shadow: false,
+      enableRowHover: false,
       mobileTitleBuilder: (context, item) {
         return Text(
           item.type,
@@ -916,136 +942,52 @@ class _AgendaTable extends StatelessWidget {
         AppTableColumn<_AgendaItem>(
           label: 'Data',
           flex: 2,
-          alignment: Alignment.center,
-          cellBuilder: (context, item) => Text(formatDate(item.date)),
+          alignment: Alignment.centerLeft,
+          headerAlignment: Alignment.center,
+          cellBuilder: (context, item) => _AgendaDateCell(item: item),
         ),
         AppTableColumn<_AgendaItem>(
           label: 'Tipo',
           flex: 3,
-          alignment: Alignment.center,
+          headerAlignment: Alignment.center,
           cellBuilder: (context, item) => Text(item.type),
         ),
-        if (showProperty)
-          AppTableColumn<_AgendaItem>(
-            label: 'Propriedade',
-            flex: 3,
-            alignment: Alignment.center,
-            cellBuilder: (context, item) => Text(_dashIfBlank(item.property)),
-          )
-        else
-          AppTableColumn<_AgendaItem>(
-            label: 'Animal',
-            flex: 2,
-            alignment: Alignment.center,
-            cellBuilder: (context, item) => Text(_dashIfBlank(item.animalCode)),
+        AppTableColumn<_AgendaItem>(
+          label: showProperty ? 'Propriedade' : 'Animal',
+          flex: 4,
+          headerAlignment: Alignment.center,
+          cellBuilder: (context, item) => Text(
+            _dashIfBlank(showProperty ? item.property : item.animalCode),
           ),
+        ),
       ],
     );
   }
 }
 
-class _CompactAgendaCard extends StatelessWidget {
-  const _CompactAgendaCard({required this.items, required this.showProperty});
-
-  final List<_AgendaItem> items;
-  final bool showProperty;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-
-    return AppCard(
-      borderRadius: 16,
-      padding: const EdgeInsets.all(14),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          if (items.isEmpty)
-            Text(
-              'Nenhuma ação reprodutiva encontrada.',
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: colorScheme.onSurfaceVariant,
-              ),
-            )
-          else ...[
-            for (var index = 0; index < items.length; index++) ...[
-              if (index > 0)
-                Divider(
-                  height: 18,
-                  color: colorScheme.outline.withValues(alpha: 0.18),
-                ),
-              _CompactAgendaRow(
-                item: items[index],
-                showProperty: showProperty,
-              ),
-            ],
-          ],
-          Divider(
-            height: 20,
-            color: colorScheme.outline.withValues(alpha: 0.22),
-          ),
-          _CompactTableFooter(
-            label: _recordsLabel(
-              items.length,
-              singular: 'ação',
-              plural: 'ações',
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _CompactAgendaRow extends StatelessWidget {
-  const _CompactAgendaRow({required this.item, required this.showProperty});
+class _AgendaDateCell extends StatelessWidget {
+  const _AgendaDateCell({required this.item});
 
   final _AgendaItem item;
-  final bool showProperty;
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-    final related = showProperty ? item.property : item.animalCode;
+    final colorScheme = Theme.of(context).colorScheme;
 
     return Row(
+      mainAxisSize: MainAxisSize.min,
       children: [
-        _CompactListIcon(icon: Icons.event_available_rounded),
-        const SizedBox(width: 10),
-        Text(
-          formatDate(item.date),
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: theme.textTheme.bodySmall?.copyWith(
-            color: colorScheme.onSurface,
-            fontWeight: FontWeight.w900,
-          ),
+        Icon(
+          Icons.event_available_rounded,
+          size: 17,
+          color: colorScheme.primary,
         ),
         const SizedBox(width: 10),
-        Expanded(
-          child: Text(
-            item.type,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: colorScheme.onSurface,
-              fontWeight: FontWeight.w800,
-            ),
-          ),
-        ),
-        const SizedBox(width: 8),
         Flexible(
           child: Text(
-            _dashIfBlank(related),
+            formatDate(item.date),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            textAlign: TextAlign.right,
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: colorScheme.onSurfaceVariant,
-              fontWeight: FontWeight.w700,
-            ),
           ),
         ),
       ],
@@ -1087,12 +1029,14 @@ class _ChartsSection extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        _SectionTitle(
-          insights.selectedProperty == null
-              ? 'Gráficos Principais'
-              : 'Gráficos da Fazenda',
+        const _SectionTitle(
+          'Indicadores reprodutivos',
+          subtitle:
+              'Taxa de serviço, concepção, prenhez e concepção por IA no período.',
         ),
-        const SizedBox(height: 10),
+        const SizedBox(height: 14),
+        _ReproductiveRateCards(items: insights.rateItems),
+        const SizedBox(height: 20),
         LayoutBuilder(
           builder: (context, constraints) {
             final width = constraints.maxWidth;
@@ -1107,17 +1051,15 @@ class _ChartsSection extends StatelessWidget {
               children: [
                 _EqualHeightCardGrid(
                   columns: columns,
-                  desktopRowHeight: 370,
+                  desktopRowHeight: 328,
                   children: [
-                    _LactationThirdChart(items: insights.lactationThirds),
-                    _ParityDonutChart(items: insights.parityChartItems),
-                    _ReproductiveDonutChart(
+                    _ReproductiveDistributionChart(
                       items: insights.reproductiveChartItems,
                     ),
+                    _LactationThirdChart(items: insights.lactationThirds),
+                    _ParityDonutChart(items: insights.parityChartItems),
                   ],
                 ),
-                const SizedBox(height: 12),
-                _RateGaugeChart(items: insights.rateItems),
               ],
             );
           },
@@ -1127,64 +1069,134 @@ class _ChartsSection extends StatelessWidget {
   }
 }
 
-class _ReproductiveDonutChart extends StatelessWidget {
-  const _ReproductiveDonutChart({required this.items});
+class _ReproductiveRateCards extends StatelessWidget {
+  const _ReproductiveRateCards({required this.items});
+
+  final List<_RateItem> items;
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final width = constraints.maxWidth;
+        final columns = width >= 1180
+            ? 4
+            : width >= 760
+            ? 2
+            : 1;
+
+        return _EqualHeightCardGrid(
+          columns: columns,
+          desktopRowHeight: 126,
+          children: [for (final item in items) _RateIndicatorCard(item: item)],
+        );
+      },
+    );
+  }
+}
+
+class _RateIndicatorCard extends StatelessWidget {
+  const _RateIndicatorCard({required this.item});
+
+  final _RateItem item;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final delta = _rateTargetDelta(item);
+
+    return AppCard(
+      borderRadius: 16,
+      padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 20),
+      shadow: false,
+      borderColor: colorScheme.outline.withValues(alpha: 0.28),
+      child: Row(
+        children: [
+          _DonutProgressIndicator(value: item.value, color: item.color),
+          const SizedBox(width: 18),
+          Expanded(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  _formatWholePercent(item.value),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: GoogleFonts.ibmPlexMono(
+                    textStyle: theme.textTheme.headlineSmall,
+                    color: colorScheme.onSurface,
+                    fontWeight: FontWeight.w600,
+                    height: 1,
+                  ).copyWith(fontFamilyFallback: const ['monospace']),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  item.label,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: colorScheme.onSurface,
+                    fontWeight: FontWeight.w900,
+                    height: 1.1,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Icon(delta.icon, size: 15, color: delta.color),
+                    const SizedBox(width: 5),
+                    Expanded(
+                      child: Text(
+                        delta.label,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: delta.color,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ReproductiveDistributionChart extends StatelessWidget {
+  const _ReproductiveDistributionChart({required this.items});
 
   final List<_ChartCountItem> items;
 
   @override
   Widget build(BuildContext context) {
-    final hasData = items.any((item) => item.value > 0);
+    final total = _chartTotal(items);
+    final hasData = total > 0;
 
     return _ChartCard(
-      title: 'Distribuição Reprodutiva',
+      title: 'Distribuição reprodutiva',
+      subtitle: _classifiedMatricesLabel(total),
+      subtitleBottomSpacing: 18,
       child: hasData
-          ? LayoutBuilder(
-              builder: (context, constraints) {
-                final chartDimension = math.min(220.0, constraints.maxWidth);
-                final total = items.fold<int>(0, (sum, item) {
-                  return sum + item.value;
-                });
-                final chart = SizedBox.square(
-                  dimension: chartDimension,
-                  child: PieChart(
-                    PieChartData(
-                      centerSpaceRadius: chartDimension * 0.30,
-                      sectionsSpace: 2,
-                      startDegreeOffset: -90,
-                      pieTouchData: PieTouchData(enabled: false),
-                      sections: [
-                        for (final item in items)
-                          if (item.value > 0)
-                            PieChartSectionData(
-                              value: item.value.toDouble(),
-                              color: item.color,
-                              radius: chartDimension * 0.17,
-                              title: _percentLabel(item.value, total),
-                              titleStyle: Theme.of(context)
-                                  .textTheme
-                                  .labelMedium
-                                  ?.copyWith(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.w900,
-                                  ),
-                            ),
-                      ],
-                    ),
-                  ),
-                );
-
-                return Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Align(alignment: Alignment.center, child: chart),
-                    const SizedBox(height: 12),
-                    _ChartLegend(items: items, organizeOnDesktop: true),
-                  ],
-                );
-              },
+          ? Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                for (var index = 0; index < items.length; index++) ...[
+                  if (index > 0) const SizedBox(height: 16),
+                  _DistributionProgressRow(item: items[index], total: total),
+                ],
+              ],
             )
-          : const _EmptyChart(message: 'Sem registros reprodutivos.'),
+          : const SizedBox(
+              height: 190,
+              child: _EmptyChart(message: 'Sem registros reprodutivos.'),
+            ),
     );
   }
 }
@@ -1197,24 +1209,37 @@ class _LactationThirdChart extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final hasData = items.any((item) => item.value > 0);
+    final maxValue = items.fold<int>(1, (max, item) {
+      return math.max(max, item.value);
+    });
 
     return _ChartCard(
-      title: 'Terço de Lactação',
+      title: 'Terço de lactação',
+      subtitle: 'Vacas em lactação por DEL.',
       centerContent: true,
+      subtitleBottomSpacing: 20,
       child: hasData
-          ? Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                for (final item in items)
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 10),
-                    child: _PercentBar(item: item, total: _chartTotal(items)),
-                  ),
-                const SizedBox(height: 2),
-                _ChartLegend(items: items),
-              ],
+          ? SizedBox(
+              height: 185,
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  for (var index = 0; index < items.length; index++) ...[
+                    if (index > 0) const SizedBox(width: 16),
+                    Expanded(
+                      child: _LactationBar(
+                        item: items[index],
+                        maxValue: maxValue,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
             )
-          : const _EmptyChart(message: 'Sem dados de DEL.'),
+          : const SizedBox(
+              height: 185,
+              child: _EmptyChart(message: 'Sem dados de DEL.'),
+            ),
     );
   }
 }
@@ -1229,19 +1254,29 @@ class _ParityDonutChart extends StatelessWidget {
     final hasData = items.any((item) => item.value > 0);
 
     return _ChartCard(
-      title: 'Multíparas e Novilhas',
+      title: 'Multíparas e novilhas',
+      subtitle: 'Composição do rebanho ativo.',
       centerContent: true,
+      subtitleBottomSpacing: 20,
       child: hasData
           ? LayoutBuilder(
               builder: (context, constraints) {
-                final chartDimension = math.min(214.0, constraints.maxWidth);
                 final total = _chartTotal(items);
+
+                final chartDimension = math.min(
+                  176.0,
+                  math.max(
+                    120.0,
+                    constraints.maxWidth * 0.42,
+                  ),
+                );
+
                 final chart = SizedBox.square(
                   dimension: chartDimension,
                   child: PieChart(
                     PieChartData(
-                      centerSpaceRadius: chartDimension * 0.30,
-                      sectionsSpace: 2,
+                      centerSpaceRadius: chartDimension * 0.28,
+                      sectionsSpace: 1.5,
                       pieTouchData: PieTouchData(enabled: false),
                       sections: [
                         for (final item in items)
@@ -1249,42 +1284,41 @@ class _ParityDonutChart extends StatelessWidget {
                             PieChartSectionData(
                               value: item.value.toDouble(),
                               color: item.color,
-                              radius: chartDimension * 0.19,
-                              title: _percentLabel(item.value, total),
-                              titleStyle: Theme.of(context)
-                                  .textTheme
-                                  .labelMedium
-                                  ?.copyWith(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.w900,
-                                  ),
+                              radius: chartDimension * 0.22,
+                              title: '',
                             ),
                       ],
                     ),
                   ),
                 );
 
-                return Align(
-                  alignment: Alignment.center,
-                  child: SizedBox(
-                    width: chartDimension,
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        chart,
-                        const SizedBox(height: 12),
-                        _ChartLegend(items: items),
-                      ],
-                    ),
+                return Center(
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      chart,
+                      const SizedBox(width: 24),
+                      _ParityLegend(
+                        items: items,
+                        total: total,
+                      ),
+                    ],
                   ),
                 );
               },
             )
-          : const _EmptyChart(message: 'Sem dados de categoria do rebanho.'),
+          : const SizedBox(
+              height: 185,
+              child: _EmptyChart(
+                message: 'Sem dados de categoria do rebanho.',
+              ),
+            ),
     );
   }
 }
 
+// ignore: unused_element
 class _RateLineChart extends StatelessWidget {
   const _RateLineChart({required this.items});
 
@@ -1295,8 +1329,8 @@ class _RateLineChart extends StatelessWidget {
     final chartItems = items.where((item) => item.value != null).toList();
 
     return _ChartCard(
-      title: 'Indicadores Reprodutivos',
-      subtitle: 'Taxa de serviço, concepção, prenhez e concepção por IA.',
+      title: 'Evolução das taxas',
+      subtitle: 'Serviço, concepção e prenhez do período.',
       subtitleBottomSpacing: 28,
       child: chartItems.isEmpty
           ? const SizedBox(
@@ -1422,12 +1456,12 @@ class _RateLineChart extends StatelessWidget {
                               ],
                               isCurved: true,
                               preventCurveOverShooting: true,
-                              color: _ChartColors.deepBlue,
+                              color: _ChartColors.primary,
                               barWidth: 4,
                               isStrokeCapRound: true,
                               belowBarData: BarAreaData(
                                 show: true,
-                                color: _ChartColors.deepBlue.withValues(
+                                color: _ChartColors.primary.withValues(
                                   alpha: 0.18,
                                 ),
                               ),
@@ -1505,35 +1539,195 @@ class _RateLegend extends StatelessWidget {
   }
 }
 
-
-class _RateGaugeChart extends StatelessWidget {
-  const _RateGaugeChart({required this.items});
+class _RateEvolutionChart extends StatelessWidget {
+  const _RateEvolutionChart({required this.items, required this.points});
 
   final List<_RateItem> items;
+  final List<_MonthlyRatePoint> points;
 
   @override
   Widget build(BuildContext context) {
-    return _ChartCard(
-      title: 'Indicadores em Velocímetro',
-      subtitle: 'Visualização rápida das taxas reprodutivas do período.',
-      subtitleBottomSpacing: 18,
+    final visibleItems = items.take(3).toList(growable: false);
+    final hasData = points.any((point) {
+      return point.service != null ||
+          point.conception != null ||
+          point.pregnancy != null;
+    });
+
+    return AppCard(
+      borderRadius: 16,
+      padding: const EdgeInsets.fromLTRB(22, 22, 22, 10),
+      shadow: false,
       child: LayoutBuilder(
         builder: (context, constraints) {
-          final width = constraints.maxWidth;
-          final columns = width >= 920
-              ? 4
-              : width >= 660
-              ? 2
-              : 1;
-          const spacing = 12.0;
-          final itemWidth = (width - spacing * (columns - 1)) / columns;
+          final theme = Theme.of(context);
+          final colorScheme = theme.colorScheme;
+          final isCompact = constraints.maxWidth < 620;
+          final hasBoundedHeight =
+              constraints.hasBoundedHeight && constraints.maxHeight.isFinite;
+          final chartHeight = hasBoundedHeight
+              ? math.max(
+                  150.0,
+                  constraints.maxHeight - (isCompact ? 112.0 : 72.0),
+                )
+              : isCompact
+              ? 230.0
+              : 268.0;
 
-          return Wrap(
-            spacing: spacing,
-            runSpacing: spacing,
+          final titleBlock = Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              for (final item in items)
-                SizedBox(width: itemWidth, child: _GaugeTile(item: item)),
+              Text(
+                'Evolução das taxas',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: theme.textTheme.titleSmall?.copyWith(
+                  color: colorScheme.onSurface,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'Serviço, concepção e prenhez nos últimos 6 meses.',
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: colorScheme.onSurfaceVariant,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          );
+
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              if (isCompact)
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    titleBlock,
+                    const SizedBox(height: 12),
+                    _RateEvolutionLegend(items: visibleItems),
+                  ],
+                )
+              else
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(child: titleBlock),
+                    const SizedBox(width: 16),
+                    _RateEvolutionLegend(items: visibleItems),
+                  ],
+                ),
+              const SizedBox(height: 28),
+              if (!hasData)
+                SizedBox(
+                  height: chartHeight,
+                  child: const _EmptyChart(
+                    message: 'Sem indicadores calculados.',
+                  ),
+                )
+              else
+                SizedBox(
+                  height: chartHeight,
+                  child: LineChart(
+                    LineChartData(
+                      minX: 0,
+                      maxX: math.max(1, points.length - 1).toDouble(),
+                      minY: 0,
+                      maxY: 1,
+                      lineTouchData: LineTouchData(
+                        handleBuiltInTouches: true,
+                        touchTooltipData: LineTouchTooltipData(
+                          getTooltipItems: (spots) {
+                            return spots.map((spot) {
+                              final index = spot.x.round();
+                              if (index < 0 ||
+                                  index >= points.length ||
+                                  visibleItems.isEmpty) {
+                                return null;
+                              }
+
+                              final itemIndex =
+                                  spot.barIndex < visibleItems.length
+                                  ? spot.barIndex
+                                  : visibleItems.length - 1;
+                              final item = visibleItems[itemIndex];
+                              final monthLabel = _shortMonthLabel(
+                                points[index].month,
+                              );
+
+                              return LineTooltipItem(
+                                '$monthLabel - ${item.shortLabel}\n${formatPercent(spot.y)}',
+                                (theme.textTheme.bodySmall ?? const TextStyle())
+                                    .copyWith(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.w900,
+                                    ),
+                              );
+                            }).toList();
+                          },
+                        ),
+                      ),
+                      gridData: FlGridData(
+                        show: true,
+                        drawVerticalLine: false,
+                        horizontalInterval: 0.25,
+                        getDrawingHorizontalLine: (value) => FlLine(
+                          color: colorScheme.outline.withValues(alpha: 0.42),
+                          strokeWidth: 1,
+                        ),
+                      ),
+                      borderData: FlBorderData(show: false),
+                      titlesData: FlTitlesData(
+                        topTitles: const AxisTitles(),
+                        rightTitles: const AxisTitles(),
+                        leftTitles: const AxisTitles(),
+                        bottomTitles: AxisTitles(
+                          sideTitles: SideTitles(
+                            showTitles: true,
+                            reservedSize: 34,
+                            interval: 1,
+                            getTitlesWidget: (value, meta) {
+                              final index = value.round();
+                              if (index < 0 || index >= points.length) {
+                                return const SizedBox.shrink();
+                              }
+
+                              return Padding(
+                                padding: const EdgeInsets.only(top: 8),
+                                child: Text(
+                                  _shortMonthLabel(points[index].month),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: theme.textTheme.bodySmall?.copyWith(
+                                    color: colorScheme.onSurfaceVariant,
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                      ),
+                      lineBarsData: [
+                        _rateEvolutionLine(
+                          color: _ChartColors.primary,
+                          values: points.map((point) => point.service),
+                        ),
+                        _rateEvolutionLine(
+                          color: _ChartColors.blue,
+                          values: points.map((point) => point.conception),
+                        ),
+                        _rateEvolutionLine(
+                          color: _ChartColors.amber,
+                          values: points.map((point) => point.pregnancy),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
             ],
           );
         },
@@ -1542,139 +1736,151 @@ class _RateGaugeChart extends StatelessWidget {
   }
 }
 
-class _GaugeTile extends StatelessWidget {
-  const _GaugeTile({required this.item});
+class _RateEvolutionLegend extends StatelessWidget {
+  const _RateEvolutionLegend({required this.items});
 
-  final _RateItem item;
+  final List<_RateItem> items;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
 
-    return Column(
-      mainAxisSize: MainAxisSize.min,
+    return Wrap(
+      spacing: 14,
+      runSpacing: 8,
       children: [
-        SizedBox(
-          height: 110,
-          width: double.infinity,
-          child: CustomPaint(
-            painter: _GaugePainter(
-              value: item.value?.clamp(0.0, 1.0),
-              indicatorColor: item.color,
-              backgroundColor: colorScheme.outlineVariant,
-            ),
-            child: Center(
-              child: Padding(
-                padding: const EdgeInsets.only(top: 24),
-                child: Text(
-                  item.value == null ? '--' : formatPercent(item.value!),
-                  style: theme.textTheme.titleSmall?.copyWith(
-                    color: colorScheme.onSurface,
-                    fontWeight: FontWeight.w900,
-                  ),
+        for (final item in items)
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 12,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: item.color,
+                  borderRadius: BorderRadius.circular(999),
                 ),
               ),
-            ),
+              const SizedBox(width: 7),
+              Text(
+                item.shortLabel,
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: colorScheme.onSurfaceVariant,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ],
           ),
-        ),
-        Text(
-          item.label,
-          maxLines: 2,
-          overflow: TextOverflow.ellipsis,
-          textAlign: TextAlign.center,
-          style: theme.textTheme.bodySmall?.copyWith(
-            color: colorScheme.onSurfaceVariant,
-            fontWeight: FontWeight.w900,
-          ),
-        ),
       ],
     );
   }
 }
 
-class _GaugePainter extends CustomPainter {
-  const _GaugePainter({
-    required this.value,
-    required this.indicatorColor,
-    required this.backgroundColor,
-  });
+LineChartBarData _rateEvolutionLine({
+  required Color color,
+  required Iterable<double?> values,
+}) {
+  final spots = values
+      .toList(growable: false)
+      .asMap()
+      .entries
+      .where((entry) => entry.value != null)
+      .map((entry) {
+        return FlSpot(entry.key.toDouble(), entry.value!.clamp(0.0, 1.0));
+      })
+      .toList(growable: false);
+
+  return LineChartBarData(
+    spots: spots,
+    isCurved: false,
+    preventCurveOverShooting: true,
+    color: color,
+    barWidth: 4,
+    isStrokeCapRound: true,
+    dotData: const FlDotData(show: false),
+    belowBarData: BarAreaData(show: false),
+  );
+}
+
+class _DonutProgressIndicator extends StatelessWidget {
+  const _DonutProgressIndicator({required this.value, required this.color});
 
   final double? value;
-  final Color indicatorColor;
-  final Color backgroundColor;
+  final Color color;
 
   @override
-  void paint(Canvas canvas, Size size) {
-    final width = math.min(size.width, size.height * 2);
-    final center = Offset(size.width / 2, size.height * 0.94);
-    final radius = width / 2 - 12;
-    final rect = Rect.fromCircle(center: center, radius: radius);
-    const start = math.pi;
-    const sweep = math.pi;
-    const gap = 0.035;
-    final strokeWidth = math.max(12.0, radius * 0.18);
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final normalizedValue = value?.clamp(0.0, 1.0).toDouble();
 
-    final segmentPaint = Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = strokeWidth
-      ..strokeCap = StrokeCap.butt;
-
-    final segments = [
-      (0.26, _ChartColors.danger),
-      (0.15, const Color(0xFFFACC15)),
-      (0.19, const Color(0xFFFDBA74)),
-      (0.40, const Color(0xFFB45309)),
-    ];
-    var cursor = start;
-    for (final segment in segments) {
-      final segmentSweep = sweep * segment.$1;
-      segmentPaint.color = value == null
-          ? backgroundColor.withValues(alpha: 0.55)
-          : segment.$2;
-      canvas.drawArc(
-        rect,
-        cursor + gap,
-        segmentSweep - gap * 2,
-        false,
-        segmentPaint,
-      );
-      cursor += segmentSweep;
-    }
-
-    if (value == null) return;
-
-    final normalized = value!.clamp(0, 1);
-    final angle = start + sweep * normalized;
-    final needleLength = radius - strokeWidth * 0.15;
-    final needleEnd = Offset(
-      center.dx + math.cos(angle) * needleLength,
-      center.dy + math.sin(angle) * needleLength,
+    return SizedBox.square(
+      dimension: 70,
+      child: CustomPaint(
+        painter: _DonutProgressPainter(
+          value: normalizedValue,
+          color: color,
+          trackColor: colorScheme.surfaceContainerHighest.withValues(
+            alpha: 0.74,
+          ),
+        ),
+      ),
     );
-    final needlePaint = Paint()
-      ..color = indicatorColor
-      ..strokeWidth = 3
-      ..strokeCap = StrokeCap.round;
-    final shadowPaint = Paint()
-      ..color = Colors.black.withValues(alpha: 0.25)
-      ..strokeWidth = 5
-      ..strokeCap = StrokeCap.round;
-
-    canvas.drawLine(center, needleEnd, shadowPaint);
-    canvas.drawLine(center, needleEnd, needlePaint);
-    canvas.drawCircle(center, 5, Paint()..color = indicatorColor);
-  }
-
-  @override
-  bool shouldRepaint(covariant _GaugePainter oldDelegate) {
-    return oldDelegate.value != value ||
-        oldDelegate.indicatorColor != indicatorColor ||
-        oldDelegate.backgroundColor != backgroundColor;
   }
 }
 
-class _PercentBar extends StatelessWidget {
-  const _PercentBar({required this.item, required this.total});
+class _DonutProgressPainter extends CustomPainter {
+  const _DonutProgressPainter({
+    required this.value,
+    required this.color,
+    required this.trackColor,
+  });
+
+  final double? value;
+  final Color color;
+  final Color trackColor;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final strokeWidth = math.max(8.0, size.shortestSide * 0.13);
+    final center = Offset(size.width / 2, size.height / 2);
+    final radius = size.shortestSide / 2 - strokeWidth / 2;
+    final rect = Rect.fromCircle(center: center, radius: radius);
+
+    final trackPaint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = strokeWidth
+      ..strokeCap = StrokeCap.round
+      ..color = trackColor;
+    canvas.drawCircle(center, radius, trackPaint);
+
+    final normalized = value;
+    if (normalized == null || normalized <= 0) return;
+
+    final progressPaint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = strokeWidth
+      ..strokeCap = StrokeCap.round
+      ..color = color;
+    canvas.drawArc(
+      rect,
+      -math.pi / 2,
+      math.pi * 2 * normalized,
+      false,
+      progressPaint,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant _DonutProgressPainter oldDelegate) {
+    return oldDelegate.value != value ||
+        oldDelegate.color != color ||
+        oldDelegate.trackColor != trackColor;
+  }
+}
+
+class _DistributionProgressRow extends StatelessWidget {
+  const _DistributionProgressRow({required this.item, required this.total});
 
   final _ChartCountItem item;
   final int total;
@@ -1683,45 +1889,231 @@ class _PercentBar extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
-    final percent = total == 0 ? 0.0 : item.value / total;
+    final percent = total <= 0 ? 0.0 : item.value / total;
+    final isMobile = MediaQuery.sizeOf(context).width < MOBILE_WIDTH;
+    final valueLabel =
+        '${_formatCount(item.value)} (${(percent * 100).round()}%)';
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
+    return Row(
       children: [
-        Row(
-          children: [
-            Expanded(
+        SizedBox(
+          width: isMobile ? 116 : 134,
+          child: Text(
+            item.label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: colorScheme.onSurfaceVariant,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(999),
+            child: LinearProgressIndicator(
+              minHeight: 14,
+              value: percent.clamp(0.0, 1.0),
+              backgroundColor: colorScheme.surfaceContainerHighest.withValues(
+                alpha: 0.78,
+              ),
+              color: item.color,
+            ),
+          ),
+        ),
+        const SizedBox(width: 14),
+        ConstrainedBox(
+          constraints: BoxConstraints(
+            minWidth: isMobile ? 62 : 76,
+            maxWidth: isMobile ? 82 : 104,
+          ),
+          child: Align(
+            alignment: Alignment.centerRight,
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.centerRight,
               child: Text(
-                item.label,
+                valueLabel,
                 maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: colorScheme.onSurfaceVariant,
-                  fontWeight: FontWeight.w800,
+                textAlign: TextAlign.right,
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: colorScheme.onSurface,
+                  fontWeight: FontWeight.w900,
                 ),
               ),
             ),
-            const SizedBox(width: 8),
-            Text(
-              '${(percent * 100).round()}%',
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: colorScheme.onSurface,
-                fontWeight: FontWeight.w900,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 5),
-        ClipRRect(
-          borderRadius: BorderRadius.circular(999),
-          child: LinearProgressIndicator(
-            minHeight: 18,
-            value: percent.clamp(0.0, 1.0),
-            backgroundColor: item.color.withValues(alpha: 0.12),
-            color: item.color,
           ),
         ),
       ],
+    );
+  }
+}
+
+class _LactationBar extends StatelessWidget {
+  const _LactationBar({required this.item, required this.maxValue});
+
+  final _ChartCountItem item;
+  final int maxValue;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final normalized = maxValue <= 0 ? 0.0 : item.value / maxValue;
+
+        return Column(
+          mainAxisAlignment: MainAxisAlignment.end,
+          children: [
+            SizedBox(
+              height: 22,
+              child: Center(
+                child: Text(
+                  _formatCount(item.value),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: colorScheme.onSurface,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Expanded(
+              child: LayoutBuilder(
+                builder: (context, barConstraints) {
+                  final chartHeight = math.max(1.0, barConstraints.maxHeight);
+                  final barHeight = item.value <= 0
+                      ? math.min(8.0, chartHeight)
+                      : math.min(
+                          chartHeight,
+                          math.max(24.0, chartHeight * normalized),
+                        );
+
+                  return Align(
+                    alignment: Alignment.bottomCenter,
+                    child: Container(
+                      width: double.infinity,
+                      height: barHeight,
+                      decoration: BoxDecoration(
+                        color: item.color,
+                        borderRadius: const BorderRadius.vertical(
+                          top: Radius.circular(8),
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+            const SizedBox(height: 8),
+            SizedBox(
+              height: 32,
+              child: Center(
+                child: Text(
+                  item.label,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.center,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: colorScheme.onSurfaceVariant,
+                    fontWeight: FontWeight.w700,
+                    height: 1.05,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _ParityLegend extends StatelessWidget {
+  const _ParityLegend({required this.items, required this.total});
+
+  final List<_ChartCountItem> items;
+  final int total;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        for (var index = 0; index < items.length; index++) ...[
+          if (index > 0) const SizedBox(height: 18),
+          _ParityLegendItem(item: items[index], total: total),
+        ],
+      ],
+    );
+  }
+}
+
+class _ParityLegendItem extends StatelessWidget {
+  const _ParityLegendItem({required this.item, required this.total});
+
+  final _ChartCountItem item;
+  final int total;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final percent = _percentLabel(item.value, total);
+
+    return Semantics(
+      label: percent.isEmpty
+          ? '${item.label}, ${item.value}'
+          : '${item.label}, ${item.value}, $percent',
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 11,
+            height: 11,
+            margin: const EdgeInsets.only(top: 4),
+            decoration: BoxDecoration(
+              color: item.color,
+              borderRadius: BorderRadius.circular(3),
+            ),
+          ),
+          const SizedBox(width: 10),
+          Flexible(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  item.label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: colorScheme.onSurface,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const SizedBox(height: 5),
+                Text(
+                  _formatCount(item.value),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.titleLarge?.copyWith(
+                    color: colorScheme.onSurface,
+                    fontWeight: FontWeight.w900,
+                    height: 1,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -1753,7 +2145,7 @@ class _ChartCard extends StatelessWidget {
 
     return AppCard(
       borderRadius: 16,
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.fromLTRB(14, 14, 14, 10),
       child: Column(
         mainAxisSize: shouldCenterContent ? MainAxisSize.max : MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1763,9 +2155,9 @@ class _ChartCard extends StatelessWidget {
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
             style: theme.textTheme.titleSmall?.copyWith(
-          color: colorScheme.onSurface,
-          fontWeight: FontWeight.w900,
-        ),
+              color: colorScheme.onSurface,
+              fontWeight: FontWeight.w900,
+            ),
           ),
           if (subtitle != null) ...[
             const SizedBox(height: 4),
@@ -1781,31 +2173,6 @@ class _ChartCard extends StatelessWidget {
           content,
         ],
       ),
-    );
-  }
-}
-
-class _ChartLegend extends StatelessWidget {
-  const _ChartLegend({required this.items, this.organizeOnDesktop = false});
-
-  final List<_ChartCountItem> items;
-  final bool organizeOnDesktop;
-
-  @override
-  Widget build(BuildContext context) {
-    return Wrap(
-      alignment: WrapAlignment.center,
-      spacing: 10,
-      runSpacing: 8,
-      children: [
-        for (final item in items)
-          _LegendItem(
-            color: item.color,
-            label: item.label,
-            value: item.value.toString(),
-            allowWrap: true,
-          ),
-      ],
     );
   }
 }
@@ -1845,7 +2212,9 @@ class _LegendItem extends StatelessWidget {
             child: Text(
               '$label: $value',
               maxLines: allowWrap ? 3 : 1,
-              overflow: allowWrap ? TextOverflow.visible : TextOverflow.ellipsis,
+              overflow: allowWrap
+                  ? TextOverflow.visible
+                  : TextOverflow.ellipsis,
               softWrap: allowWrap,
               style: theme.textTheme.bodySmall?.copyWith(
                 color: colorScheme.onSurfaceVariant,
@@ -1889,316 +2258,107 @@ class _MonthlyCalendarSection extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         const _SectionTitle(
-          'Calendário Mensal',
+          'Calendário mensal',
           subtitle: 'Secagem, pré-parto e partos previstos por mês.',
         ),
         const SizedBox(height: 10),
-        _MonthlyChart(rows: rows),
-        const SizedBox(height: 12),
-        _MonthlySummaryTables(rows: rows),
+        _MonthlyCalendarTable(rows: rows),
       ],
     );
   }
 }
 
-class _MonthlyChart extends StatelessWidget {
-  const _MonthlyChart({required this.rows});
+class _MonthlyCalendarTable extends StatelessWidget {
+  const _MonthlyCalendarTable({required this.rows});
 
   final List<_MonthlyScheduleRow> rows;
 
   @override
   Widget build(BuildContext context) {
-    if (rows.isEmpty) {
-      return const AppCard(
-        borderRadius: 16,
-        child: SizedBox(
-          height: 92,
-          child: _EmptyChart(message: 'Sem eventos mensais no período.'),
-        ),
-      );
-    }
-
-    final maxY = rows.fold<int>(1, (max, row) {
-      return math.max(
-        max,
-        math.max(row.dryOff, math.max(row.prepartum, row.births)),
-      );
-    }).toDouble();
-    final chartWidth = math.max(620.0, rows.length * 76.0);
-
-    return AppCard(
+    return AppTable<_MonthlyScheduleRow>(
+      rows: rows,
+      emptyMessage: 'Sem eventos mensais no período.',
+      mobileBreakpoint: 760,
       borderRadius: 16,
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 10),
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        child: SizedBox(
-          width: chartWidth,
-          height: 220,
-          child: BarChart(
-            BarChartData(
-              alignment: BarChartAlignment.spaceAround,
-              minY: 0,
-              maxY: maxY + 1,
-              groupsSpace: 18,
-              barTouchData: BarTouchData(enabled: false),
-              gridData: FlGridData(
-                show: true,
-                drawVerticalLine: false,
-                horizontalInterval: 1,
-                getDrawingHorizontalLine: (value) => FlLine(
-                  color: Theme.of(
-                    context,
-                  ).colorScheme.outline.withValues(alpha: 0.18),
-                  strokeWidth: 1,
-                ),
-              ),
-              borderData: FlBorderData(show: false),
-              titlesData: FlTitlesData(
-                topTitles: const AxisTitles(),
-                rightTitles: const AxisTitles(),
-                leftTitles: const AxisTitles(
-                  sideTitles: SideTitles(showTitles: true, reservedSize: 28),
-                ),
-                bottomTitles: AxisTitles(
-                  sideTitles: SideTitles(
-                    showTitles: true,
-                    reservedSize: 40,
-                    getTitlesWidget: (value, meta) {
-                      final index = value.toInt();
-                      if (index < 0 || index >= rows.length) {
-                        return const SizedBox.shrink();
-                      }
-                      return Padding(
-                        padding: const EdgeInsets.only(top: 8),
-                        child: Text(
-                          rows[index].monthLabel,
-                          style: Theme.of(context).textTheme.bodySmall,
-                        ),
-                      );
-                    },
-                  ),
-                ),
-              ),
-              barGroups: [
-                for (var index = 0; index < rows.length; index++)
-                  BarChartGroupData(
-                    x: index,
-                    barsSpace: 4,
-                    barRods: [
-                      _calendarRod(rows[index].dryOff, _ChartColors.warning),
-                      _calendarRod(rows[index].prepartum, _ChartColors.info),
-                      _calendarRod(rows[index].births, _ChartColors.success),
-                    ],
-                  ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  BarChartRodData _calendarRod(int value, Color color) {
-    return BarChartRodData(
-      toY: value.toDouble(),
-      color: color,
-      width: 8,
-      borderRadius: BorderRadius.circular(4),
-    );
-  }
-}
-
-class _MonthlySummaryTables extends StatelessWidget {
-  const _MonthlySummaryTables({required this.rows});
-
-  final List<_MonthlyScheduleRow> rows;
-
-  @override
-  Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final columns = constraints.maxWidth >= 980
-            ? 3
-            : constraints.maxWidth >= 660
-            ? 2
-            : 1;
-
-        final double? rowHeight = rows.isEmpty
-            ? null
-            : math.max(190.0, rows.length * 38.0 + 112.0);
-
-        return _EqualHeightCardGrid(
-          columns: columns,
-          desktopRowHeight: rowHeight,
-          children: [
-            _MonthlySummaryCard(
-              title: 'Mês de secagem',
-              valueLabel: 'Vacas secas',
-              rows: [
-                for (final row in rows)
-                  _MonthlySummaryItem(row.monthLabel, row.dryOff),
-              ],
-            ),
-            _MonthlySummaryCard(
-              title: 'Mês de pré-parto',
-              valueLabel: 'Vacas em pré-parto',
-              rows: [
-                for (final row in rows)
-                  _MonthlySummaryItem(row.monthLabel, row.prepartum),
-              ],
-            ),
-            _MonthlySummaryCard(
-              title: 'Mês de parto',
-              valueLabel: 'Partos por mês',
-              rows: [
-                for (final row in rows)
-                  _MonthlySummaryItem(row.monthLabel, row.births),
-              ],
-            ),
-          ],
+      shadow: false,
+      enableRowHover: false,
+      equalColumnWidth: true,
+      mobileTitleBuilder: (context, row) {
+        return Text(
+          _fullMonthLabel(row.month),
+          style: Theme.of(
+            context,
+          ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w900),
         );
       },
+      columns: [
+        AppTableColumn<_MonthlyScheduleRow>(
+          label: 'Mês',
+          flex: 4,
+          alignment: Alignment.centerLeft,
+          headerAlignment: Alignment.center,
+          cellBuilder: (context, row) => Text(
+            _fullMonthLabel(row.month),
+            style: Theme.of(
+              context,
+            ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w900),
+          ),
+        ),
+        AppTableColumn<_MonthlyScheduleRow>(
+          label: 'Vacas secas',
+          flex: 2,
+          headerAlignment: Alignment.center,
+          cellBuilder: (context, row) => _MonthlyTableValue(
+            value: row.dryOff,
+            color: _ChartColors.primary,
+          ),
+        ),
+        AppTableColumn<_MonthlyScheduleRow>(
+          label: 'Pré-parto',
+          flex: 2,
+          headerAlignment: Alignment.center,
+          cellBuilder: (context, row) => _MonthlyTableValue(
+            value: row.prepartum,
+            color: _ChartColors.amber,
+          ),
+        ),
+        AppTableColumn<_MonthlyScheduleRow>(
+          label: 'Partos',
+          flex: 2,
+          headerAlignment: Alignment.center,
+          cellBuilder: (context, row) =>
+              _MonthlyTableValue(value: row.births, color: _ChartColors.green),
+        ),
+      ],
     );
   }
 }
 
-class _MonthlySummaryCard extends StatelessWidget {
-  const _MonthlySummaryCard({
-    required this.title,
-    required this.valueLabel,
-    required this.rows,
-  });
+class _MonthlyTableValue extends StatelessWidget {
+  const _MonthlyTableValue({required this.value, required this.color});
 
-  final String title;
-  final String valueLabel;
-  final List<_MonthlySummaryItem> rows;
+  final int value;
+  final Color color;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-    final visibleRows = rows.where((row) => row.value > 0).toList();
-    final total = visibleRows.fold<int>(0, (sum, row) => sum + row.value);
 
-    return AppCard(
-      borderRadius: 16,
-      padding: EdgeInsets.zero,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-            color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.54),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    title,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: theme.textTheme.labelLarge?.copyWith(
-                      color: colorScheme.onSurface,
-                      fontWeight: FontWeight.w900,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Flexible(
-                  child: Text(
-                    valueLabel,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    textAlign: TextAlign.right,
-                    style: theme.textTheme.labelMedium?.copyWith(
-                      color: colorScheme.onSurfaceVariant,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          if (visibleRows.isEmpty)
-            Padding(
-              padding: const EdgeInsets.all(16),
-              child: Text(
-                'Sem eventos no período.',
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: colorScheme.onSurfaceVariant,
-                ),
-              ),
-            )
-          else ...[
-            for (final row in visibleRows)
-              Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 14,
-                  vertical: 8,
-                ),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        row.month,
-                        style: theme.textTheme.bodyMedium?.copyWith(
-                          color: colorScheme.onSurface,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ),
-                    Text(
-                      _formatCount(row.value),
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        color: colorScheme.onSurface,
-                        fontWeight: FontWeight.w900,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            Divider(color: colorScheme.outline.withValues(alpha: 0.26)),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(14, 8, 14, 12),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      'Total geral',
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        color: colorScheme.onSurface,
-                        fontWeight: FontWeight.w900,
-                      ),
-                    ),
-                  ),
-                  Text(
-                    _formatCount(total),
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      color: colorScheme.onSurface,
-                      fontWeight: FontWeight.w900,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ],
+    return Text(
+      _formatCount(value),
+      textAlign: TextAlign.center,
+      style: theme.textTheme.bodyMedium?.copyWith(
+        color: color,
+        fontWeight: FontWeight.w800,
       ),
     );
   }
 }
 
-class _MonthlySummaryItem {
-  const _MonthlySummaryItem(this.month, this.value);
-
-  final String month;
-  final int value;
-}
-
 class _VisitHistorySection extends StatelessWidget {
-  const _VisitHistorySection({required this.rows, required this.showProperty});
+  const _VisitHistorySection({required this.rows});
 
   final List<_VisitHistoryRow> rows;
-  final bool showProperty;
 
   @override
   Widget build(BuildContext context) {
@@ -2206,85 +2366,20 @@ class _VisitHistorySection extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         const _SectionTitle(
-          'Histórico de Visitas',
+          'Histórico de visitas',
           subtitle: 'Visitas recentes no período selecionado.',
         ),
         const SizedBox(height: 10),
-        _VisitHistoryTable(rows: rows, showProperty: showProperty),
+        _VisitHistoryList(rows: rows),
       ],
     );
   }
 }
 
-class _VisitHistoryTable extends StatelessWidget {
-  const _VisitHistoryTable({required this.rows, required this.showProperty});
+class _VisitHistoryList extends StatelessWidget {
+  const _VisitHistoryList({required this.rows});
 
   final List<_VisitHistoryRow> rows;
-  final bool showProperty;
-
-  @override
-  Widget build(BuildContext context) {
-    if (MediaQuery.sizeOf(context).width < MOBILE_WIDTH) {
-      return _CompactVisitHistoryCard(rows: rows, showProperty: showProperty);
-    }
-
-    return AppTable<_VisitHistoryRow>(
-      rows: rows,
-      emptyMessage: 'Nenhuma visita encontrada no período.',
-      footerLabel: _recordsLabel(
-        rows.length,
-        singular: 'visita',
-        plural: 'visitas',
-      ),
-      mobileBreakpoint: 760,
-      mobileTitleBuilder: (context, row) {
-        return Text(
-          row.date,
-          style: Theme.of(
-            context,
-          ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w900),
-        );
-      },
-      columns: [
-        AppTableColumn<_VisitHistoryRow>(
-          label: 'Data',
-          flex: 2,
-          cellBuilder: (context, row) => Text(row.date),
-        ),
-        if (showProperty)
-          AppTableColumn<_VisitHistoryRow>(
-            label: 'Propriedade',
-            flex: 3,
-            cellBuilder: (context, row) => Text(row.property),
-          ),
-        AppTableColumn<_VisitHistoryRow>(
-          label: 'Veterinário',
-          flex: 3,
-          cellBuilder: (context, row) => Text(row.veterinarian),
-        ),
-        AppTableColumn<_VisitHistoryRow>(
-          label: 'Animais',
-          alignment: Alignment.center,
-          cellBuilder: (context, row) => Text(row.animals),
-        ),
-        AppTableColumn<_VisitHistoryRow>(
-          label: 'Observações',
-          flex: 5,
-          cellBuilder: (context, row) => Text(row.observations),
-        ),
-      ],
-    );
-  }
-}
-
-class _CompactVisitHistoryCard extends StatelessWidget {
-  const _CompactVisitHistoryCard({
-    required this.rows,
-    required this.showProperty,
-  });
-
-  final List<_VisitHistoryRow> rows;
-  final bool showProperty;
 
   @override
   Widget build(BuildContext context) {
@@ -2293,39 +2388,46 @@ class _CompactVisitHistoryCard extends StatelessWidget {
 
     return AppCard(
       borderRadius: 16,
-      padding: const EdgeInsets.all(14),
+      padding: EdgeInsets.zero,
+      shadow: false,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           if (rows.isEmpty)
-            Text(
-              'Nenhuma visita encontrada no período.',
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: colorScheme.onSurfaceVariant,
+            Padding(
+              padding: const EdgeInsets.all(24),
+              child: Text(
+                'Nenhuma visita encontrada.',
+                textAlign: TextAlign.center,
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: colorScheme.onSurfaceVariant,
+                ),
               ),
             )
-          else ...[
+          else
             for (var index = 0; index < rows.length; index++) ...[
               if (index > 0)
                 Divider(
-                  height: 18,
-                  color: colorScheme.outline.withValues(alpha: 0.18),
+                  height: 1,
+                  color: colorScheme.outline.withValues(alpha: 0.22),
                 ),
-              _CompactVisitRow(
+              _VisitHistoryListRow(
                 row: rows[index],
-                showProperty: showProperty,
+                onTap: () => _openDashboardVisit(context, rows[index]),
               ),
             ],
-          ],
           Divider(
-            height: 20,
+            height: 1,
             color: colorScheme.outline.withValues(alpha: 0.22),
           ),
-          _CompactTableFooter(
-            label: _recordsLabel(
-              rows.length,
-              singular: 'visita',
-              plural: 'visitas',
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 14),
+            child: _CompactTableFooter(
+              label: _recordsLabel(
+                rows.length,
+                singular: 'visita encontrada',
+                plural: 'visitas encontradas',
+              ),
             ),
           ),
         ],
@@ -2334,60 +2436,384 @@ class _CompactVisitHistoryCard extends StatelessWidget {
   }
 }
 
-class _CompactVisitRow extends StatelessWidget {
-  const _CompactVisitRow({required this.row, required this.showProperty});
+class _VisitHistoryListRow extends StatelessWidget {
+  const _VisitHistoryListRow({required this.row, required this.onTap});
 
   final _VisitHistoryRow row;
-  final bool showProperty;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final compact = constraints.maxWidth < 1080;
+
+        return Semantics(
+          button: true,
+          label: 'Abrir visita de ${row.property} em ${row.date}',
+          child: Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: onTap,
+              hoverColor: Theme.of(
+                context,
+              ).colorScheme.primary.withValues(alpha: 0.045),
+              child: Padding(
+                padding: EdgeInsets.symmetric(
+                  horizontal: compact ? 14 : 18,
+                  vertical: 12,
+                ),
+                child: compact
+                    ? _CompactDashboardVisitRow(row: row)
+                    : _DesktopDashboardVisitRow(row: row),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _DesktopDashboardVisitRow extends StatelessWidget {
+  const _DesktopDashboardVisitRow({required this.row});
+
+  final _VisitHistoryRow row;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        Expanded(flex: 4, child: _DashboardVisitIdentity(row: row)),
+        const SizedBox(width: 18),
+        Expanded(
+          flex: 2,
+          child: _VisitHistoryText(label: 'Data', value: row.date),
+        ),
+        const SizedBox(width: 18),
+        Expanded(
+          flex: 3,
+          child: _VisitHistoryText(
+            label: 'Protocolo',
+            value: row.protocol,
+            maxLines: 2,
+          ),
+        ),
+        const SizedBox(width: 18),
+        Expanded(
+          flex: 4,
+          child: _VisitHistoryText(
+            label: 'Próximo passo',
+            value: row.nextStep,
+            maxLines: 2,
+          ),
+        ),
+        const SizedBox(width: 18),
+        _VisitHistoryMetric(value: row.animals, label: 'Animais'),
+        const SizedBox(width: 18),
+        _VisitHistoryMetric(
+          value: row.pregnancyRate,
+          label: 'Prenhez',
+          highlighted: true,
+        ),
+        const SizedBox(width: 14),
+        _VisitHistoryArrow(),
+      ],
+    );
+  }
+}
+
+class _CompactDashboardVisitRow extends StatelessWidget {
+  const _CompactDashboardVisitRow({required this.row});
+
+  final _VisitHistoryRow row;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Expanded(child: _DashboardVisitIdentity(row: row)),
+            const SizedBox(width: 12),
+            _VisitHistoryArrow(),
+          ],
+        ),
+        const SizedBox(height: 10),
+        Divider(height: 1, color: colorScheme.outline.withValues(alpha: 0.18)),
+        const SizedBox(height: 10),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: _VisitHistoryCompactField(
+                label: 'Data',
+                value: row.date,
+                width: double.infinity,
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: _VisitHistoryCompactField(
+                label: 'Protocolo',
+                value: row.protocol,
+                width: double.infinity,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 10),
+        _VisitHistoryCompactField(
+          label: 'Próximo passo',
+          value: row.nextStep,
+          width: double.infinity,
+        ),
+        const SizedBox(height: 14),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            _VisitHistoryMetric(value: row.animals, label: 'Animais'),
+            const SizedBox(width: 28),
+            _VisitHistoryMetric(
+              value: row.pregnancyRate,
+              label: 'Prenhez',
+              highlighted: true,
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+class _DashboardVisitIdentity extends StatelessWidget {
+  const _DashboardVisitIdentity({required this.row});
+
+  final _VisitHistoryRow row;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final isDark = theme.brightness == Brightness.dark;
+    final iconColor = isDark
+        ? AppTheme.syncBadgeDarkForegroundColor
+        : AppTheme.syncBadgeForegroundColor;
+
+    return Row(
+      children: [
+        Container(
+          width: 38,
+          height: 38,
+          decoration: BoxDecoration(
+            color: iconColor.withValues(alpha: isDark ? 0.16 : 0.10),
+            borderRadius: BorderRadius.circular(11),
+          ),
+          child: Icon(Icons.description_outlined, size: 19, color: iconColor),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                row.property,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: theme.textTheme.bodyLarge?.copyWith(
+                  color: colorScheme.onSurface,
+                  fontWeight: FontWeight.w900,
+                  height: 1.1,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                row.veterinarian,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: colorScheme.onSurfaceVariant,
+                  fontWeight: FontWeight.w600,
+                  height: 1.15,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _VisitHistoryText extends StatelessWidget {
+  const _VisitHistoryText({
+    required this.label,
+    required this.value,
+    this.maxLines = 1,
+  });
+
+  final String label;
+  final String value;
+  final int maxLines;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
 
-    return Row(
-      children: [
-        _CompactListIcon(icon: Icons.event_note_rounded),
-        const SizedBox(width: 10),
-        Text(
-          row.date,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: theme.textTheme.bodySmall?.copyWith(
-            color: colorScheme.onSurface,
-            fontWeight: FontWeight.w900,
-          ),
+    return Tooltip(
+      message: label,
+      child: Text(
+        value,
+        maxLines: maxLines,
+        overflow: TextOverflow.ellipsis,
+        style: theme.textTheme.bodySmall?.copyWith(
+          color: colorScheme.onSurfaceVariant,
+          fontWeight: FontWeight.w700,
+          height: 1.2,
         ),
-        const SizedBox(width: 10),
-        Expanded(
-          child: Text(
-            _dashIfBlank(row.veterinarian),
-            maxLines: 1,
+      ),
+    );
+  }
+}
+
+class _VisitHistoryCompactField extends StatelessWidget {
+  const _VisitHistoryCompactField({
+    required this.label,
+    required this.value,
+    this.width = 120,
+  });
+
+  final String label;
+  final String value;
+  final double width;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
+    return SizedBox(
+      width: width,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label.toUpperCase(),
+            style: theme.textTheme.labelSmall?.copyWith(
+              color: colorScheme.onSurfaceVariant,
+              fontWeight: FontWeight.w900,
+              fontSize: 10,
+            ),
+          ),
+          const SizedBox(height: 5),
+          Text(
+            value,
+            maxLines: 2,
             overflow: TextOverflow.ellipsis,
             style: theme.textTheme.bodySmall?.copyWith(
               color: colorScheme.onSurface,
-              fontWeight: FontWeight.w800,
-            ),
-          ),
-        ),
-        if (showProperty) ...[
-          const SizedBox(width: 8),
-          Flexible(
-            child: Text(
-              _dashIfBlank(row.property),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              textAlign: TextAlign.right,
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: colorScheme.onSurfaceVariant,
-                fontWeight: FontWeight.w700,
-              ),
+              fontWeight: FontWeight.w700,
+              height: 1.25,
             ),
           ),
         ],
-      ],
+      ),
     );
   }
+}
+
+class _VisitHistoryMetric extends StatelessWidget {
+  const _VisitHistoryMetric({
+    required this.value,
+    required this.label,
+    this.highlighted = false,
+  });
+
+  final String value;
+  final String label;
+  final bool highlighted;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final valueColor = highlighted ? _ChartColors.green : colorScheme.onSurface;
+
+    return SizedBox(
+      width: 72,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            value,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.center,
+            style: theme.textTheme.titleMedium?.copyWith(
+              color: valueColor,
+              fontWeight: FontWeight.w900,
+              height: 1,
+            ),
+          ),
+          const SizedBox(height: 5),
+          Text(
+            label.toUpperCase(),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.center,
+            style: theme.textTheme.labelSmall?.copyWith(
+              color: colorScheme.onSurfaceVariant,
+              fontWeight: FontWeight.w800,
+              fontSize: 9.5,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _VisitHistoryArrow extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Icon(
+      Icons.chevron_right_rounded,
+      size: 24,
+      color: Theme.of(context).colorScheme.onSurfaceVariant,
+    );
+  }
+}
+
+void _openDashboardVisit(BuildContext context, _VisitHistoryRow row) {
+  final currentRoute = GoRouterState.of(context).uri.toString();
+  final returnRoute = currentRoute.isEmpty ? '/dashboard' : currentRoute;
+  final location = Uri(
+    path: '/visitas/${row.visit.id}/detalhes',
+    queryParameters: {'retorno': returnRoute},
+  ).toString();
+  final property = row.propertyModel;
+
+  if (property == null) {
+    context.go(location);
+    return;
+  }
+
+  context.go(
+    location,
+    extra: VisitReportRouteData(
+      visit: row.visit,
+      propertyName: property.nome,
+      property: property,
+      returnRoute: returnRoute,
+    ),
+  );
 }
 
 class _AnimalDetailsSection extends StatelessWidget {
@@ -2767,9 +3193,12 @@ class _FeedbackCard extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 12),
-          OutlinedButton(
+          AppButton(
+            text: 'Tentar novamente',
+            icon: const Icon(Icons.refresh_rounded, size: 18),
+            color: AppTheme.primary1For(theme.brightness),
+            height: 40,
             onPressed: onRetry,
-            child: const Text('Tentar novamente'),
           ),
         ],
       ),
@@ -2807,6 +3236,7 @@ class _DashboardInsights {
     required this.lactationThirds,
     required this.parityChartItems,
     required this.rateItems,
+    required this.rateTrendPoints,
     required this.monthlySchedule,
     required this.agendaItems,
     required this.visitHistoryRows,
@@ -2833,6 +3263,7 @@ class _DashboardInsights {
   final List<_ChartCountItem> lactationThirds;
   final List<_ChartCountItem> parityChartItems;
   final List<_RateItem> rateItems;
+  final List<_MonthlyRatePoint> rateTrendPoints;
   final List<_MonthlyScheduleRow> monthlySchedule;
   final List<_AgendaItem> agendaItems;
   final List<_VisitHistoryRow> visitHistoryRows;
@@ -2865,24 +3296,24 @@ class _DashboardInsights {
           color: _ChartColors.primary,
         ),
       _MetricItem(
-        label: isPropertyView ? 'Animais da fazenda' : 'Animais acompanhados',
+        label: isPropertyView ? 'Animais da fazenda' : 'Animais monitorados',
         value: _formatCount(totalAnimals),
-        color: _ChartColors.success,
+        color: _ChartColors.indigo,
       ),
       _MetricItem(
         label: 'Vacas em lactação',
         value: _formatCount(productiveCounts.lactating),
-        color: _ChartColors.info,
+        color: _ChartColors.blue,
       ),
       _MetricItem(
         label: 'Vacas secas',
         value: _formatCount(productiveCounts.dry),
-        color: _ChartColors.warning,
+        color: _ChartColors.green,
       ),
       _MetricItem(
         label: 'Novilhas',
         value: _formatCount(productiveCounts.heifers),
-        color: _ChartColors.purple,
+        color: _ChartColors.amber,
       ),
     ];
 
@@ -2929,6 +3360,12 @@ class _DashboardInsights {
       lactationThirds: _buildLactationThirds(records),
       parityChartItems: _buildParityChartItems(records),
       rateItems: _buildRateItems(metrics, records, periodEntries),
+      rateTrendPoints: _buildRateTrendPoints(
+        metrics: metrics,
+        visits: data.visits,
+        records: records,
+        now: now,
+      ),
       monthlySchedule: _buildMonthlySchedule(records, range, now),
       agendaItems: _buildAgendaItems(
         visits: data.visits,
@@ -2938,7 +3375,7 @@ class _DashboardInsights {
         now: now,
       ),
       visitHistoryRows: _buildVisitHistoryRows(
-        visits: periodVisits,
+        visits: data.visits,
         properties: properties,
         selectedProperty: selectedProperty,
       ),
@@ -3040,25 +3477,51 @@ class _RateItem {
     required this.value,
     required this.color,
     required this.shortLabel,
+    required this.target,
   });
 
   final String label;
   final double? value;
   final Color color;
   final String shortLabel;
+  final double target;
+}
+
+class _RateTargetDelta {
+  const _RateTargetDelta({
+    required this.label,
+    required this.color,
+    required this.icon,
+  });
+
+  final String label;
+  final Color color;
+  final IconData icon;
+}
+
+class _MonthlyRatePoint {
+  const _MonthlyRatePoint({
+    required this.month,
+    required this.service,
+    required this.conception,
+    required this.pregnancy,
+  });
+
+  final DateTime month;
+  final double? service;
+  final double? conception;
+  final double? pregnancy;
 }
 
 class _MonthlyScheduleRow {
   const _MonthlyScheduleRow({
     required this.month,
-    required this.monthLabel,
     required this.dryOff,
     required this.prepartum,
     required this.births,
   });
 
   final DateTime month;
-  final String monthLabel;
   final int dryOff;
   final int prepartum;
   final int births;
@@ -3082,18 +3545,26 @@ class _AgendaItem {
 
 class _VisitHistoryRow {
   const _VisitHistoryRow({
+    required this.visit,
+    required this.propertyModel,
     required this.date,
     required this.property,
     required this.veterinarian,
+    required this.protocol,
+    required this.nextStep,
     required this.animals,
-    required this.observations,
+    required this.pregnancyRate,
   });
 
+  final VisitSummaryModel visit;
+  final PropertySummaryModel? propertyModel;
   final String date;
   final String property;
   final String veterinarian;
+  final String protocol;
+  final String nextStep;
   final String animals;
-  final String observations;
+  final String pregnancyRate;
 }
 
 class _ObservationItem {
@@ -3210,62 +3681,93 @@ enum _ProductiveStatus { lactating, dry, heifer, other }
 class _ChartColors {
   const _ChartColors._();
 
-  static const primary = Color(0xFF005115);
-  static const success = Color(0xFF177930);
-  static const info = Color(0xFF008B5E);
-  static const warning = Color(0xFFE86D00);
-  static const danger = Color(0xFFD11F1F);
-  static const neutral = Color(0xFF3F4843);
-  static const purple = Color(0xFF6D28D9);
-  static const deepBlue = Color(0xFF0B2F6B);
-  static const blue = Color(0xFF155EEF);
-  static const cyanBlue = Color(0xFF0369A1);
-  static const indigo = Color(0xFF3730A3);
+  static const primary = AppTheme.primary2Color;
+  static const accent = AppTheme.accentColor;
+  static const green = AppTheme.greenColor;
+  static const amber = AppTheme.amberColor;
+  static const blue = AppTheme.blueColor;
+  static const indigo = AppTheme.indigoColor;
+  static const rose = AppTheme.roseColor;
+  static const neutral = AppTheme.bodyTextColor;
 }
 
 List<_SituationCount> _buildReproductiveCounts(List<_AnimalRecord> records) {
+  final counts = {for (final kind in _SituationKind.values) kind: 0};
+
+  for (final record in records) {
+    final kind = _classifyReproductiveSituation(record);
+    counts[kind] = (counts[kind] ?? 0) + 1;
+  }
+
   return [
     _SituationCount(
       kind: _SituationKind.pregnant,
       label: 'Prenha',
-      count: records.where((record) {
-        return _reproductiveStatusFor(record) ==
-            AnimalReproductiveStatus.pregnant;
-      }).length,
+      count: counts[_SituationKind.pregnant] ?? 0,
     ),
     _SituationCount(
       kind: _SituationKind.empty,
       label: 'Vazia',
-      count: records.where((record) {
-        return _reproductiveStatusFor(record) == AnimalReproductiveStatus.empty;
-      }).length,
+      count: counts[_SituationKind.empty] ?? 0,
     ),
     _SituationCount(
       kind: _SituationKind.protocol,
       label: 'Em protocolo',
-      count: records.where(_hasProtocol).length,
+      count: counts[_SituationKind.protocol] ?? 0,
     ),
     _SituationCount(
       kind: _SituationKind.inseminated,
-      label: 'Inseminada ST',
-      count: records.where(_isInseminatedSt).length,
+      label: 'Inseminada',
+      count: counts[_SituationKind.inseminated] ?? 0,
     ),
     _SituationCount(
       kind: _SituationKind.waitingDiagnosis,
       label: 'Aguardando DG',
-      count: records.where(_awaitingPregnancyDiagnosis).length,
+      count: counts[_SituationKind.waitingDiagnosis] ?? 0,
     ),
     _SituationCount(
       kind: _SituationKind.voluntaryWaiting,
-      label: 'PEV',
-      count: records.where(_isVoluntaryWaitingPeriod).length,
+      label: 'Seca / PEV',
+      count: counts[_SituationKind.voluntaryWaiting] ?? 0,
     ),
     _SituationCount(
       kind: _SituationKind.discard,
-      label: 'Descarte',
-      count: records.where(_hasDiscardDecision).length,
+      label: 'Outros',
+      count: counts[_SituationKind.discard] ?? 0,
     ),
   ];
+}
+
+_SituationKind _classifyReproductiveSituation(_AnimalRecord record) {
+  final status = _reproductiveStatusFor(record);
+
+  if (status == AnimalReproductiveStatus.pregnant) {
+    return _SituationKind.pregnant;
+  }
+  if (status == AnimalReproductiveStatus.empty) {
+    return _SituationKind.empty;
+  }
+  if (_hasProtocol(record) || status == AnimalReproductiveStatus.protocol) {
+    return _SituationKind.protocol;
+  }
+  if (_isInseminatedSt(record) ||
+      status == AnimalReproductiveStatus.inseminated ||
+      status == AnimalReproductiveStatus.inseminatedSt) {
+    return _SituationKind.inseminated;
+  }
+  if (_awaitingPregnancyDiagnosis(record) ||
+      status == AnimalReproductiveStatus.waitingDiagnosis) {
+    return _SituationKind.waitingDiagnosis;
+  }
+  if (_hasDiscardDecision(record)) {
+    return _SituationKind.discard;
+  }
+  if (_isVoluntaryWaitingPeriod(record) ||
+      status == AnimalReproductiveStatus.pev ||
+      status == AnimalReproductiveStatus.dry) {
+    return _SituationKind.voluntaryWaiting;
+  }
+  return _SituationKind.discard;
 }
 
 List<_ChartCountItem> _buildReproductiveChartItems(
@@ -3319,12 +3821,8 @@ List<_ChartCountItem> _buildLactationThirds(List<_AnimalRecord> records) {
           value: 0,
           color: _ChartColors.primary,
         ),
-        _ChartCountItem(label: '2o terço', value: 0, color: _ChartColors.info),
-        _ChartCountItem(
-          label: '3o terço',
-          value: 0,
-          color: _ChartColors.warning,
-        ),
+        _ChartCountItem(label: '2o terço', value: 0, color: _ChartColors.blue),
+        _ChartCountItem(label: '3o terço', value: 0, color: _ChartColors.amber),
         _ChartCountItem(
           label: 'Sem DEL',
           value: 0,
@@ -3378,9 +3876,9 @@ List<_ChartCountItem> _buildParityChartItems(List<_AnimalRecord> records) {
         _ChartCountItem(
           label: 'Multíparas',
           value: 0,
-          color: _ChartColors.purple,
+          color: _ChartColors.primary,
         ),
-        _ChartCountItem(label: 'Novilhas', value: 0, color: _ChartColors.warning),
+        _ChartCountItem(label: 'Novilhas', value: 0, color: _ChartColors.blue),
       ]
       .asMap()
       .entries
@@ -3410,27 +3908,113 @@ List<_RateItem> _buildRateItems(
       label: 'Taxa de serviço',
       shortLabel: 'Serviço',
       value: metrics.taxaServico,
-      color: _ChartColors.deepBlue,
+      color: _ChartColors.primary,
+      target: 0.65,
     ),
     _RateItem(
       label: 'Taxa de concepção',
       shortLabel: 'Concepção',
       value: _conceptionRate(records),
       color: _ChartColors.blue,
+      target: 0.40,
     ),
     _RateItem(
       label: 'Taxa de prenhez',
       shortLabel: 'Prenhez',
       value: metrics.taxaPrenhez,
-      color: _ChartColors.cyanBlue,
+      color: _ChartColors.amber,
+      target: 0.25,
     ),
     _RateItem(
       label: 'Concepção por IA',
       shortLabel: 'IA',
       value: _iaConceptionRate(entries),
       color: _ChartColors.indigo,
+      target: 0.35,
     ),
   ];
+}
+
+List<_MonthlyRatePoint> _buildRateTrendPoints({
+  required DashboardMetricsModel metrics,
+  required List<VisitSummaryModel> visits,
+  required List<_AnimalRecord> records,
+  required DateTime now,
+}) {
+  final months = List<DateTime>.generate(6, (index) {
+    return DateTime(now.year, now.month - 5 + index);
+  });
+  final fallbackConception = _conceptionRate(records);
+
+  return months
+      .map((month) {
+        final monthVisits = visits
+            .where((visit) {
+              final date = visit.dataVisita;
+              return date != null &&
+                  date.year == month.year &&
+                  date.month == month.month;
+            })
+            .toList(growable: false);
+        final entries = _visitEntryRecords(monthVisits);
+        final service = _monthlyServiceRate(entries) ?? metrics.taxaServico;
+        final conception =
+            _monthlyConceptionRate(entries) ?? fallbackConception;
+        final pregnancy = _monthlyPregnancyRate(entries) ?? metrics.taxaPrenhez;
+
+        return _MonthlyRatePoint(
+          month: month,
+          service: _normalizeRate(service),
+          conception: _normalizeRate(conception),
+          pregnancy: _normalizeRate(pregnancy),
+        );
+      })
+      .toList(growable: false);
+}
+
+double? _monthlyServiceRate(List<_VisitEntryRecord> entries) {
+  final denominator = entries.where((record) {
+    return record.entry.hasCollectedData;
+  }).length;
+  if (denominator == 0) return null;
+
+  final serviced = entries.where((record) {
+    final entry = record.entry;
+    final reproductiveText = [
+      entry.situacaoReprodutiva,
+      entry.diagnostico,
+      entry.decisao,
+    ].whereType<String>().join(' ').normalize();
+
+    return entry.dataUltimaIa != null ||
+        (entry.numeroIaRecebida ?? 0) > 0 ||
+        reproductiveText.contains('insemin');
+  }).length;
+
+  return serviced / denominator;
+}
+
+double? _monthlyConceptionRate(List<_VisitEntryRecord> entries) {
+  return IndicadorReprodutivoCalculator.pregnancyRateFromStatuses(
+    entries.map((record) {
+      final entry = record.entry;
+      return IndicadorReprodutivoCalculator.resolveStatusFromTexts(
+        texts: [entry.situacaoReprodutiva, entry.diagnostico, entry.decisao],
+      );
+    }),
+  );
+}
+
+double? _monthlyPregnancyRate(List<_VisitEntryRecord> entries) {
+  final service = _monthlyServiceRate(entries);
+  final conception = _monthlyConceptionRate(entries);
+  if (service == null || conception == null) return null;
+  return service * conception;
+}
+
+double? _normalizeRate(double? value) {
+  if (value == null || !value.isFinite) return null;
+  return value.clamp(0.0, 1.0).toDouble();
 }
 
 List<_MonthlyScheduleRow> _buildMonthlySchedule(
@@ -3465,7 +4049,6 @@ List<_MonthlyScheduleRow> _buildMonthlySchedule(
   final rows = months.entries.map((entry) {
     return _MonthlyScheduleRow(
       month: entry.key,
-      monthLabel: _monthLabel(entry.key),
       dryOff: entry.value.dryOff,
       prepartum: entry.value.prepartum,
       births: entry.value.births,
@@ -3607,25 +4190,158 @@ List<_VisitHistoryRow> _buildVisitHistoryRows({
   final propertyById = {
     for (final property in properties) property.id: property,
   };
+  final propertyByExternalId = {
+    for (final property in properties)
+      if (property.idExterno.trim().isNotEmpty)
+        property.idExterno.trim(): property,
+  };
 
-  String propertyForVisit(VisitSummaryModel visit) {
-    return selectedProperty?.nome ??
-        propertyById[visit.idPropriedade]?.nome ??
-        visit.idExternoPropriedade;
+  PropertySummaryModel? propertyForVisit(VisitSummaryModel visit) {
+    return selectedProperty ??
+        propertyById[visit.idPropriedade] ??
+        propertyByExternalId[visit.idExternoPropriedade.trim()];
   }
 
   return visits
       .take(12)
       .map((visit) {
+        final property = propertyForVisit(visit);
+        final propertyName = _firstText([
+          property?.nome,
+          visit.idExternoPropriedade,
+        ]);
+        final veterinarian = _firstText([
+          visit.veterinarioResponsavel,
+          visit.nomeUsuario,
+        ]);
+
         return _VisitHistoryRow(
+          visit: visit,
+          propertyModel: property,
           date: formatDate(visit.dataVisita),
-          property: _dashIfBlank(propertyForVisit(visit)),
-          veterinarian: _dashIfBlank(visit.veterinarioResponsavel),
+          property: _dashIfBlank(propertyName),
+          veterinarian: _dashIfBlank(veterinarian),
+          protocol: _visitProtocolLabel(visit),
+          nextStep: _visitNextStepText(visit),
           animals: _formatCount(visit.animais.length),
-          observations: _dashIfBlank(visit.observacoes),
+          pregnancyRate: _formatWholePercent(_visitPregnancyRate(visit)),
         );
       })
       .toList(growable: false);
+}
+
+double? _visitPregnancyRate(VisitSummaryModel visit) {
+  return IndicadorReprodutivoCalculator.pregnancyRateFromStatuses(
+    visit.animais.map((entry) {
+      return IndicadorReprodutivoCalculator.resolveStatusFromTexts(
+        texts: [entry.situacaoReprodutiva, entry.diagnostico, entry.decisao],
+      );
+    }),
+  );
+}
+
+String _visitProtocolLabel(VisitSummaryModel visit) {
+  if (visit.animais.isEmpty) return 'Visita técnica';
+
+  final hasDiagnosis = visit.animais.any((entry) {
+    return _nonBlankText(entry.diagnostico) != null ||
+        _visitEntryIsPregnant(entry) ||
+        _visitEntryIsEmpty(entry);
+  });
+  final hasProtocol = visit.animais.any((entry) {
+    return _nonBlankText(entry.decisao) != null ||
+        entry.dataUltimaIa != null ||
+        entry.numeroIaRecebida != null;
+  });
+
+  if (hasProtocol && hasDiagnosis) return 'IATF + diagnóstico';
+  if (hasProtocol) return 'IATF / protocolo';
+  if (hasDiagnosis) return 'Diagnóstico reprodutivo';
+  return 'Conferência técnica';
+}
+
+String _visitNextStepText(VisitSummaryModel visit) {
+  final steps = <_VisitHistoryNextStep>[];
+
+  for (final entry in visit.animais) {
+    final identification = _firstText([
+      entry.animalCodigo,
+      entry.animalIdExterno,
+      'animal',
+    ]);
+
+    void add(DateTime? date, String text) {
+      if (date == null) return;
+      steps.add(_VisitHistoryNextStep(date: date, text: text));
+    }
+
+    add(
+      entry.previsaoSecagem,
+      '${formatDate(entry.previsaoSecagem)} - Secagem de $identification',
+    );
+    add(
+      entry.dataPreParto,
+      '${formatDate(entry.dataPreParto)} - Pré-parto de $identification',
+    );
+    add(
+      entry.previsaoParto,
+      '${formatDate(entry.previsaoParto)} - Parto de $identification',
+    );
+  }
+
+  steps.sort((a, b) => a.date.compareTo(b.date));
+  if (steps.isNotEmpty) return steps.first.text;
+
+  return _dashIfBlank(visit.observacoes);
+}
+
+bool _visitEntryIsPregnant(VisitAnimalEntryModel entry) {
+  if (_visitEntryIsEmpty(entry)) return false;
+  if (entry.diasPrenhez != null) return true;
+
+  return _visitTextContainsAny(_visitEntryReproductiveText(entry), const [
+    'prenhe',
+    'prenha',
+    'prenhez',
+    'positivo',
+    'gestante',
+  ]);
+}
+
+bool _visitEntryIsEmpty(VisitAnimalEntryModel entry) {
+  return _visitTextContainsAny(_visitEntryReproductiveText(entry), const [
+    'vazia',
+    'vazio',
+    'negativo',
+    'nao prenha',
+    'nao gestante',
+  ]);
+}
+
+String _visitEntryReproductiveText(VisitAnimalEntryModel entry) {
+  return [
+    entry.situacaoReprodutiva,
+    entry.decisao,
+    entry.diagnostico,
+  ].whereType<String>().join(' ');
+}
+
+bool _visitTextContainsAny(String value, List<String> terms) {
+  final normalized = value.normalize();
+  return terms.any((term) => normalized.contains(term.normalize()));
+}
+
+String? _nonBlankText(String? value) {
+  final text = value?.trim();
+  if (text == null || text.isEmpty) return null;
+  return text;
+}
+
+class _VisitHistoryNextStep {
+  const _VisitHistoryNextStep({required this.date, required this.text});
+
+  final DateTime date;
+  final String text;
 }
 
 List<_ObservationItem> _buildVisitObservations(List<VisitSummaryModel> visits) {
@@ -3852,8 +4568,18 @@ bool _animalMatchesPropertyId(AnimalSummaryModel animal, int? propertyId) {
   return propertyId == null || animal.idPropriedade == propertyId;
 }
 
-bool _visitMatchesPropertyId(VisitSummaryModel visit, int? propertyId) {
-  return propertyId == null || visit.idPropriedade == propertyId;
+bool _visitMatchesProperty(
+  VisitSummaryModel visit, {
+  required int? propertyId,
+  required String? propertyExternalId,
+}) {
+  if (propertyId == null) return true;
+  if (visit.idPropriedade == propertyId) return true;
+
+  final expectedExternalId = propertyExternalId?.trim();
+  if (expectedExternalId == null || expectedExternalId.isEmpty) return false;
+
+  return visit.idExternoPropriedade.trim() == expectedExternalId;
 }
 
 int _compareVisitsByDateDesc(VisitSummaryModel a, VisitSummaryModel b) {
@@ -3913,22 +4639,40 @@ int _monthsBetween(DateTime from, DateTime to) {
   return months;
 }
 
-String _monthLabel(DateTime date) {
+String _fullMonthLabel(DateTime date) {
   const months = [
-    'Jan',
-    'Fev',
-    'Mar',
-    'Abr',
-    'Mai',
-    'Jun',
-    'Jul',
-    'Ago',
-    'Set',
-    'Out',
-    'Nov',
-    'Dez',
+    'Janeiro',
+    'Fevereiro',
+    'Março',
+    'Abril',
+    'Maio',
+    'Junho',
+    'Julho',
+    'Agosto',
+    'Setembro',
+    'Outubro',
+    'Novembro',
+    'Dezembro',
   ];
-  return '${months[date.month - 1]}/${date.year}';
+  return '${months[date.month - 1]} ${date.year}';
+}
+
+String _shortMonthLabel(DateTime date) {
+  const months = [
+    'JAN',
+    'FEV',
+    'MAR',
+    'ABR',
+    'MAI',
+    'JUN',
+    'JUL',
+    'AGO',
+    'SET',
+    'OUT',
+    'NOV',
+    'DEZ',
+  ];
+  return months[date.month - 1];
 }
 
 String _ageLabel(DateTime? birthDate, num? ageMonths, DateTime now) {
@@ -3968,11 +4712,48 @@ String _formatCount(int value) {
   return formatInteger(value);
 }
 
+String _formatWholePercent(double? value) {
+  if (value == null) return '--';
+  return '${(value.clamp(0.0, 1.0) * 100).round()}%';
+}
+
+String _classifiedMatricesLabel(int count) {
+  return count == 1
+      ? '1 matriz classificada.'
+      : '$count matrizes classificadas.';
+}
+
+_RateTargetDelta _rateTargetDelta(_RateItem item) {
+  final value = item.value;
+  if (value == null) {
+    return const _RateTargetDelta(
+      label: 'Sem meta calculada',
+      color: _ChartColors.neutral,
+      icon: Icons.trending_flat_rounded,
+    );
+  }
+
+  final points = ((value - item.target) * 100).round();
+  if (points == 0) {
+    return const _RateTargetDelta(
+      label: '0 p.p. vs meta',
+      color: _ChartColors.neutral,
+      icon: Icons.trending_flat_rounded,
+    );
+  }
+
+  final isPositive = points > 0;
+  return _RateTargetDelta(
+    label: '${isPositive ? '+' : '-'} ${points.abs()} p.p. vs meta',
+    color: isPositive ? _ChartColors.accent : _ChartColors.rose,
+    icon: isPositive ? Icons.trending_up_rounded : Icons.trending_down_rounded,
+  );
+}
+
 String _formatNullableInt(int? value) {
   if (value == null) return '--';
   return value.toString();
 }
-
 
 String _recordsLabel(
   int count, {
@@ -3980,6 +4761,10 @@ String _recordsLabel(
   required String plural,
 }) {
   return '$count ${count == 1 ? singular : plural} no filtro atual';
+}
+
+String _agendaRecordsLabel(int count) {
+  return '$count ${count == 1 ? 'ação reprodutiva encontrada' : 'ações reprodutivas encontradas'}';
 }
 
 StatusBadgeType _reproductiveStatusBadgeType(AnimalReproductiveStatus status) {
@@ -4004,12 +4789,12 @@ StatusBadgeType _reproductiveStatusBadgeType(AnimalReproductiveStatus status) {
 
 Color _situationColor(_SituationKind kind) {
   return switch (kind) {
-    _SituationKind.pregnant => _ChartColors.success,
-    _SituationKind.empty => _ChartColors.danger,
-    _SituationKind.protocol => _ChartColors.purple,
-    _SituationKind.inseminated => _ChartColors.info,
-    _SituationKind.waitingDiagnosis => _ChartColors.warning,
-    _SituationKind.voluntaryWaiting => _ChartColors.primary,
+    _SituationKind.pregnant => _ChartColors.primary,
+    _SituationKind.empty => _ChartColors.rose,
+    _SituationKind.protocol => _ChartColors.indigo,
+    _SituationKind.inseminated => _ChartColors.blue,
+    _SituationKind.waitingDiagnosis => _ChartColors.amber,
+    _SituationKind.voluntaryWaiting => _ChartColors.green,
     _SituationKind.discard => _ChartColors.neutral,
   };
 }
