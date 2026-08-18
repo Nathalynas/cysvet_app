@@ -1,6 +1,8 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:cysvet_app/app/app_shell.dart';
+import 'package:cysvet_app/app/theme.dart';
 import 'package:cysvet_app/core/constants/app_constants.dart';
 import 'package:cysvet_app/core/enums/animal_status.dart';
 import 'package:cysvet_app/core/enums/property_status.dart';
@@ -9,10 +11,12 @@ import 'package:cysvet_app/core/utils/formatters.dart';
 import 'package:cysvet_app/core/widgets/app_button.dart';
 import 'package:cysvet_app/core/widgets/app_card.dart';
 import 'package:cysvet_app/core/widgets/app_dialog.dart';
+import 'package:cysvet_app/core/widgets/app_table.dart';
 import 'package:cysvet_app/core/widgets/status_badge.dart';
 import 'package:cysvet_app/features/animals/application/animals_provider.dart';
 import 'package:cysvet_app/features/animals/data/animals_repository.dart';
 import 'package:cysvet_app/features/animals/domain/animal_summary_model.dart';
+import 'package:cysvet_app/features/animals/presentation/animal_dialog.dart';
 import 'package:cysvet_app/features/animals/presentation/animal_history_dialog.dart';
 import 'package:cysvet_app/features/auth/application/auth_state.dart';
 import 'package:cysvet_app/features/indicators/indicador_reprodutivo_calculator.dart';
@@ -24,6 +28,7 @@ import 'package:cysvet_app/features/visits/data/visits_repository.dart';
 import 'package:cysvet_app/features/visits/domain/visit_summary_model.dart';
 import 'package:cysvet_app/features/visits/presentation/visit_report_page.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_material_design_icons/flutter_material_design_icons.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -201,17 +206,24 @@ class _PropertyDetailsPageState extends ConsumerState<PropertyDetailsPage> {
       children: [
         _PropertySummaryCard(
           property: property,
-          stats: stats,
-          statsLoading: statsLoading,
           onEdit: () => _openEdit(property),
           onToggleStatus: () => _confirmToggleStatus(property),
           onDelete: () => _confirmDelete(property),
+          onCreateVisit: () {
+            context.go('/visitas/nova?propriedade=${property.id}');
+          },
         ),
         const SizedBox(height: 16),
         _PropertyTabsCard(
           activeTab: _activeTab,
           onTabChanged: (tab) => setState(() => _activeTab = tab),
-          child: _tabContent(property, animalsValue, visitsValue),
+          child: _tabContent(
+            property,
+            animalsValue,
+            visitsValue,
+            stats,
+            statsLoading,
+          ),
         ),
       ],
     );
@@ -221,12 +233,21 @@ class _PropertyDetailsPageState extends ConsumerState<PropertyDetailsPage> {
     PropertySummaryModel property,
     AsyncValue<List<AnimalSummaryModel>> animalsValue,
     AsyncValue<List<VisitSummaryModel>> visitsValue,
+    _PropertyStats? stats,
+    bool statsLoading,
   ) {
     return switch (_activeTab) {
-      PropertyTab.general => _PropertyGeneralTab(property: property),
+      PropertyTab.general => _PropertyGeneralTab(
+        property: property,
+        stats: stats,
+        statsLoading: statsLoading,
+      ),
       PropertyTab.animals => _PropertyAnimalsTab(
         property: property,
         value: animalsValue,
+        onEdit: (animal) => _openAnimalEdit(property, animal),
+        onToggleStatus: _confirmToggleAnimalStatus,
+        onDelete: _confirmDeleteAnimal,
         onRetry: () {
           ref.invalidate(propertyDetailsAnimalsProvider(widget.propertyId));
         },
@@ -414,6 +435,90 @@ class _PropertyDetailsPageState extends ConsumerState<PropertyDetailsPage> {
       },
     );
   }
+
+  Future<void> _openAnimalEdit(
+    PropertySummaryModel property,
+    AnimalSummaryModel animal,
+  ) async {
+    await AnimalDialog.show(context, properties: [property], animal: animal);
+    if (!mounted) return;
+    ref.invalidate(propertyDetailsAnimalsProvider(widget.propertyId));
+  }
+
+  Future<void> _confirmToggleAnimalStatus(AnimalSummaryModel animal) {
+    return animal.status == AnimalStatus.inactive
+        ? _confirmActivateAnimal(animal)
+        : _confirmInactivateAnimal(animal);
+  }
+
+  Future<void> _confirmInactivateAnimal(AnimalSummaryModel animal) {
+    return AppDialog.show<void>(
+      context: context,
+      title: 'Inativar animal',
+      content: Text('Deseja inativar ${animal.codigo}?'),
+      confirmText: 'Inativar',
+      cancelText: 'Cancelar',
+      onConfirm: () async {
+        final navigator = Navigator.of(context, rootNavigator: true);
+        try {
+          await ref.read(animalsControllerProvider).inactivate(animal.id);
+          ref.invalidate(propertyDetailsAnimalsProvider(widget.propertyId));
+          if (context.mounted) {
+            await navigator.maybePop();
+            showAppSuccess('Animal inativado com sucesso.');
+          }
+        } catch (error) {
+          showAppError(error);
+        }
+      },
+    );
+  }
+
+  Future<void> _confirmActivateAnimal(AnimalSummaryModel animal) {
+    return AppDialog.show<void>(
+      context: context,
+      title: 'Ativar animal',
+      content: Text('Deseja ativar ${animal.codigo}?'),
+      confirmText: 'Ativar',
+      cancelText: 'Cancelar',
+      onConfirm: () async {
+        final navigator = Navigator.of(context, rootNavigator: true);
+        try {
+          await ref.read(animalsControllerProvider).activate(animal.id);
+          ref.invalidate(propertyDetailsAnimalsProvider(widget.propertyId));
+          if (context.mounted) {
+            await navigator.maybePop();
+            showAppSuccess('Animal ativado com sucesso.');
+          }
+        } catch (error) {
+          showAppError(error);
+        }
+      },
+    );
+  }
+
+  Future<void> _confirmDeleteAnimal(AnimalSummaryModel animal) {
+    return AppDialog.show<void>(
+      context: context,
+      title: 'Excluir animal',
+      content: Text('Deseja excluir ${animal.codigo} desta sessão?'),
+      confirmText: 'Excluir',
+      cancelText: 'Cancelar',
+      onConfirm: () async {
+        final navigator = Navigator.of(context, rootNavigator: true);
+        try {
+          await ref.read(animalsControllerProvider).delete(animal.id);
+          ref.invalidate(propertyDetailsAnimalsProvider(widget.propertyId));
+          if (context.mounted) {
+            await navigator.maybePop();
+            showAppSuccess('Animal excluído com sucesso.');
+          }
+        } catch (error) {
+          showAppError(error);
+        }
+      },
+    );
+  }
 }
 
 class _PropertyDetailsList extends StatelessWidget {
@@ -507,19 +612,17 @@ class _PropertyDetailsTop extends StatelessWidget {
 class _PropertySummaryCard extends StatelessWidget {
   const _PropertySummaryCard({
     required this.property,
-    required this.stats,
-    required this.statsLoading,
     required this.onEdit,
     required this.onToggleStatus,
     required this.onDelete,
+    required this.onCreateVisit,
   });
 
   final PropertySummaryModel property;
-  final _PropertyStats? stats;
-  final bool statsLoading;
   final VoidCallback onEdit;
   final VoidCallback onToggleStatus;
   final VoidCallback onDelete;
+  final VoidCallback onCreateVisit;
 
   @override
   Widget build(BuildContext context) {
@@ -529,18 +632,13 @@ class _PropertySummaryCard extends StatelessWidget {
       child: LayoutBuilder(
         builder: (context, constraints) {
           final stacked = constraints.maxWidth < 760;
-          final identity = _PropertySummaryIdentity(
-            property: property,
-            stats: stats,
-            statsLoading: statsLoading,
-          );
+          final identity = _PropertySummaryIdentity(property: property);
           final actions = _PropertyActions(
             property: property,
-            stats: stats,
-            statsLoading: statsLoading,
             onEdit: onEdit,
             onToggleStatus: onToggleStatus,
             onDelete: onDelete,
+            onCreateVisit: onCreateVisit,
           );
 
           if (stacked) {
@@ -555,10 +653,7 @@ class _PropertySummaryCard extends StatelessWidget {
             children: [
               Expanded(child: identity),
               const SizedBox(width: 20),
-              ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 700),
-                child: actions,
-              ),
+              actions,
             ],
           );
         },
@@ -568,20 +663,15 @@ class _PropertySummaryCard extends StatelessWidget {
 }
 
 class _PropertySummaryIdentity extends StatelessWidget {
-  const _PropertySummaryIdentity({
-    required this.property,
-    required this.stats,
-    required this.statsLoading,
-  });
+  const _PropertySummaryIdentity({required this.property});
 
   final PropertySummaryModel property;
-  final _PropertyStats? stats;
-  final bool statsLoading;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
+    final primary2 = AppTheme.primary2Color;
     final hasLocation =
         _cleanText(property.cidade) != null ||
         _cleanText(property.estado) != null;
@@ -593,14 +683,14 @@ class _PropertySummaryIdentity extends StatelessWidget {
           width: 58,
           height: 58,
           decoration: BoxDecoration(
-            color: colorScheme.primary,
+            color: primary2.withValues(alpha: 0.10),
             borderRadius: BorderRadius.circular(16),
           ),
           child: Center(
             child: Text(
               _initialsFor(property.nome),
               style: theme.textTheme.titleMedium?.copyWith(
-                color: colorScheme.onPrimary,
+                color: primary2,
                 fontWeight: FontWeight.w900,
               ),
             ),
@@ -626,10 +716,7 @@ class _PropertySummaryIdentity extends StatelessWidget {
                       height: 1.08,
                     ),
                   ),
-                  StatusBadge(
-                    label: property.status.label,
-                    type: _propertyStatusBadgeType(property.status),
-                  ),
+                  _PropertyStatusBadge(status: property.status),
                 ],
               ),
               const SizedBox(height: 12),
@@ -642,15 +729,15 @@ class _PropertySummaryIdentity extends StatelessWidget {
                       icon: Icons.person_outline,
                       text: property.nomeProprietario.trim(),
                     ),
-                  if (hasLocation)
-                    _SummaryMetaItem(
-                      icon: Icons.place_outlined,
-                      text: _locationLabel(property),
-                    ),
                   if (_cleanText(property.contato) != null)
                     _SummaryMetaItem(
                       icon: Icons.phone_outlined,
                       text: property.contato!.trim(),
+                    ),
+                  if (hasLocation)
+                    _SummaryMetaItem(
+                      icon: Icons.place_outlined,
+                      text: _locationLabel(property),
                     ),
                 ],
               ),
@@ -695,11 +782,38 @@ class _SummaryMetaItem extends StatelessWidget {
   }
 }
 
-class _PropertyStatsStrip extends StatelessWidget {
-  const _PropertyStatsStrip({
+class _PropertyStatusBadge extends StatelessWidget {
+  const _PropertyStatusBadge({required this.status});
+
+  final PropertyStatus status;
+
+  @override
+  Widget build(BuildContext context) {
+    final isActive = status == PropertyStatus.active;
+
+    return StatusBadge(
+      label: status.label,
+      type: isActive ? StatusBadgeType.success : StatusBadgeType.neutral,
+      backgroundColor: isActive
+          ? Theme.of(context).brightness == Brightness.dark
+                ? AppTheme.syncBadgeDarkBackgroundColor
+                : AppTheme.syncBadgeBackgroundColor
+          : null,
+      foregroundColor: isActive
+          ? Theme.of(context).brightness == Brightness.dark
+                ? AppTheme.syncBadgeDarkForegroundColor
+                : AppTheme.syncBadgeForegroundColor
+          : null,
+      borderColor: isActive ? Colors.transparent : null,
+    );
+  }
+}
+
+class _PropertyStatsPanel extends StatelessWidget {
+  const _PropertyStatsPanel({
     required this.stats,
     required this.loading,
-    this.stacked = false,
+    required this.stacked,
   });
 
   final _PropertyStats? stats;
@@ -709,118 +823,103 @@ class _PropertyStatsStrip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final loadingLabel = loading && stats == null ? '...' : '--';
-
-    final items = [
-      _MetricPill(
+    final cards = [
+      _PropertyMetricCard(
         label: 'Rebanho total',
         value: stats == null ? loadingLabel : formatInteger(stats!.herdTotal),
-        icon: Icons.groups_outlined,
-        fullWidth: stacked,
       ),
-      _MetricPill(
-        label: 'Em reprodução',
+      _PropertyMetricCard(
+        label: 'Em produção',
         value: stats == null
             ? loadingLabel
             : formatInteger(stats!.reproductionCount),
-        icon: Icons.monitor_heart_outlined,
         highlighted: true,
-        fullWidth: stacked,
       ),
-      _MetricPill(
+      _PropertyMetricCard(
         label: 'Última visita',
         value: stats == null ? loadingLabel : formatDate(stats!.lastVisitDate),
-        icon: Icons.event_available_outlined,
-        fullWidth: stacked,
       ),
     ];
 
     if (stacked) {
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
+      return Row(
         children: [
-          for (var index = 0; index < items.length; index++) ...[
-            items[index],
-            if (index < items.length - 1) const SizedBox(height: 10),
+          for (var index = 0; index < cards.length; index++) ...[
+            Expanded(child: cards[index]),
+            if (index < cards.length - 1) const SizedBox(width: 10),
           ],
         ],
       );
     }
 
-    return Wrap(spacing: 10, runSpacing: 10, children: items);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        for (var index = 0; index < cards.length; index++) ...[
+          cards[index],
+          if (index < cards.length - 1) const SizedBox(height: 10),
+        ],
+      ],
+    );
   }
 }
 
-class _MetricPill extends StatelessWidget {
-  const _MetricPill({
+class _PropertyMetricCard extends StatelessWidget {
+  const _PropertyMetricCard({
     required this.label,
     required this.value,
-    required this.icon,
     this.highlighted = false,
-    this.fullWidth = false,
   });
 
   final String label;
   final String value;
-  final IconData icon;
   final bool highlighted;
-  final bool fullWidth;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
+    final primary2 = AppTheme.primary2Color;
     final background = highlighted
-        ? colorScheme.primary
-        : colorScheme.surfaceContainerHighest;
-    final foreground = highlighted
-        ? colorScheme.onPrimary
-        : colorScheme.onSurface;
-    final muted = highlighted
-        ? colorScheme.onPrimary.withValues(alpha: 0.78)
+        ? primary2
+        : colorScheme.surfaceContainerHighest.withValues(alpha: 0.38);
+    final valueColor = highlighted ? Colors.white : colorScheme.onSurface;
+    final labelColor = highlighted
+        ? Colors.white.withValues(alpha: 0.88)
         : colorScheme.onSurfaceVariant;
 
     return Container(
-      width: fullWidth ? double.infinity : 158,
-      constraints: const BoxConstraints(minHeight: 64),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      height: 64,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
       decoration: BoxDecoration(
         color: background,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: highlighted
-              ? colorScheme.primary
-              : colorScheme.outline.withValues(alpha: 0.24),
-        ),
+        border: highlighted
+            ? null
+            : Border.all(color: colorScheme.outline.withValues(alpha: 0.22)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Row(
-            children: [
-              Icon(icon, size: 14, color: muted),
-              const SizedBox(width: 6),
-              Expanded(
-                child: Text(
-                  label.toUpperCase(),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: theme.textTheme.labelSmall?.copyWith(
-                    color: muted,
-                    fontWeight: FontWeight.w900,
-                    fontSize: 9.5,
-                  ),
-                ),
-              ),
-            ],
+          Text(
+            label.toUpperCase(),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: theme.textTheme.labelSmall?.copyWith(
+              color: labelColor,
+              fontSize: 9,
+              fontWeight: FontWeight.w900,
+              letterSpacing: 0.4,
+              height: 1,
+            ),
           ),
-          const SizedBox(height: 6),
+          const Spacer(),
           Text(
             value,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: theme.textTheme.titleMedium?.copyWith(
-              color: foreground,
+              color: valueColor,
               fontWeight: FontWeight.w900,
               height: 1,
             ),
@@ -834,19 +933,17 @@ class _MetricPill extends StatelessWidget {
 class _PropertyActions extends StatelessWidget {
   const _PropertyActions({
     required this.property,
-    required this.stats,
-    required this.statsLoading,
     required this.onEdit,
     required this.onToggleStatus,
     required this.onDelete,
+    required this.onCreateVisit,
   });
 
   final PropertySummaryModel property;
-  final _PropertyStats? stats;
-  final bool statsLoading;
   final VoidCallback onEdit;
   final VoidCallback onToggleStatus;
   final VoidCallback onDelete;
+  final VoidCallback onCreateVisit;
 
   @override
   Widget build(BuildContext context) {
@@ -854,59 +951,69 @@ class _PropertyActions extends StatelessWidget {
     final isInactive = property.status == PropertyStatus.inactive;
     final toggleTooltip = isInactive ? 'Ativar' : 'Inativar';
 
-    final buttons = Wrap(
-      spacing: 6,
-      runSpacing: 6,
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
       alignment: WrapAlignment.end,
       children: [
-        _PropertyActionIconButton(
-          tooltip: 'Editar',
+        _PropertyActionButton(
+          label: 'Editar',
           icon: Icons.edit_outlined,
           onPressed: onEdit,
         ),
-        _PropertyActionIconButton(
-          tooltip: toggleTooltip,
+        _PropertyActionButton(
+          label: toggleTooltip,
           icon: isInactive ? Icons.unarchive_outlined : Icons.archive_outlined,
           onPressed: onToggleStatus,
         ),
-        _PropertyActionIconButton(
-          tooltip: 'Excluir',
+        _PropertyActionButton(
+          label: 'Excluir',
           icon: Icons.delete_outline,
           color: colorScheme.error,
           onPressed: onDelete,
         ),
+        AppButton(
+          text: 'Nova visita',
+          icon: const Icon(Icons.add, size: 18),
+          height: 38,
+          borderRadius: 12,
+          shadow: false,
+          onPressed: onCreateVisit,
+        ),
       ],
     );
+  }
+}
 
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final isMobile = constraints.maxWidth < 640;
+class _PropertyActionButton extends StatelessWidget {
+  const _PropertyActionButton({
+    required this.label,
+    required this.icon,
+    required this.onPressed,
+    this.color,
+  });
 
-        if (isMobile) {
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Align(alignment: Alignment.centerRight, child: buttons),
-              const SizedBox(height: 16),
-              _PropertyStatsStrip(
-                stats: stats,
-                loading: statsLoading,
-                stacked: true,
-              ),
-            ],
-          );
-        }
+  final String label;
+  final IconData icon;
+  final VoidCallback onPressed;
+  final Color? color;
 
-        return Row(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            _PropertyStatsStrip(stats: stats, loading: statsLoading),
-            const SizedBox(width: 60),
-            buttons,
-          ],
-        );
-      },
+  @override
+  Widget build(BuildContext context) {
+    final effectiveColor = color ?? Theme.of(context).colorScheme.primary;
+
+    return AppButton(
+      text: label,
+      outlined: true,
+      height: 38,
+      borderRadius: 12,
+      shadow: false,
+      color: effectiveColor,
+      textColor: effectiveColor,
+      backgroundColor: Colors.transparent,
+      borderColor: effectiveColor.withValues(alpha: 0.36),
+      icon: Icon(icon, size: 18),
+      onPressed: onPressed,
     );
   }
 }
@@ -970,6 +1077,20 @@ class _PropertyTabsCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
+    final tabs = SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Row(
+        children: [
+          for (final tab in PropertyTab.values)
+            _PropertyTabButton(
+              tab: tab,
+              selected: tab == activeTab,
+              onTap: () => onTabChanged(tab),
+            ),
+        ],
+      ),
+    );
 
     return AppCard(
       padding: EdgeInsets.zero,
@@ -977,20 +1098,7 @@ class _PropertyTabsCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Row(
-              children: [
-                for (final tab in PropertyTab.values)
-                  _PropertyTabButton(
-                    tab: tab,
-                    selected: tab == activeTab,
-                    onTap: () => onTabChanged(tab),
-                  ),
-              ],
-            ),
-          ),
+          tabs,
           Divider(height: 1, color: colorScheme.outline.withValues(alpha: 0.2)),
           Padding(padding: const EdgeInsets.all(18), child: child),
         ],
@@ -1052,13 +1160,19 @@ class _PropertyTabButton extends StatelessWidget {
 }
 
 class _PropertyGeneralTab extends StatelessWidget {
-  const _PropertyGeneralTab({required this.property});
+  const _PropertyGeneralTab({
+    required this.property,
+    required this.stats,
+    required this.statsLoading,
+  });
 
   final PropertySummaryModel property;
+  final _PropertyStats? stats;
+  final bool statsLoading;
 
   @override
   Widget build(BuildContext context) {
-    return _DetailsFieldGrid(
+    final details = _DetailsFieldGrid(
       fields: [
         _DetailField(label: 'Nome', value: _dashIfBlank(property.nome)),
         _DetailField(
@@ -1081,6 +1195,38 @@ class _PropertyGeneralTab extends StatelessWidget {
         ),
       ],
     );
+    final statsPanel = SizedBox(
+      width: 250,
+      child: _PropertyStatsPanel(
+        stats: stats,
+        loading: statsLoading,
+        stacked: false,
+      ),
+    );
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        if (constraints.maxWidth < 820) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              details,
+              const SizedBox(height: 14),
+              Align(alignment: Alignment.centerLeft, child: statsPanel),
+            ],
+          );
+        }
+
+        return Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(child: details),
+            const SizedBox(width: 18),
+            statsPanel,
+          ],
+        );
+      },
+    );
   }
 }
 
@@ -1088,18 +1234,29 @@ class _PropertyAnimalsTab extends StatelessWidget {
   const _PropertyAnimalsTab({
     required this.property,
     required this.value,
+    required this.onEdit,
+    required this.onToggleStatus,
+    required this.onDelete,
     required this.onRetry,
   });
 
   final PropertySummaryModel property;
   final AsyncValue<List<AnimalSummaryModel>> value;
+  final ValueChanged<AnimalSummaryModel> onEdit;
+  final ValueChanged<AnimalSummaryModel> onToggleStatus;
+  final ValueChanged<AnimalSummaryModel> onDelete;
   final VoidCallback onRetry;
 
   @override
   Widget build(BuildContext context) {
     return value.when(
-      data: (animals) =>
-          _PropertyAnimalsTable(property: property, animals: animals),
+      data: (animals) => _PropertyAnimalsTable(
+        property: property,
+        animals: animals,
+        onEdit: onEdit,
+        onToggleStatus: onToggleStatus,
+        onDelete: onDelete,
+      ),
       loading: () => const _InlineFeedback(
         message: 'Carregando animais da propriedade...',
         loading: true,
@@ -1141,17 +1298,29 @@ class _PropertyVisitsTab extends StatelessWidget {
 }
 
 class _PropertyAnimalsTable extends StatelessWidget {
-  const _PropertyAnimalsTable({required this.property, required this.animals});
+  const _PropertyAnimalsTable({
+    required this.property,
+    required this.animals,
+    required this.onEdit,
+    required this.onToggleStatus,
+    required this.onDelete,
+  });
 
   final PropertySummaryModel property;
   final List<AnimalSummaryModel> animals;
+  final ValueChanged<AnimalSummaryModel> onEdit;
+  final ValueChanged<AnimalSummaryModel> onToggleStatus;
+  final ValueChanged<AnimalSummaryModel> onDelete;
 
   @override
   Widget build(BuildContext context) {
-    return _DetailsInlineTable<AnimalSummaryModel>(
+    final table = AppTable<AnimalSummaryModel>(
       rows: animals,
       footerLabel: _animalsRecordsLabel(animals.length),
       emptyMessage: 'Nenhum animal vinculado a esta propriedade.',
+      mobileBreakpoint: 1180,
+      borderRadius: 16,
+      shadow: false,
       onRowTap: (animal) => AnimalHistoryDialog.show(
         context: context,
         animal: animal,
@@ -1161,51 +1330,152 @@ class _PropertyAnimalsTable extends StatelessWidget {
         return _AnimalIdentityCell(animal: animal);
       },
       columns: [
-        _DetailsTableColumn<AnimalSummaryModel>(
-          label: 'Animal',
+        AppTableColumn<AnimalSummaryModel>(
+          label: 'Identificação\n(Brinco)',
+          mobileLabel: 'Identificação/Brinco',
           flex: 3,
+          alignment: Alignment.centerLeft,
+          headerAlignment: Alignment.center,
           cellBuilder: (context, animal) => _AnimalIdentityCell(animal: animal),
         ),
-        _DetailsTableColumn<AnimalSummaryModel>(
-          label: 'Categoria',
+        AppTableColumn<AnimalSummaryModel>(
+          label: 'Raça',
           flex: 2,
-          cellBuilder: (context, animal) => Text(_animalCategoryLabel(animal)),
+          alignment: Alignment.center,
+          cellBuilder: (context, animal) =>
+              Center(child: _AnimalBreedCell(animal: animal)),
         ),
-        _DetailsTableColumn<AnimalSummaryModel>(
-          label: 'Status',
+        AppTableColumn<AnimalSummaryModel>(
+          label: 'Idade',
           flex: 2,
-          cellBuilder: (context, animal) => StatusBadge(
-            label: animal.status.label,
-            type: _animalStatusBadgeType(animal.status),
+          cellBuilder: (context, animal) => _AnimalTableText(
+            value: _animalAgeLabel(animal.dataNascimento, DateTime.now()),
           ),
         ),
-        _DetailsTableColumn<AnimalSummaryModel>(
-          label: 'Reprodução',
+        AppTableColumn<AnimalSummaryModel>(
+          label: 'Último parto',
           flex: 2,
+          cellBuilder: (context, animal) =>
+              _AnimalTableText(value: formatDate(animal.dataUltimoParto)),
+        ),
+        AppTableColumn<AnimalSummaryModel>(
+          label: 'Produtiva',
+          flex: 2,
+          cellBuilder: (context, animal) =>
+              _AnimalTableText(value: _animalProductiveStatusLabel(animal)),
+        ),
+        AppTableColumn<AnimalSummaryModel>(
+          label: 'Status',
+          flex: 2,
+          alignment: Alignment.center,
+          cellBuilder: (context, animal) =>
+              Center(child: _AnimalStatusPill(status: animal.status)),
+        ),
+        AppTableColumn<AnimalSummaryModel>(
+          label: 'Status\nreprodutivo',
+          mobileLabel: 'Status reprodutivo',
+          flex: 2,
+          alignment: Alignment.center,
           cellBuilder: (context, animal) {
             final status = IndicadorReprodutivoCalculator.resolveAnimalStatus(
               animal,
             );
-            return StatusBadge(
-              label: status.label,
-              type: _reproductiveStatusBadgeType(status),
-              icon: status.icon,
-            );
+            return Center(child: _ReproductiveStatusPill(status: status));
           },
         ),
-        _DetailsTableColumn<AnimalSummaryModel>(
+        AppTableColumn<AnimalSummaryModel>(
+          label: 'Decisão/obs.',
+          mobileLabel: 'Decisão/observação',
+          flex: 3,
+          cellBuilder: (context, animal) => _AnimalTableText(
+            value: _dashIfBlank(animal.historicoReprodutivo),
+          ),
+        ),
+        AppTableColumn<AnimalSummaryModel>(
           label: 'Última IA',
           flex: 2,
           cellBuilder: (context, animal) =>
-              Text(formatDate(animal.dataInseminacao)),
+              _AnimalTableText(value: formatDate(animal.dataInseminacao)),
         ),
-        _DetailsTableColumn<AnimalSummaryModel>(
-          label: 'Último parto',
+        AppTableColumn<AnimalSummaryModel>(
+          label: 'IAs',
+          alignment: Alignment.center,
+          cellBuilder: (context, animal) =>
+              const _AnimalTableText(value: '--', textAlign: TextAlign.center),
+        ),
+        AppTableColumn<AnimalSummaryModel>(
+          label: 'Prenhez',
+          alignment: Alignment.center,
+          cellBuilder: (context, animal) => _AnimalTableText(
+            value: _animalPregnancyDaysLabel(animal, DateTime.now()),
+            textAlign: TextAlign.center,
+          ),
+        ),
+        AppTableColumn<AnimalSummaryModel>(
+          label: 'DEL',
+          alignment: Alignment.center,
+          cellBuilder: (context, animal) => _AnimalTableText(
+            value: _formatNullableInt(animal.diasEmLactacao),
+            textAlign: TextAlign.center,
+          ),
+        ),
+        AppTableColumn<AnimalSummaryModel>(
+          label: 'Dias secar',
+          flex: 2,
+          alignment: Alignment.center,
+          cellBuilder: (context, animal) =>
+              const _AnimalTableText(value: '--', textAlign: TextAlign.center),
+        ),
+        AppTableColumn<AnimalSummaryModel>(
+          label: 'Secagem',
+          flex: 2,
+          cellBuilder: (context, animal) => const _AnimalTableText(value: '--'),
+        ),
+        AppTableColumn<AnimalSummaryModel>(
+          label: 'Pré-parto',
+          flex: 2,
+          cellBuilder: (context, animal) => const _AnimalTableText(value: '--'),
+        ),
+        AppTableColumn<AnimalSummaryModel>(
+          label: 'Parto',
+          flex: 2,
+          cellBuilder: (context, animal) => const _AnimalTableText(value: '--'),
+        ),
+        AppTableColumn<AnimalSummaryModel>(
+          label: 'Último evento',
           flex: 2,
           cellBuilder: (context, animal) =>
-              Text(formatDate(animal.dataUltimoParto)),
+              _AnimalLastEventText(animal: animal),
+        ),
+        AppTableColumn<AnimalSummaryModel>(
+          label: 'Ações',
+          flex: 1,
+          alignment: Alignment.center,
+          cellBuilder: (context, animal) => Center(
+            child: _AnimalActionsMenu(
+              animal: animal,
+              onEdit: () => onEdit(animal),
+              onToggleStatus: () => onToggleStatus(animal),
+              onDelete: () => onDelete(animal),
+            ),
+          ),
         ),
       ],
+    );
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        if (constraints.maxWidth < 1180) {
+          return table;
+        }
+
+        final tableWidth = math.max(1880.0, constraints.maxWidth);
+        return SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          clipBehavior: Clip.none,
+          child: SizedBox(width: tableWidth, child: table),
+        );
+      },
     );
   }
 }
@@ -1218,47 +1488,52 @@ class _PropertyVisitsTable extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return _DetailsInlineTable<VisitSummaryModel>(
+    return AppTable<VisitSummaryModel>(
       rows: visits,
       footerLabel: _visitsRecordsLabel(visits.length),
       emptyMessage: 'Nenhuma visita vinculada a esta propriedade.',
+      borderRadius: 16,
+      shadow: false,
       onRowTap: (visit) => _openVisit(context, visit),
       mobileTitleBuilder: (context, visit) {
-        return Text(
-          formatDate(visit.dataVisita),
-          style: Theme.of(
-            context,
-          ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w900),
-        );
+        return _PropertyVisitIdentity(visit: visit);
       },
       columns: [
-        _DetailsTableColumn<VisitSummaryModel>(
-          label: 'Data',
-          flex: 2,
-          cellBuilder: (context, visit) => Text(formatDate(visit.dataVisita)),
-        ),
-        _DetailsTableColumn<VisitSummaryModel>(
-          label: 'Veterinário',
+        AppTableColumn<VisitSummaryModel>(
+          label: 'Visita',
           flex: 3,
-          cellBuilder: (context, visit) =>
-              Text(_dashIfBlank(visit.veterinarioResponsavel)),
+          alignment: Alignment.centerLeft,
+          headerAlignment: Alignment.centerLeft,
+          cellBuilder: (context, visit) => _PropertyVisitIdentity(visit: visit),
         ),
-        _DetailsTableColumn<VisitSummaryModel>(
+        AppTableColumn<VisitSummaryModel>(
           label: 'Protocolo',
           flex: 3,
-          cellBuilder: (context, visit) => Text(_protocolLabel(visit)),
+          cellBuilder: (context, visit) =>
+              _PropertyVisitText(value: _protocolLabel(visit), maxLines: 2),
         ),
-        _DetailsTableColumn<VisitSummaryModel>(
+        AppTableColumn<VisitSummaryModel>(
+          label: 'Próximo passo',
+          flex: 4,
+          cellBuilder: (context, visit) =>
+              _PropertyVisitText(value: _nextStepText(visit), maxLines: 2),
+        ),
+        AppTableColumn<VisitSummaryModel>(
           label: 'Animais',
-          flex: 2,
-          cellBuilder: (context, visit) => Text(
-            '${visit.animais.length} ${visit.animais.length == 1 ? 'animal' : 'animais'}',
+          flex: 1,
+          cellBuilder: (context, visit) => _PropertyVisitMetric(
+            value: visit.animais.length.toString(),
+            label: 'Animais',
           ),
         ),
-        _DetailsTableColumn<VisitSummaryModel>(
-          label: 'Proximo passo',
-          flex: 4,
-          cellBuilder: (context, visit) => Text(_nextStepText(visit)),
+        AppTableColumn<VisitSummaryModel>(
+          label: 'Prenhas',
+          flex: 1,
+          cellBuilder: (context, visit) => _PropertyVisitMetric(
+            value: _visitPregnantCountLabel(visit),
+            label: 'Prenhas',
+            highlighted: true,
+          ),
         ),
       ],
     );
@@ -1281,8 +1556,197 @@ class _PropertyVisitsTable extends StatelessWidget {
   }
 }
 
+class _PropertyVisitIdentity extends StatelessWidget {
+  const _PropertyVisitIdentity({required this.visit});
+
+  final VisitSummaryModel visit;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final primary2 = AppTheme.primary2Color;
+
+    return Row(
+      children: [
+        Container(
+          width: 38,
+          height: 38,
+          decoration: BoxDecoration(
+            color: primary2.withValues(alpha: 0.10),
+            borderRadius: BorderRadius.circular(11),
+          ),
+          child: Icon(Icons.description_outlined, size: 19, color: primary2),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                formatDate(visit.dataVisita),
+                maxLines: 3,
+                overflow: TextOverflow.visible,
+                style: theme.textTheme.bodyLarge?.copyWith(
+                  color: colorScheme.onSurface,
+                  fontWeight: FontWeight.w900,
+                  height: 1.1,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                _dashIfBlank(visit.veterinarioResponsavel),
+                maxLines: 3,
+                overflow: TextOverflow.visible,
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: colorScheme.onSurfaceVariant,
+                  fontWeight: FontWeight.w600,
+                  height: 1.15,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _PropertyVisitText extends StatelessWidget {
+  const _PropertyVisitText({required this.value, this.maxLines = 1});
+
+  final String value;
+  final int maxLines;
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      value,
+      maxLines: maxLines,
+      overflow: TextOverflow.ellipsis,
+      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+        color: Theme.of(context).colorScheme.onSurfaceVariant,
+        fontWeight: FontWeight.w700,
+        height: 1.2,
+      ),
+    );
+  }
+}
+
+class _PropertyVisitMetric extends StatelessWidget {
+  const _PropertyVisitMetric({
+    required this.value,
+    required this.label,
+    this.highlighted = false,
+  });
+
+  final String value;
+  final String label;
+  final bool highlighted;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final valueColor = highlighted
+        ? AppTheme.primary2Color
+        : colorScheme.onSurface;
+
+    return SizedBox(
+      width: 72,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            value,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.center,
+            style: theme.textTheme.titleMedium?.copyWith(
+              color: valueColor,
+              fontWeight: FontWeight.w900,
+              height: 1,
+            ),
+          ),
+          const SizedBox(height: 5),
+          Text(
+            label.toUpperCase(),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.center,
+            style: theme.textTheme.labelSmall?.copyWith(
+              color: colorScheme.onSurfaceVariant,
+              fontWeight: FontWeight.w800,
+              fontSize: 9.5,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _AnimalIdentityCell extends StatelessWidget {
   const _AnimalIdentityCell({required this.animal});
+
+  final AnimalSummaryModel animal;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
+    final primary2 = AppTheme.primary2Color;
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        Container(
+          width: 46,
+          height: 46,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: primary2.withValues(alpha: 0.10),
+            borderRadius: BorderRadius.circular(13),
+          ),
+          child: Icon(MdiIcons.cow, size: 25, color: primary2),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                _animalCodeLabel(animal.codigo),
+                maxLines: 3,
+                overflow: TextOverflow.visible,
+                style: theme.textTheme.titleMedium?.copyWith(
+                  color: colorScheme.onSurface,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                _dashIfBlank(animal.idExterno),
+                maxLines: 3,
+                overflow: TextOverflow.visible,
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: colorScheme.onSurfaceVariant,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _AnimalBreedCell extends StatelessWidget {
+  const _AnimalBreedCell({required this.animal});
 
   final AnimalSummaryModel animal;
 
@@ -1295,24 +1759,236 @@ class _AnimalIdentityCell extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          _animalCodeLabel(animal.codigo),
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
+          animal.categoria.isEmpty ? '--' : animal.categoria,
+          maxLines: 3,
+          overflow: TextOverflow.visible,
           style: theme.textTheme.bodyMedium?.copyWith(
             color: colorScheme.onSurface,
-            fontWeight: FontWeight.w900,
+            fontWeight: FontWeight.w700,
           ),
         ),
-        if (animal.idExterno.trim().isNotEmpty)
-          Text(
-            animal.idExterno.trim(),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: colorScheme.onSurfaceVariant,
+        const SizedBox(height: 4),
+        Text(
+          animal.sexo ?? '--',
+          maxLines: 2,
+          overflow: TextOverflow.visible,
+          style: theme.textTheme.bodySmall?.copyWith(
+            color: colorScheme.onSurfaceVariant,
+          ),
+        ),
+        Text(
+          'Nascimento: ${formatDate(animal.dataNascimento)}',
+          maxLines: 2,
+          overflow: TextOverflow.visible,
+          style: theme.textTheme.bodySmall?.copyWith(
+            color: colorScheme.onSurfaceVariant,
+          ),
+        ),
+        Text(
+          'Lactação: ${animal.numeroLactacao}',
+          maxLines: 2,
+          overflow: TextOverflow.visible,
+          style: theme.textTheme.bodySmall?.copyWith(
+            color: colorScheme.onSurfaceVariant,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _AnimalTableText extends StatelessWidget {
+  const _AnimalTableText({required this.value, this.textAlign});
+
+  final String value;
+  final TextAlign? textAlign;
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      value,
+      maxLines: 6,
+      overflow: TextOverflow.visible,
+      textAlign: textAlign,
+      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+        color: Theme.of(context).colorScheme.onSurfaceVariant,
+        fontWeight: FontWeight.w700,
+        height: 1.2,
+      ),
+    );
+  }
+}
+
+class _AnimalLastEventText extends StatelessWidget {
+  const _AnimalLastEventText({required this.animal});
+
+  final AnimalSummaryModel animal;
+
+  @override
+  Widget build(BuildContext context) {
+    final lastBirth = animal.dataUltimoParto;
+    final inseminationDate = animal.dataInseminacao;
+
+    if (lastBirth != null) {
+      return _AnimalTableText(value: 'Parto em ${formatDate(lastBirth)}');
+    }
+
+    if (inseminationDate != null) {
+      return _AnimalTableText(value: 'IA em ${formatDate(inseminationDate)}');
+    }
+
+    final history = _cleanText(animal.historicoReprodutivo);
+    return _AnimalTableText(value: history ?? 'Sem evento');
+  }
+}
+
+class _AnimalStatusPill extends StatelessWidget {
+  const _AnimalStatusPill({required this.status});
+
+  final AnimalStatus status;
+
+  @override
+  Widget build(BuildContext context) {
+    final isActive = status == AnimalStatus.active;
+
+    return StatusBadge(
+      label: status.label,
+      type: _animalStatusBadgeType(status),
+      backgroundColor: isActive
+          ? Theme.of(context).brightness == Brightness.dark
+                ? AppTheme.syncBadgeDarkBackgroundColor
+                : AppTheme.syncBadgeBackgroundColor
+          : null,
+      foregroundColor: isActive
+          ? Theme.of(context).brightness == Brightness.dark
+                ? AppTheme.syncBadgeDarkForegroundColor
+                : AppTheme.syncBadgeForegroundColor
+          : null,
+      borderColor: isActive ? Colors.transparent : null,
+    );
+  }
+}
+
+class _ReproductiveStatusPill extends StatelessWidget {
+  const _ReproductiveStatusPill({required this.status});
+
+  final AnimalReproductiveStatus status;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = _reproductiveStatusColors(context, status);
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+      decoration: BoxDecoration(
+        color: colors.background,
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: colors.border),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(status.icon, size: 12, color: colors.foreground),
+          const SizedBox(width: 4),
+          Flexible(
+            child: Text(
+              status.label.toUpperCase(),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                color: colors.foreground,
+                fontWeight: FontWeight.w900,
+              ),
             ),
           ),
+        ],
+      ),
+    );
+  }
+}
+
+enum _AnimalAction { edit, toggleActive, delete }
+
+class _AnimalActionsMenu extends StatelessWidget {
+  const _AnimalActionsMenu({
+    required this.animal,
+    required this.onEdit,
+    required this.onToggleStatus,
+    required this.onDelete,
+  });
+
+  final AnimalSummaryModel animal;
+  final VoidCallback onEdit;
+  final VoidCallback onToggleStatus;
+  final VoidCallback onDelete;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final isInactive = animal.status == AnimalStatus.inactive;
+
+    return PopupMenuButton<_AnimalAction>(
+      tooltip: 'Ações',
+      padding: EdgeInsets.zero,
+      onSelected: (action) {
+        switch (action) {
+          case _AnimalAction.edit:
+            onEdit();
+            break;
+          case _AnimalAction.toggleActive:
+            onToggleStatus();
+            break;
+          case _AnimalAction.delete:
+            onDelete();
+            break;
+        }
+      },
+      itemBuilder: (context) => [
+        const PopupMenuItem(
+          value: _AnimalAction.edit,
+          child: ListTile(
+            dense: true,
+            contentPadding: EdgeInsets.zero,
+            leading: Icon(Icons.edit_outlined),
+            title: Text('Editar'),
+          ),
+        ),
+        PopupMenuItem(
+          value: _AnimalAction.toggleActive,
+          child: ListTile(
+            dense: true,
+            contentPadding: EdgeInsets.zero,
+            leading: Icon(
+              isInactive ? Icons.unarchive_outlined : Icons.archive_outlined,
+            ),
+            title: Text(isInactive ? 'Ativar' : 'Inativar'),
+          ),
+        ),
+        PopupMenuItem(
+          value: _AnimalAction.delete,
+          child: ListTile(
+            dense: true,
+            contentPadding: EdgeInsets.zero,
+            leading: Icon(Icons.delete_outline, color: colorScheme.error),
+            title: Text('Excluir', style: TextStyle(color: colorScheme.error)),
+          ),
+        ),
       ],
+      child: IgnorePointer(
+        child: AppButton(
+          outlined: true,
+          width: 36,
+          height: 36,
+          padding: EdgeInsets.zero,
+          backgroundColor: Colors.transparent,
+          borderColor: colorScheme.outline.withValues(alpha: 0.55),
+          shadow: false,
+          color: colorScheme.primary,
+          textColor: colorScheme.primary,
+          onPressed: () {},
+          child: const Icon(Icons.more_vert, size: 20),
+        ),
+      ),
     );
   }
 }
@@ -1468,349 +2144,6 @@ class _InlineFeedback extends StatelessWidget {
   }
 }
 
-class _DetailsTableColumn<T> {
-  const _DetailsTableColumn({
-    required this.label,
-    required this.cellBuilder,
-    this.flex = 1,
-    this.alignment = Alignment.centerLeft,
-    this.mobileLabel,
-  });
-
-  final String label;
-  final String? mobileLabel;
-  final int flex;
-  final AlignmentGeometry alignment;
-  final Widget Function(BuildContext context, T row) cellBuilder;
-}
-
-class _DetailsInlineTable<T> extends StatelessWidget {
-  const _DetailsInlineTable({
-    required this.rows,
-    required this.columns,
-    required this.emptyMessage,
-    this.footerLabel,
-    this.mobileTitleBuilder,
-    this.onRowTap,
-  });
-
-  final List<T> rows;
-  final List<_DetailsTableColumn<T>> columns;
-  final String emptyMessage;
-  final String? footerLabel;
-  final Widget Function(BuildContext context, T row)? mobileTitleBuilder;
-  final ValueChanged<T>? onRowTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        if (rows.isEmpty) {
-          return _InlineFeedback(message: emptyMessage);
-        }
-
-        if (constraints.maxWidth < 720) {
-          return _DetailsMobileList<T>(
-            rows: rows,
-            columns: columns,
-            footerLabel: footerLabel,
-            titleBuilder: mobileTitleBuilder,
-            onRowTap: onRowTap,
-          );
-        }
-
-        return _DetailsDesktopTable<T>(
-          rows: rows,
-          columns: columns,
-          footerLabel: footerLabel,
-          onRowTap: onRowTap,
-        );
-      },
-    );
-  }
-}
-
-class _DetailsDesktopTable<T> extends StatelessWidget {
-  const _DetailsDesktopTable({
-    required this.rows,
-    required this.columns,
-    required this.footerLabel,
-    required this.onRowTap,
-  });
-
-  final List<T> rows;
-  final List<_DetailsTableColumn<T>> columns;
-  final String? footerLabel;
-  final ValueChanged<T>? onRowTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-
-    return Container(
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: colorScheme.outline.withValues(alpha: 0.22)),
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Container(
-            color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.34),
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-            child: Row(
-              children: [
-                for (var index = 0; index < columns.length; index++) ...[
-                  Expanded(
-                    flex: columns[index].flex,
-                    child: Text(
-                      columns[index].label,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      textAlign: TextAlign.center,
-                      style: theme.textTheme.labelMedium?.copyWith(
-                        color: colorScheme.onSurfaceVariant,
-                        fontWeight: FontWeight.w900,
-                      ),
-                    ),
-                  ),
-                  if (index < columns.length - 1) const SizedBox(width: 14),
-                ],
-              ],
-            ),
-          ),
-          for (var index = 0; index < rows.length; index++) ...[
-            Divider(
-              height: 1,
-              color: colorScheme.outline.withValues(alpha: 0.2),
-            ),
-            _DetailsDesktopRow<T>(
-              row: rows[index],
-              columns: columns,
-              onTap: onRowTap,
-              backgroundColor: index.isEven
-                  ? colorScheme.surface
-                  : colorScheme.surfaceContainerHighest.withValues(alpha: 0.18),
-            ),
-          ],
-          if (footerLabel != null) ...[
-            Divider(
-              height: 1,
-              color: colorScheme.outline.withValues(alpha: 0.2),
-            ),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              child: Text(
-                footerLabel!,
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: colorScheme.onSurfaceVariant,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-}
-
-class _DetailsDesktopRow<T> extends StatelessWidget {
-  const _DetailsDesktopRow({
-    required this.row,
-    required this.columns,
-    required this.backgroundColor,
-    this.onTap,
-  });
-
-  final T row;
-  final List<_DetailsTableColumn<T>> columns;
-  final Color backgroundColor;
-  final ValueChanged<T>? onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-    final content = Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          for (var index = 0; index < columns.length; index++) ...[
-            Expanded(
-              flex: columns[index].flex,
-              child: Align(
-                alignment: columns[index].alignment,
-                child: DefaultTextStyle.merge(
-                  maxLines: 3,
-                  overflow: TextOverflow.ellipsis,
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    color: colorScheme.onSurface,
-                  ),
-                  child: columns[index].cellBuilder(context, row),
-                ),
-              ),
-            ),
-            if (index < columns.length - 1) const SizedBox(width: 14),
-          ],
-        ],
-      ),
-    );
-
-    if (onTap == null) {
-      return ColoredBox(color: backgroundColor, child: content);
-    }
-
-    return Material(
-      color: backgroundColor,
-      child: InkWell(
-        onTap: () => onTap!(row),
-        hoverColor: colorScheme.primary.withValues(alpha: 0.04),
-        child: content,
-      ),
-    );
-  }
-}
-
-class _DetailsMobileList<T> extends StatelessWidget {
-  const _DetailsMobileList({
-    required this.rows,
-    required this.columns,
-    required this.footerLabel,
-    required this.titleBuilder,
-    required this.onRowTap,
-  });
-
-  final List<T> rows;
-  final List<_DetailsTableColumn<T>> columns;
-  final String? footerLabel;
-  final Widget Function(BuildContext context, T row)? titleBuilder;
-  final ValueChanged<T>? onRowTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        for (var index = 0; index < rows.length; index++) ...[
-          _DetailsMobileRecord<T>(
-            row: rows[index],
-            columns: columns,
-            titleBuilder: titleBuilder,
-            onTap: onRowTap,
-          ),
-          if (index < rows.length - 1) const SizedBox(height: 10),
-        ],
-        if (footerLabel != null) ...[
-          const SizedBox(height: 12),
-          Text(
-            footerLabel!,
-            textAlign: TextAlign.center,
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: colorScheme.onSurfaceVariant,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-        ],
-      ],
-    );
-  }
-}
-
-class _DetailsMobileRecord<T> extends StatelessWidget {
-  const _DetailsMobileRecord({
-    required this.row,
-    required this.columns,
-    required this.titleBuilder,
-    required this.onTap,
-  });
-
-  final T row;
-  final List<_DetailsTableColumn<T>> columns;
-  final Widget Function(BuildContext context, T row)? titleBuilder;
-  final ValueChanged<T>? onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    final content = Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: colorScheme.outline.withValues(alpha: 0.22)),
-        color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.18),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          if (titleBuilder != null) ...[
-            titleBuilder!(context, row),
-            const SizedBox(height: 10),
-            Divider(color: colorScheme.outline.withValues(alpha: 0.22)),
-            const SizedBox(height: 8),
-          ],
-          for (var index = 0; index < columns.length; index++) ...[
-            _DetailsMobileField<T>(column: columns[index], row: row),
-            if (index < columns.length - 1) const SizedBox(height: 10),
-          ],
-        ],
-      ),
-    );
-
-    if (onTap == null) return content;
-
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        borderRadius: BorderRadius.circular(12),
-        onTap: () => onTap!(row),
-        child: content,
-      ),
-    );
-  }
-}
-
-class _DetailsMobileField<T> extends StatelessWidget {
-  const _DetailsMobileField({required this.column, required this.row});
-
-  final _DetailsTableColumn<T> column;
-  final T row;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          (column.mobileLabel ?? column.label).toUpperCase(),
-          style: theme.textTheme.labelSmall?.copyWith(
-            color: colorScheme.onSurfaceVariant,
-            fontWeight: FontWeight.w900,
-          ),
-        ),
-        const SizedBox(height: 5),
-        DefaultTextStyle.merge(
-          maxLines: 4,
-          overflow: TextOverflow.ellipsis,
-          style: theme.textTheme.bodyMedium?.copyWith(
-            color: colorScheme.onSurface,
-          ),
-          child: column.cellBuilder(context, row),
-        ),
-      ],
-    );
-  }
-}
-
 class _PropertyStats {
   const _PropertyStats({
     required this.herdTotal,
@@ -1903,11 +2236,118 @@ bool _isAnimalInReproduction(AnimalSummaryModel animal) {
   };
 }
 
-StatusBadgeType _propertyStatusBadgeType(PropertyStatus status) {
+String _visitPregnantCountLabel(VisitSummaryModel visit) {
+  final pregnant = visit.animais.where(_isPregnant).length;
+  return pregnant == 0 ? '--' : pregnant.toString();
+}
+
+String _animalAgeLabel(DateTime? birthDate, DateTime now) {
+  if (birthDate == null) return '--';
+
+  var months = (now.year - birthDate.year) * 12 + now.month - birthDate.month;
+  if (now.day < birthDate.day) months--;
+  if (months < 0) return '--';
+  if (months < 24) return '$months ${months == 1 ? 'mês' : 'meses'}';
+
+  final years = months ~/ 12;
+  final remainingMonths = months % 12;
+  if (remainingMonths == 0) return '$years ${years == 1 ? 'ano' : 'anos'}';
+  return '$years a $remainingMonths m';
+}
+
+String _animalProductiveStatusLabel(AnimalSummaryModel animal) {
+  final text = [
+    animal.categoria,
+    animal.historicoReprodutivo,
+    animal.statusReprodutivo?.label,
+  ].whereType<String>().join(' ').normalize();
+
+  if (text.contains('novilha')) return 'Novilha';
+  if (text.contains('seca')) return 'Seca';
+  if (text.contains('lact') ||
+      animal.diasEmLactacao != null ||
+      animal.numeroLactacao > 0) {
+    return 'Lactante';
+  }
+  return 'Não informada';
+}
+
+String _animalPregnancyDaysLabel(AnimalSummaryModel animal, DateTime now) {
+  final status = IndicadorReprodutivoCalculator.resolveAnimalStatus(animal);
+  final insemination = animal.dataInseminacao;
+
+  if (status != AnimalReproductiveStatus.pregnant || insemination == null) {
+    return '--';
+  }
+
+  final days = now.difference(insemination).inDays;
+  return days < 0 ? '--' : days.toString();
+}
+
+String _formatNullableInt(int? value) {
+  return value == null ? '--' : formatInteger(value);
+}
+
+_ReproductiveStatusColors _reproductiveStatusColors(
+  BuildContext context,
+  AnimalReproductiveStatus status,
+) {
+  final colorScheme = Theme.of(context).colorScheme;
+
   return switch (status) {
-    PropertyStatus.active => StatusBadgeType.success,
-    PropertyStatus.inactive => StatusBadgeType.neutral,
+    AnimalReproductiveStatus.pregnant => const _ReproductiveStatusColors(
+      background: Color(0xFFDFF8EA),
+      border: Color(0xFFB9E9CF),
+      foreground: Color(0xFF0D6B42),
+    ),
+    AnimalReproductiveStatus.empty => const _ReproductiveStatusColors(
+      background: Color(0xFFFFE3EA),
+      border: Color(0xFFF7B8C9),
+      foreground: Color(0xFFB4234A),
+    ),
+    AnimalReproductiveStatus.inseminated ||
+    AnimalReproductiveStatus.inseminatedSt ||
+    AnimalReproductiveStatus.protocol ||
+    AnimalReproductiveStatus.waitingDiagnosis =>
+      const _ReproductiveStatusColors(
+        background: Color(0xFFE0F2FE),
+        border: Color(0xFFB9E1FA),
+        foreground: Color(0xFF0369A1),
+      ),
+    AnimalReproductiveStatus.dry => const _ReproductiveStatusColors(
+      background: Color(0xFFFFF0C2),
+      border: Color(0xFFEFD58C),
+      foreground: Color(0xFF8A5C00),
+    ),
+    AnimalReproductiveStatus.released => const _ReproductiveStatusColors(
+      background: Color(0xFFDFF8EA),
+      border: Color(0xFFB9E9CF),
+      foreground: Color(0xFF0D6B42),
+    ),
+    AnimalReproductiveStatus.delayed ||
+    AnimalReproductiveStatus.induction ||
+    AnimalReproductiveStatus.discard ||
+    AnimalReproductiveStatus.pev ||
+    AnimalReproductiveStatus.noAge ||
+    AnimalReproductiveStatus.calf ||
+    AnimalReproductiveStatus.pending => _ReproductiveStatusColors(
+      background: colorScheme.surfaceContainerHighest,
+      border: colorScheme.outline.withValues(alpha: 0.55),
+      foreground: colorScheme.onSurfaceVariant,
+    ),
   };
+}
+
+class _ReproductiveStatusColors {
+  const _ReproductiveStatusColors({
+    required this.background,
+    required this.border,
+    required this.foreground,
+  });
+
+  final Color background;
+  final Color border;
+  final Color foreground;
 }
 
 StatusBadgeType _animalStatusBadgeType(AnimalStatus status) {
@@ -1919,47 +2359,8 @@ StatusBadgeType _animalStatusBadgeType(AnimalStatus status) {
   };
 }
 
-StatusBadgeType _reproductiveStatusBadgeType(AnimalReproductiveStatus status) {
-  return switch (status) {
-    AnimalReproductiveStatus.pregnant => StatusBadgeType.success,
-    AnimalReproductiveStatus.inseminated ||
-    AnimalReproductiveStatus.inseminatedSt ||
-    AnimalReproductiveStatus.protocol ||
-    AnimalReproductiveStatus.waitingDiagnosis => StatusBadgeType.info,
-    AnimalReproductiveStatus.empty => StatusBadgeType.warning,
-    AnimalReproductiveStatus.released => StatusBadgeType.success,
-    AnimalReproductiveStatus.delayed ||
-    AnimalReproductiveStatus.induction ||
-    AnimalReproductiveStatus.discard ||
-    AnimalReproductiveStatus.pev ||
-    AnimalReproductiveStatus.noAge ||
-    AnimalReproductiveStatus.calf ||
-    AnimalReproductiveStatus.dry ||
-    AnimalReproductiveStatus.pending => StatusBadgeType.neutral,
-  };
-}
-
 String _protocolLabel(VisitSummaryModel visit) {
-  final animals = visit.animais;
-  if (animals.isEmpty) return 'Visita tecnica';
-
-  final hasDiagnosis = animals.any(
-    (animal) =>
-        _cleanText(animal.diagnostico) != null ||
-        _isPregnant(animal) ||
-        _isEmptyReproductive(animal),
-  );
-  final hasProtocol = animals.any(
-    (animal) =>
-        _cleanText(animal.decisao) != null ||
-        animal.dataUltimaIa != null ||
-        animal.numeroIaRecebida != null,
-  );
-
-  if (hasProtocol && hasDiagnosis) return 'IATF + Diagnostico';
-  if (hasProtocol) return 'IATF / Protocolo reprodutivo';
-  if (hasDiagnosis) return 'Diagnostico reprodutivo';
-  return 'Conferencia tecnica';
+  return _cleanText(visit.observacoes) ?? '--';
 }
 
 String _nextStepText(VisitSummaryModel visit) {
@@ -2050,13 +2451,6 @@ String _locationLabel(PropertySummaryModel property) {
   final state = _cleanText(property.estado);
   final parts = [?city, ?state];
   return parts.isEmpty ? '--' : parts.join(' - ');
-}
-
-String _animalCategoryLabel(AnimalSummaryModel animal) {
-  return [
-    _dashIfBlank(animal.categoria),
-    if (_cleanText(animal.sexo) != null) animal.sexo!.trim(),
-  ].join(' / ');
 }
 
 String _animalCodeLabel(String code) {

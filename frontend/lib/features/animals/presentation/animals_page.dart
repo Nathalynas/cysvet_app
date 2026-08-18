@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:math' as math;
 
 import 'package:cysvet_app/app/theme.dart';
 import 'package:cysvet_app/core/constants/app_constants.dart';
@@ -11,6 +12,7 @@ import 'package:cysvet_app/core/widgets/app_dropdown.dart';
 import 'package:cysvet_app/core/widgets/app_table.dart';
 import 'package:cysvet_app/core/widgets/property_filter_card.dart';
 import 'package:cysvet_app/core/widgets/search_card.dart';
+import 'package:cysvet_app/core/widgets/status_badge.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_material_design_icons/flutter_material_design_icons.dart';
@@ -535,16 +537,18 @@ class _AnimalsTable extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return AppTable<AnimalSummaryModel>(
+    final table = AppTable<AnimalSummaryModel>(
       rows: animals,
       footerLabel: _recordsLabel(animals.length),
+      mobileBreakpoint: 1180,
       onRowTap: onShowHistory,
       columns: [
         AppTableColumn<AnimalSummaryModel>(
           label: 'Identificação\n(Brinco)',
           mobileLabel: 'Identificação/Brinco',
-          flex: 2,
+          flex: 3,
           alignment: Alignment.centerLeft,
+          headerAlignment: Alignment.centerLeft,
           cellBuilder: (context, animal) {
             return _AnimalIdentityHeader(
               animal: animal,
@@ -552,7 +556,6 @@ class _AnimalsTable extends StatelessWidget {
             );
           },
         ),
-
         AppTableColumn<AnimalSummaryModel>(
           label: 'Raça',
           flex: 2,
@@ -562,9 +565,35 @@ class _AnimalsTable extends StatelessWidget {
           },
         ),
         AppTableColumn<AnimalSummaryModel>(
+          label: 'Idade',
+          flex: 2,
+          cellBuilder: (context, animal) => _AnimalTableText(
+            value: _animalAgeLabel(animal.dataNascimento, DateTime.now()),
+          ),
+        ),
+        AppTableColumn<AnimalSummaryModel>(
+          label: 'Último parto',
+          flex: 2,
+          cellBuilder: (context, animal) =>
+              _AnimalTableText(value: formatDate(animal.dataUltimoParto)),
+        ),
+        AppTableColumn<AnimalSummaryModel>(
+          label: 'Produtiva',
+          flex: 2,
+          cellBuilder: (context, animal) =>
+              _AnimalTableText(value: _animalProductiveStatusLabel(animal)),
+        ),
+        AppTableColumn<AnimalSummaryModel>(
+          label: 'Status',
+          flex: 2,
+          alignment: Alignment.center,
+          cellBuilder: (context, animal) =>
+              Center(child: _AnimalStatusPill(status: animal.status)),
+        ),
+        AppTableColumn<AnimalSummaryModel>(
           label: 'Status\nreprodutivo',
           mobileLabel: 'Status reprodutivo',
-          flex: 1,
+          flex: 2,
           alignment: Alignment.center,
           cellBuilder: (context, animal) {
             return Center(
@@ -573,6 +602,64 @@ class _AnimalsTable extends StatelessWidget {
               ),
             );
           },
+        ),
+        AppTableColumn<AnimalSummaryModel>(
+          label: 'Decisão/obs.',
+          mobileLabel: 'Decisão/observação',
+          flex: 3,
+          cellBuilder: (context, animal) => _AnimalTableText(
+            value: _dashIfBlank(animal.historicoReprodutivo),
+          ),
+        ),
+        AppTableColumn<AnimalSummaryModel>(
+          label: 'Última IA',
+          flex: 2,
+          cellBuilder: (context, animal) =>
+              _AnimalTableText(value: formatDate(animal.dataInseminacao)),
+        ),
+        AppTableColumn<AnimalSummaryModel>(
+          label: 'IAs',
+          alignment: Alignment.center,
+          cellBuilder: (context, animal) =>
+              const _AnimalTableText(value: '--', textAlign: TextAlign.center),
+        ),
+        AppTableColumn<AnimalSummaryModel>(
+          label: 'Prenhez',
+          alignment: Alignment.center,
+          cellBuilder: (context, animal) => _AnimalTableText(
+            value: _animalPregnancyDaysLabel(animal, DateTime.now()),
+            textAlign: TextAlign.center,
+          ),
+        ),
+        AppTableColumn<AnimalSummaryModel>(
+          label: 'DEL',
+          alignment: Alignment.center,
+          cellBuilder: (context, animal) => _AnimalTableText(
+            value: _formatNullableInt(animal.diasEmLactacao),
+            textAlign: TextAlign.center,
+          ),
+        ),
+        AppTableColumn<AnimalSummaryModel>(
+          label: 'Dias secar',
+          flex: 2,
+          alignment: Alignment.center,
+          cellBuilder: (context, animal) =>
+              const _AnimalTableText(value: '--', textAlign: TextAlign.center),
+        ),
+        AppTableColumn<AnimalSummaryModel>(
+          label: 'Secagem',
+          flex: 2,
+          cellBuilder: (context, animal) => const _AnimalTableText(value: '--'),
+        ),
+        AppTableColumn<AnimalSummaryModel>(
+          label: 'Pré-parto',
+          flex: 2,
+          cellBuilder: (context, animal) => const _AnimalTableText(value: '--'),
+        ),
+        AppTableColumn<AnimalSummaryModel>(
+          label: 'Parto',
+          flex: 2,
+          cellBuilder: (context, animal) => const _AnimalTableText(value: '--'),
         ),
         AppTableColumn<AnimalSummaryModel>(
           label: 'Último evento',
@@ -584,11 +671,11 @@ class _AnimalsTable extends StatelessWidget {
         ),
         AppTableColumn<AnimalSummaryModel>(
           label: 'Ações',
-          flex: 2,
+          flex: 1,
           alignment: Alignment.center,
           cellBuilder: (context, animal) {
             return Center(
-              child: _AnimalActions(
+              child: _AnimalActionsMenu(
                 animal: animal,
                 onEdit: () => onEdit(animal),
                 onInactivate: () => onInactivate(animal),
@@ -599,6 +686,21 @@ class _AnimalsTable extends StatelessWidget {
           },
         ),
       ],
+    );
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        if (constraints.maxWidth < 1180) {
+          return table;
+        }
+
+        final tableWidth = math.max(1880.0, constraints.maxWidth);
+        return SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          clipBehavior: Clip.none,
+          child: SizedBox(width: tableWidth, child: table),
+        );
+      },
     );
   }
 }
@@ -819,8 +921,8 @@ class _AnimalIdentityHeader extends StatelessWidget {
             children: [
               Text(
                 _animalCodeLabel(animal.codigo),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
+                maxLines: 3,
+                overflow: TextOverflow.visible,
                 style: theme.textTheme.titleMedium?.copyWith(
                   color: colorScheme.onSurface,
                   fontWeight: FontWeight.w900,
@@ -833,8 +935,8 @@ class _AnimalIdentityHeader extends StatelessWidget {
                 propertyName.isEmpty
                     ? 'Propriedade não informada'
                     : propertyName,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
+                maxLines: 3,
+                overflow: TextOverflow.visible,
                 style: theme.textTheme.bodyMedium?.copyWith(
                   color: colorScheme.onSurfaceVariant,
                   fontWeight: FontWeight.w600,
@@ -863,8 +965,8 @@ class _AnimalBreedCell extends StatelessWidget {
       children: [
         Text(
           animal.categoria.isEmpty ? '--' : animal.categoria,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
+          maxLines: 3,
+          overflow: TextOverflow.visible,
           style: theme.textTheme.bodyMedium?.copyWith(
             color: colorScheme.onSurface,
             fontWeight: FontWeight.w700,
@@ -873,29 +975,56 @@ class _AnimalBreedCell extends StatelessWidget {
         const SizedBox(height: 4),
         Text(
           animal.sexo ?? '--',
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
+          maxLines: 2,
+          overflow: TextOverflow.visible,
           style: theme.textTheme.bodySmall?.copyWith(
             color: colorScheme.onSurfaceVariant,
           ),
         ),
         Text(
           'Nascimento: ${formatDate(animal.dataNascimento)}',
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
+          maxLines: 2,
+          overflow: TextOverflow.visible,
           style: theme.textTheme.bodySmall?.copyWith(
             color: colorScheme.onSurfaceVariant,
           ),
         ),
         Text(
           'Lactação: ${animal.numeroLactacao}',
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
+          maxLines: 2,
+          overflow: TextOverflow.visible,
           style: theme.textTheme.bodySmall?.copyWith(
             color: colorScheme.onSurfaceVariant,
           ),
         ),
       ],
+    );
+  }
+}
+
+class _AnimalStatusPill extends StatelessWidget {
+  const _AnimalStatusPill({required this.status});
+
+  final AnimalStatus status;
+
+  @override
+  Widget build(BuildContext context) {
+    final isActive = status == AnimalStatus.active;
+
+    return StatusBadge(
+      label: status.label,
+      type: _animalStatusBadgeType(status),
+      backgroundColor: isActive
+          ? Theme.of(context).brightness == Brightness.dark
+                ? AppTheme.syncBadgeDarkBackgroundColor
+                : AppTheme.syncBadgeBackgroundColor
+          : null,
+      foregroundColor: isActive
+          ? Theme.of(context).brightness == Brightness.dark
+                ? AppTheme.syncBadgeDarkForegroundColor
+                : AppTheme.syncBadgeForegroundColor
+          : null,
+      borderColor: isActive ? Colors.transparent : null,
     );
   }
 }
@@ -975,8 +1104,8 @@ class _LastEventCell extends StatelessWidget {
         animal.historicoReprodutivo?.trim().isNotEmpty == true
             ? 'Histórico informado'
             : 'Sem evento',
-        maxLines: 2,
-        overflow: TextOverflow.ellipsis,
+        maxLines: 4,
+        overflow: TextOverflow.visible,
         style: theme.textTheme.bodyMedium?.copyWith(
           color: colorScheme.onSurfaceVariant,
         ),
@@ -989,8 +1118,8 @@ class _LastEventCell extends StatelessWidget {
         if (lastBirth != null)
           Text(
             'Parto em ${formatDate(lastBirth)}',
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
+            maxLines: 3,
+            overflow: TextOverflow.visible,
             style: theme.textTheme.bodyMedium?.copyWith(
               color: colorScheme.onSurface,
               fontWeight: FontWeight.w700,
@@ -1000,8 +1129,8 @@ class _LastEventCell extends StatelessWidget {
           if (lastBirth != null) const SizedBox(height: 4),
           Text(
             'IA em ${formatDate(inseminationDate)}',
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
+            maxLines: 3,
+            overflow: TextOverflow.visible,
             style: theme.textTheme.bodySmall?.copyWith(
               color: colorScheme.onSurfaceVariant,
               fontWeight: FontWeight.w700,
@@ -1012,14 +1141,36 @@ class _LastEventCell extends StatelessWidget {
           const SizedBox(height: 4),
           Text(
             '${animal.diasEmLactacao} dias em lactação',
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
+            maxLines: 3,
+            overflow: TextOverflow.visible,
             style: theme.textTheme.bodySmall?.copyWith(
               color: colorScheme.onSurfaceVariant,
             ),
           ),
         ],
       ],
+    );
+  }
+}
+
+class _AnimalTableText extends StatelessWidget {
+  const _AnimalTableText({required this.value, this.textAlign});
+
+  final String value;
+  final TextAlign? textAlign;
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      value,
+      maxLines: 6,
+      overflow: TextOverflow.visible,
+      textAlign: textAlign,
+      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+        color: Theme.of(context).colorScheme.onSurfaceVariant,
+        fontWeight: FontWeight.w700,
+        height: 1.2,
+      ),
     );
   }
 }
@@ -1049,8 +1200,6 @@ class _AnimalActionsMenu extends StatelessWidget {
     return PopupMenuButton<_AnimalMobileAction>(
       tooltip: 'Ações',
       padding: EdgeInsets.zero,
-      iconSize: 22,
-      icon: Icon(Icons.more_vert, color: colorScheme.onSurfaceVariant),
       onSelected: (action) {
         switch (action) {
           case _AnimalMobileAction.edit:
@@ -1099,88 +1248,20 @@ class _AnimalActionsMenu extends StatelessWidget {
           ),
         ),
       ],
-    );
-  }
-}
-
-class _AnimalActions extends StatelessWidget {
-  const _AnimalActions({
-    required this.animal,
-    required this.onEdit,
-    required this.onInactivate,
-    required this.onActivate,
-    required this.onDelete,
-  });
-
-  final AnimalSummaryModel animal;
-  final VoidCallback onEdit;
-  final VoidCallback onInactivate;
-  final VoidCallback onActivate;
-  final VoidCallback onDelete;
-
-  @override
-  Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    final isInactive = animal.status == AnimalStatus.inactive;
-
-    return Wrap(
-      spacing: 6,
-      runSpacing: 6,
-      alignment: WrapAlignment.end,
-      children: [
-        _AnimalActionIconButton(
-          tooltip: 'Editar',
-          icon: Icons.edit_outlined,
-          onPressed: onEdit,
+      child: IgnorePointer(
+        child: AppButton(
+          outlined: true,
+          width: 36,
+          height: 36,
+          padding: EdgeInsets.zero,
+          backgroundColor: Colors.transparent,
+          borderColor: colorScheme.outline.withValues(alpha: 0.55),
+          shadow: false,
+          color: colorScheme.primary,
+          textColor: colorScheme.primary,
+          onPressed: () {},
+          child: const Icon(Icons.more_vert, size: 20),
         ),
-
-        _AnimalActionIconButton(
-          tooltip: isInactive ? 'Ativar' : 'Inativar',
-          icon: isInactive ? Icons.unarchive_outlined : Icons.archive_outlined,
-          onPressed: isInactive ? onActivate : onInactivate,
-        ),
-
-        _AnimalActionIconButton(
-          tooltip: 'Excluir',
-          icon: Icons.delete_outline,
-          color: colorScheme.error,
-          onPressed: onDelete,
-        ),
-      ],
-    );
-  }
-}
-
-class _AnimalActionIconButton extends StatelessWidget {
-  const _AnimalActionIconButton({
-    required this.tooltip,
-    required this.icon,
-    required this.onPressed,
-    this.color,
-  });
-
-  final String tooltip;
-  final IconData icon;
-  final VoidCallback onPressed;
-  final Color? color;
-
-  @override
-  Widget build(BuildContext context) {
-    final effectiveColor = color ?? Theme.of(context).colorScheme.primary;
-
-    return Tooltip(
-      message: tooltip,
-      child: AppButton(
-        outlined: true,
-        width: 36,
-        height: 36,
-        padding: EdgeInsets.zero,
-        color: effectiveColor,
-        textColor: effectiveColor,
-        borderColor: Colors.transparent,
-        shadow: false,
-        onPressed: onPressed,
-        child: Icon(icon, size: 18),
       ),
     );
   }
@@ -1522,6 +1603,67 @@ String _animalCodeLabel(String code) {
 
 AnimalReproductiveStatus reproductiveStatusFor(AnimalSummaryModel animal) {
   return IndicadorReprodutivoCalculator.resolveAnimalStatus(animal);
+}
+
+String _animalAgeLabel(DateTime? birthDate, DateTime now) {
+  if (birthDate == null) return '--';
+
+  var months = (now.year - birthDate.year) * 12 + now.month - birthDate.month;
+  if (now.day < birthDate.day) months--;
+  if (months < 0) return '--';
+  if (months < 24) return '$months ${months == 1 ? 'mês' : 'meses'}';
+
+  final years = months ~/ 12;
+  final remainingMonths = months % 12;
+  if (remainingMonths == 0) return '$years ${years == 1 ? 'ano' : 'anos'}';
+  return '$years a $remainingMonths m';
+}
+
+String _animalProductiveStatusLabel(AnimalSummaryModel animal) {
+  final text = [
+    animal.categoria,
+    animal.historicoReprodutivo,
+    animal.statusReprodutivo?.label,
+  ].whereType<String>().join(' ').normalize();
+
+  if (text.contains('novilha')) return 'Novilha';
+  if (text.contains('seca')) return 'Seca';
+  if (text.contains('lact') ||
+      animal.diasEmLactacao != null ||
+      animal.numeroLactacao > 0) {
+    return 'Lactante';
+  }
+  return 'Não informada';
+}
+
+String _animalPregnancyDaysLabel(AnimalSummaryModel animal, DateTime now) {
+  final status = IndicadorReprodutivoCalculator.resolveAnimalStatus(animal);
+  final insemination = animal.dataInseminacao;
+
+  if (status != AnimalReproductiveStatus.pregnant || insemination == null) {
+    return '--';
+  }
+
+  final days = now.difference(insemination).inDays;
+  return days < 0 ? '--' : days.toString();
+}
+
+String _formatNullableInt(int? value) {
+  return value == null ? '--' : formatInteger(value);
+}
+
+String _dashIfBlank(String? value) {
+  final trimmed = value?.trim();
+  return trimmed == null || trimmed.isEmpty ? '--' : trimmed;
+}
+
+StatusBadgeType _animalStatusBadgeType(AnimalStatus status) {
+  return switch (status) {
+    AnimalStatus.active => StatusBadgeType.success,
+    AnimalStatus.sold => StatusBadgeType.info,
+    AnimalStatus.death => StatusBadgeType.error,
+    AnimalStatus.inactive => StatusBadgeType.neutral,
+  };
 }
 
 Map<AnimalReproductiveStatus, int> _reproductiveStatusCounts(
