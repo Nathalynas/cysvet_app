@@ -13,6 +13,7 @@ import 'package:flutter_riverpod/legacy.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../app/app_shell.dart';
+import '../../../app/theme.dart';
 import '../../../core/presentation/async_value_view.dart';
 import '../../animals/application/animals_provider.dart';
 import '../../animals/data/animals_repository.dart';
@@ -164,21 +165,19 @@ class PropertiesPage extends ConsumerWidget {
 
                         return LayoutBuilder(
                           builder: (context, constraints) {
-                            final size = MediaQuery.sizeOf(context);
-                            final isMobile = size.width < MOBILE_WIDTH;
-                            final isSmallMobile = size.width < 360;
-                            final cardWidth = isSmallMobile
-                                ? double.infinity
-                                : 360.0;
-                            final alignment = isMobile
-                                ? WrapAlignment.center
-                                : WrapAlignment.start;
+                            final width = constraints.maxWidth;
+                            final columns = width >= 1060
+                                ? 3
+                                : width >= 700
+                                ? 2
+                                : 1;
+                            const spacing = 22.0;
+                            final cardWidth =
+                                (width - (spacing * (columns - 1))) / columns;
 
                             return Wrap(
-                              alignment: alignment,
-                              runAlignment: alignment,
-                              spacing: 16,
-                              runSpacing: 16,
+                              spacing: spacing,
+                              runSpacing: spacing,
                               children: [
                                 for (final property in filteredItems)
                                   SizedBox(
@@ -351,88 +350,156 @@ class _PropertyCard extends StatelessWidget {
     final colorScheme = theme.colorScheme;
     final lastVisit = insights?.lastVisit;
     final loadingLabel = insightsLoading && insights == null ? '...' : '--';
+    final lastVisitText = lastVisit == null
+        ? loadingLabel
+        : '${formatDate(lastVisit.dataVisita)} • ${_dashIfBlank(lastVisit.veterinarioResponsavel)}';
 
     return AppCard(
       padding: EdgeInsets.zero,
-      borderRadius: 20,
+      borderRadius: 18,
+      shadow: false,
+      borderColor: colorScheme.outline.withValues(alpha: 0.22),
       child: Material(
         color: Colors.transparent,
         child: InkWell(
           onTap: onTap,
           mouseCursor: SystemMouseCursors.click,
+          borderRadius: BorderRadius.circular(18),
           child: Padding(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(18),
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
+                    _PropertyInitialsBadge(name: property.nome),
+                    const SizedBox(width: 14),
                     Expanded(
-                      child: Text(
-                        property.nome,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: theme.textTheme.titleMedium?.copyWith(
-                          fontSize: 19,
-                          fontWeight: FontWeight.w800,
-                          color: colorScheme.primary,
-                          height: 1.15,
-                        ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            property.nome,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: theme.textTheme.titleMedium?.copyWith(
+                              color: colorScheme.onSurface,
+                              fontSize: 18,
+                              fontWeight: FontWeight.w900,
+                              height: 1.1,
+                            ),
+                          ),
+                          const SizedBox(height: 5),
+                          Text(
+                            _dashIfBlank(property.idExterno),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: colorScheme.onSurfaceVariant,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                     const SizedBox(width: 10),
-                    StatusBadge(
-                      label: property.status.label,
-                      type: property.status == PropertyStatus.active
-                          ? StatusBadgeType.success
-                          : StatusBadgeType.neutral,
-                    ),
-                    const SizedBox(width: 4),
-                    Icon(
-                      Icons.chevron_right,
-                      color: colorScheme.onSurfaceVariant,
-                      size: 22,
-                    ),
+                    _PropertyStatusBadge(status: property.status),
                   ],
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 16),
                 _InfoLine(
-                  label: 'Responsável',
+                  icon: Icons.person_outline,
                   value: _dashIfBlank(property.nomeProprietario),
                 ),
+                const SizedBox(height: 8),
                 _InfoLine(
-                  label: 'Contato',
+                  icon: Icons.phone_outlined,
                   value: _dashIfBlank(property.contato),
                 ),
+                const SizedBox(height: 8),
                 _InfoLine(
-                  label: 'Localização',
+                  icon: Icons.location_on_outlined,
                   value: _dashIfBlank(property.localizacao),
                 ),
-                const SizedBox(height: 14),
+                const SizedBox(height: 16),
                 _PropertyMetricRow(
                   totalHerd: insights?.herdTotal,
                   reproductionCount: insights?.reproductionCount,
                   loadingLabel: loadingLabel,
                 ),
+                const SizedBox(height: 10),
+                Divider(
+                  height: 1,
+                  thickness: 1,
+                  color: colorScheme.outline.withValues(alpha: 0.22),
+                ),
                 const SizedBox(height: 12),
-                _InfoLine(
-                  label: 'Última visita',
-                  value: lastVisit == null
-                      ? loadingLabel
-                      : formatDate(lastVisit.dataVisita),
-                ),
-                _InfoLine(
-                  label: 'Veterinário',
-                  value: _dashIfBlank(
-                    lastVisit?.veterinarioResponsavel ?? loadingLabel,
-                  ),
-                ),
+                _LastVisitPreview(text: lastVisitText),
               ],
             ),
           ),
         ),
       ),
+    );
+  }
+}
+
+class _PropertyInitialsBadge extends StatelessWidget {
+  const _PropertyInitialsBadge({required this.name});
+
+  final String name;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final primary2 = AppTheme.primary2Color;
+
+    return Container(
+      width: 56,
+      height: 58,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: primary2.withValues(alpha: 0.10),
+        borderRadius: BorderRadius.circular(15),
+      ),
+      child: Text(
+        _propertyInitials(name),
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: theme.textTheme.titleMedium?.copyWith(
+          color: primary2,
+          fontWeight: FontWeight.w900,
+          height: 1,
+        ),
+      ),
+    );
+  }
+}
+
+class _PropertyStatusBadge extends StatelessWidget {
+  const _PropertyStatusBadge({required this.status});
+
+  final PropertyStatus status;
+
+  @override
+  Widget build(BuildContext context) {
+    final isActive = status == PropertyStatus.active;
+
+    return StatusBadge(
+      label: status.label,
+      type: isActive ? StatusBadgeType.success : StatusBadgeType.neutral,
+      backgroundColor: isActive
+          ? Theme.of(context).brightness == Brightness.dark
+                ? AppTheme.syncBadgeDarkBackgroundColor
+                : AppTheme.syncBadgeBackgroundColor
+          : null,
+      foregroundColor: isActive
+          ? Theme.of(context).brightness == Brightness.dark
+                ? AppTheme.syncBadgeDarkForegroundColor
+                : AppTheme.syncBadgeForegroundColor
+          : null,
+      borderColor: isActive ? Colors.transparent : null,
     );
   }
 }
@@ -457,14 +524,12 @@ class _PropertyMetricRow extends StatelessWidget {
         final total = _PropertyMetricTile(
           label: 'REBANHO TOTAL',
           value: totalHerd == null ? loadingLabel : _formatCount(totalHerd!),
-          icon: Icons.groups_outlined,
         );
         final reproduction = _PropertyMetricTile(
-          label: 'EM REPRODUCAO',
+          label: 'EM PRODUÇÃO',
           value: reproductionCount == null
               ? loadingLabel
               : _formatCount(reproductionCount!),
-          icon: Icons.monitor_heart_outlined,
           highlighted: true,
         );
 
@@ -480,9 +545,9 @@ class _PropertyMetricRow extends StatelessWidget {
 
         return Row(
           children: [
-            Flexible(fit: FlexFit.loose, child: total),
+            Expanded(child: total),
             const SizedBox(width: 10),
-            Flexible(fit: FlexFit.loose, child: reproduction),
+            Expanded(child: reproduction),
           ],
         );
       },
@@ -494,71 +559,59 @@ class _PropertyMetricTile extends StatelessWidget {
   const _PropertyMetricTile({
     required this.label,
     required this.value,
-    required this.icon,
     this.highlighted = false,
   });
 
   final String label;
   final String value;
-  final IconData icon;
   final bool highlighted;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
+    final primary2 = AppTheme.primary2Color;
     final background = highlighted
-        ? colorScheme.primary
-        : colorScheme.surfaceContainerHighest;
-    final foreground = highlighted
-        ? colorScheme.onPrimary
-        : colorScheme.onSurface;
-    final mutedForeground = highlighted
-        ? colorScheme.onPrimary.withValues(alpha: 0.74)
+        ? primary2
+        : colorScheme.surfaceContainerHighest.withValues(alpha: 0.38);
+    final valueColor = highlighted ? Colors.white : colorScheme.onSurface;
+    final labelColor = highlighted
+        ? Colors.white.withValues(alpha: 0.88)
         : colorScheme.onSurfaceVariant;
 
     return Container(
-      constraints: const BoxConstraints(minHeight: 60),
-      padding: const EdgeInsets.all(8),
+      height: 64,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
       decoration: BoxDecoration(
         color: background,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(
-          color: highlighted
-              ? colorScheme.primary
-              : colorScheme.outline.withValues(alpha: 0.2),
-        ),
+        borderRadius: BorderRadius.circular(12),
+        border: highlighted
+            ? null
+            : Border.all(color: colorScheme.outline.withValues(alpha: 0.22)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.center,
+        mainAxisAlignment: MainAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Icon(icon, size: 12, color: mutedForeground),
-              const SizedBox(width: 4),
-              Expanded(
-                child: Text(
-                  label,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: theme.textTheme.labelSmall?.copyWith(
-                    color: mutedForeground,
-                    fontWeight: FontWeight.w800,
-                    fontSize: 8,
-                    height: 1,
-                  ),
-                ),
-              ),
-            ],
+          Text(
+            label.toUpperCase(),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: theme.textTheme.labelSmall?.copyWith(
+              color: labelColor,
+              fontSize: 9,
+              fontWeight: FontWeight.w900,
+              letterSpacing: 0.4,
+              height: 1,
+            ),
           ),
-          const SizedBox(height: 4),
+          const Spacer(),
           Text(
             value,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: theme.textTheme.labelLarge?.copyWith(
-              color: foreground,
+            style: theme.textTheme.titleMedium?.copyWith(
+              color: valueColor,
               fontWeight: FontWeight.w900,
               height: 1,
             ),
@@ -570,30 +623,71 @@ class _PropertyMetricTile extends StatelessWidget {
 }
 
 class _InfoLine extends StatelessWidget {
-  const _InfoLine({required this.label, required this.value});
+  const _InfoLine({required this.icon, required this.value});
 
-  final String label;
+  final IconData icon;
   final String value;
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    return Padding(
-      padding: const EdgeInsets.only(top: 6),
-      child: Text.rich(
-        TextSpan(
-          children: [
-            TextSpan(
-              text: '$label: ',
-              style: TextStyle(
-                fontWeight: FontWeight.w700,
-                color: colorScheme.onSurface,
-              ),
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final textColor = colorScheme.onSurfaceVariant;
+
+    return Row(
+      children: [
+        Icon(icon, size: 17, color: textColor),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Text(
+            value,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: textColor,
+              fontWeight: FontWeight.w500,
             ),
-            TextSpan(text: value),
-          ],
+          ),
         ),
-      ),
+      ],
+    );
+  }
+}
+
+class _LastVisitPreview extends StatelessWidget {
+  const _LastVisitPreview({required this.text});
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'ÚLTIMA VISITA',
+          style: theme.textTheme.labelSmall?.copyWith(
+            color: colorScheme.onSurfaceVariant,
+            fontWeight: FontWeight.w900,
+            fontSize: 10,
+            letterSpacing: 0.6,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          text,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: theme.textTheme.bodyMedium?.copyWith(
+            color: colorScheme.onSurface,
+            fontWeight: FontWeight.w500,
+            height: 1.35,
+          ),
+        ),
+      ],
     );
   }
 }
@@ -749,6 +843,23 @@ AnimalReproductiveStatus _animalReproductiveStatusFor(
 
 String _formatCount(int value) {
   return formatInteger(value);
+}
+
+String _propertyInitials(String value) {
+  final parts = value
+      .trim()
+      .split(RegExp(r'\s+'))
+      .where((part) => part.isNotEmpty)
+      .toList(growable: false);
+  if (parts.isEmpty) return '--';
+  if (parts.length == 1) {
+    final first = parts.first;
+    return first.length == 1
+        ? first.toUpperCase()
+        : first.substring(0, 2).toUpperCase();
+  }
+  return '${parts.first.substring(0, 1)}${parts.last.substring(0, 1)}'
+      .toUpperCase();
 }
 
 String _dashIfBlank(String? value) {

@@ -453,7 +453,7 @@ class _VisitDateBadge extends StatelessWidget {
     final month = date != null ? months[date!.month - 1] : '---';
 
     return Container(
-      width: 66,
+      width: 56,
       height: 58,
       decoration: BoxDecoration(
         color: primary2.withValues(alpha: 0.10),
@@ -511,7 +511,7 @@ class _VisitInfoLine extends StatelessWidget {
             overflow: TextOverflow.ellipsis,
             style: theme.textTheme.bodyMedium?.copyWith(
               color: textColor,
-              fontWeight: FontWeight.w600,
+              fontWeight: FontWeight.w500,
             ),
           ),
         ),
@@ -603,7 +603,7 @@ class _NextStepPreview extends StatelessWidget {
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
       decoration: BoxDecoration(
         color: primary2.withValues(alpha: 0.075),
         borderRadius: BorderRadius.circular(14),
@@ -630,7 +630,7 @@ class _NextStepPreview extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 8),
           Text(
             text,
             maxLines: 2,
