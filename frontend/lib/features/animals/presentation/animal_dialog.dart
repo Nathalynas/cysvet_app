@@ -12,6 +12,7 @@ import '../../../core/widgets/app_form.dart';
 import '../../../core/widgets/app_text_field.dart';
 import '../../properties/domain/property_summary_model.dart';
 import '../application/animals_provider.dart';
+import '../domain/animal_import_field.dart';
 import '../domain/animal_summary_model.dart';
 
 class AnimalDialog extends StatelessWidget {
@@ -104,6 +105,16 @@ class _AnimalFormState extends ConsumerState<_AnimalForm> {
   Widget build(BuildContext context) {
     final isBusy = ref.watch(animalsBusyProvider);
     final animal = widget.animal;
+    final codigoField = AnimalImportFieldKey.codigo.spec;
+    final categoriaField = AnimalImportFieldKey.categoria.spec;
+    final sexoField = AnimalImportFieldKey.sexo.spec;
+    final nascimentoField = AnimalImportFieldKey.dataNascimento.spec;
+    final propertyField = AnimalImportFieldKey.idPropriedade.spec;
+    final reproductiveStatusField = AnimalImportFieldKey.statusReprodutivo.spec;
+    final lactacaoField = AnimalImportFieldKey.numeroLactacao.spec;
+    final partoField = AnimalImportFieldKey.dataUltimoParto.spec;
+    final inseminacaoField = AnimalImportFieldKey.dataInseminacao.spec;
+    final historicoField = AnimalImportFieldKey.historicoReprodutivo.spec;
 
     return AppForm(
       internalScroll: true,
@@ -151,22 +162,30 @@ class _AnimalFormState extends ConsumerState<_AnimalForm> {
         }
       },
       fields: [
-        AppTextField(label: 'Brinco/ID', controller: _codigo, required: true),
-        AppTextField(label: 'Espécie', controller: _especie, required: true),
+        AppTextField(
+          label: codigoField.label,
+          controller: _codigo,
+          required: codigoField.required,
+        ),
+        AppTextField(
+          label: categoriaField.label,
+          controller: _especie,
+          required: categoriaField.required,
+        ),
         AppDropdown<String>(
           value: _sexo,
-          labelText: 'Sexo',
-          required: true,
+          labelText: sexoField.label,
+          required: sexoField.required,
           onChanged: (value) => setState(() => _sexo = value),
           options: _sexoOptions
               .map((item) => AppDropdownOption(label: item, value: item))
               .toList(growable: false),
         ),
         AppTextField(
-          label: 'Data de nascimento',
+          label: nascimentoField.label,
           hint: 'DD/MM/AAAA',
           controller: _nascimento,
-          required: true,
+          required: nascimentoField.required,
           keyboardType: TextInputType.number,
           inputFormatters: const [DateInputFormatter()],
           validator: (value) {
@@ -180,8 +199,8 @@ class _AnimalFormState extends ConsumerState<_AnimalForm> {
       rightFields: [
         AppDropdown<int>(
           value: _propertyId,
-          labelText: 'Propriedade vinculada',
-          required: true,
+          labelText: propertyField.label,
+          required: propertyField.required,
           searchable: true,
           onChanged: (value) => setState(() => _propertyId = value),
           options: widget.properties
@@ -192,8 +211,8 @@ class _AnimalFormState extends ConsumerState<_AnimalForm> {
         ),
         AppDropdown<AnimalReproductiveStatus>(
           value: _reproductiveStatus,
-          labelText: 'Status reprodutivo',
-          required: true,
+          labelText: reproductiveStatusField.label,
+          required: reproductiveStatusField.required,
           onChanged: (value) {
             if (value == null) return;
 
@@ -206,13 +225,13 @@ class _AnimalFormState extends ConsumerState<_AnimalForm> {
               .toList(growable: false),
         ),
         AppTextField(
-          label: 'Número de lactação',
+          label: lactacaoField.label,
           controller: _lactacao,
-          required: true,
+          required: lactacaoField.required,
           keyboardType: TextInputType.number,
         ),
         AppTextField(
-          label: 'Data do parto',
+          label: partoField.label,
           hint: 'DD/MM/AAAA',
           controller: _parto,
           keyboardType: TextInputType.number,
@@ -228,7 +247,7 @@ class _AnimalFormState extends ConsumerState<_AnimalForm> {
           },
         ),
         AppTextField(
-          label: 'Data da inseminação',
+          label: inseminacaoField.label,
           hint: 'DD/MM/AAAA',
           controller: _inseminacao,
           keyboardType: TextInputType.number,
@@ -243,7 +262,11 @@ class _AnimalFormState extends ConsumerState<_AnimalForm> {
             return null;
           },
         ),
-        AppTextField(label: 'Histórico', controller: _historico, maxLines: 3),
+        AppTextField(
+          label: historicoField.label,
+          controller: _historico,
+          maxLines: 3,
+        ),
       ],
     );
   }

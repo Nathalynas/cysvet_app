@@ -1,5 +1,3 @@
-import 'dart:convert';
-
 import 'package:cysvet_app/app/theme.dart';
 import 'package:cysvet_app/core/constants/app_constants.dart';
 import 'package:cysvet_app/core/enums/animal_status.dart';
@@ -11,7 +9,6 @@ import 'package:cysvet_app/core/widgets/app_dropdown.dart';
 import 'package:cysvet_app/core/widgets/app_table.dart';
 import 'package:cysvet_app/core/widgets/property_filter_card.dart';
 import 'package:cysvet_app/core/widgets/search_card.dart';
-import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_material_design_icons/flutter_material_design_icons.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -23,10 +20,10 @@ import '../../../core/utils/formatters.dart';
 import '../../indicators/indicador_reprodutivo_calculator.dart';
 import '../../properties/application/properties_provider.dart';
 import '../../properties/domain/property_summary_model.dart';
-import '../application/animals_csv_importer.dart';
 import '../application/animals_provider.dart';
 import '../domain/animal_summary_model.dart';
 import 'animal_dialog.dart';
+import 'animal_excel_import_dialog.dart';
 import 'animal_history_dialog.dart';
 
 final animalsSearchQueryProvider = StateProvider.autoDispose<String>(
@@ -80,7 +77,7 @@ class AnimalsPage extends ConsumerWidget {
                   alignment: WrapAlignment.end,
                   children: [
                     AppButton(
-                      text: 'Importar CSV',
+                      text: 'Importar Excel',
                       outlined: true,
                       height: 40,
                       borderRadius: 10,
@@ -91,11 +88,10 @@ class AnimalsPage extends ConsumerWidget {
                       borderColor: theme.colorScheme.outline.withValues(
                         alpha: 0.75,
                       ),
-                      icon: const Icon(Icons.upload_file_outlined, size: 18),
+                      icon: const Icon(Icons.table_chart_outlined, size: 18),
                       onPressed: () =>
-                          _importAnimalsCsv(context, ref, propertyOptions),
+                          _importAnimalsExcel(context, ref, propertyOptions),
                     ),
-
                     AppButton(
                       text: 'Novo animal',
                       height: 40,
@@ -144,8 +140,6 @@ class AnimalsPage extends ConsumerWidget {
                                 .state =
                             value;
                       },
-                      onImport: () =>
-                          _importAnimalsCsv(context, ref, propertyOptions),
                     ),
                     const SizedBox(height: 12),
                     AsyncValueView<List<AnimalSummaryModel>>(
@@ -245,7 +239,6 @@ class _AnimalsToolbar extends StatefulWidget {
     required this.onPropertyChanged,
     required this.onStatusChanged,
     required this.onReproductiveStatusChanged,
-    required this.onImport,
   });
 
   final List<PropertySummaryModel> properties;
@@ -257,7 +250,6 @@ class _AnimalsToolbar extends StatefulWidget {
   final ValueChanged<int?> onPropertyChanged;
   final ValueChanged<AnimalStatusFilter?> onStatusChanged;
   final ValueChanged<AnimalReproductiveStatus?> onReproductiveStatusChanged;
-  final VoidCallback onImport;
 
   @override
   State<_AnimalsToolbar> createState() => _AnimalsToolbarState();
@@ -1592,69 +1584,30 @@ class _ReproductiveStatusColors {
   final Color foreground;
 }
 
-Future<void> _importAnimalsCsv(
+Future<void> _importAnimalsExcel(
   BuildContext context,
   WidgetRef ref,
   List<PropertySummaryModel> properties,
 ) async {
-  final navigator = Navigator.of(context);
-
   if (properties.isEmpty) {
     showAppWarning('Cadastre ou carregue propriedades antes de importar.');
     return;
   }
 
-  final result = await FilePicker.platform.pickFiles(
-    type: FileType.custom,
-    allowedExtensions: const ['csv'],
-    withData: true,
-  );
-
-  if (result == null || result.files.isEmpty) return;
-
-  final bytes = result.files.single.bytes;
-  if (bytes == null) {
-    if (!context.mounted) return;
-    showAppError('Não foi possível ler o arquivo CSV.');
-    return;
-  }
-
-  final content = utf8.decode(bytes, allowMalformed: true);
-  final importResult = const AnimalsCsvImporter().parse(
-    content: content,
+  final animals = await AnimalExcelImportDialog.show(
+    context,
     properties: properties,
   );
 
-  if (!context.mounted) return;
+  if (animals == null || animals.isEmpty) return;
 
-  await AppDialog.show<void>(
-    context: context,
-    title: 'Importar animais',
-    width: 760,
-    useInternalScroll: true,
-    content: _CsvPreview(importResult: importResult),
-    actions: [
-      AppButton(
-        text: 'Cancelar',
-        outlined: true,
-        onPressed: navigator.maybePop,
-      ),
-      AppButton(
-        text: 'Importar ${importResult.animals.length}',
-        disabled: importResult.animals.isEmpty,
-        onPressed: () async {
-          await ref
-              .read(animalsControllerProvider)
-              .importAnimals(importResult.animals);
-          if (!context.mounted) return;
-          await navigator.maybePop();
-          showAppSuccess(
-            '${importResult.animals.length} animais importados localmente.',
-          );
-        },
-      ),
-    ],
-  );
+  try {
+    await ref.read(animalsControllerProvider).importAnimals(animals);
+    if (!context.mounted) return;
+    showAppSuccess('${animals.length} animais importados localmente.');
+  } catch (error) {
+    showAppError(error);
+  }
 }
 
 Future<void> _confirmInactivate(
@@ -1733,69 +1686,4 @@ Future<void> _confirmDelete(
       }
     },
   );
-}
-
-class _CsvPreview extends StatelessWidget {
-  const _CsvPreview({required this.importResult});
-
-  final AnimalCsvImportResult importResult;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final validItems = importResult.animals.take(8).toList(growable: false);
-    final errors = importResult.errors.take(8).toList(growable: false);
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Text(
-          '${importResult.animals.length} registros válidos encontrados.',
-          style: theme.textTheme.titleSmall?.copyWith(
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-        if (validItems.isNotEmpty) ...[
-          const SizedBox(height: 12),
-          for (final animal in validItems)
-            ListTile(
-              dense: true,
-              contentPadding: EdgeInsets.zero,
-              leading: const Icon(Icons.pets),
-              title: Text(animal.codigo),
-              subtitle: Text(
-                '${animal.categoria} - ${animal.sexo ?? '--'} - ${animal.status.label}',
-              ),
-            ),
-        ],
-        if (importResult.animals.length > validItems.length)
-          Text(
-            'Mais ${importResult.animals.length - validItems.length} registros válidos.',
-            style: theme.textTheme.bodySmall,
-          ),
-        if (errors.isNotEmpty) ...[
-          const SizedBox(height: 16),
-          Text(
-            '${importResult.errors.length} linhas com erro',
-            style: theme.textTheme.titleSmall?.copyWith(
-              fontWeight: FontWeight.w700,
-              color: theme.colorScheme.error,
-            ),
-          ),
-          const SizedBox(height: 8),
-          for (final error in errors)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 6),
-              child: Text(
-                'Linha ${error.line}: ${error.message}',
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.error,
-                ),
-              ),
-            ),
-        ],
-      ],
-    );
-  }
 }
