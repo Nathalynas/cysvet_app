@@ -75,7 +75,7 @@ class AnimalsController {
       final saved = animal.id <= 0
           ? await repository.create(animal)
           : await repository.update(animal);
-      final merged = saved.copyWith(sexo: animal.sexo, status: animal.status);
+      final merged = saved.copyWith(status: animal.status);
       _ref.read(localAnimalsProvider.notifier).remove(animal.id);
       _ref.invalidate(animalsProvider);
       _ref.read(localAnimalsProvider.notifier).save(merged);

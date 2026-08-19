@@ -61,12 +61,6 @@ class AnimalSummaryModelMapper extends ClassMapperBase<AnimalSummaryModel> {
     opt: true,
     def: '',
   );
-  static String? _$sexo(AnimalSummaryModel v) => v.sexo;
-  static const Field<AnimalSummaryModel, String> _f$sexo = Field(
-    'sexo',
-    _$sexo,
-    opt: true,
-  );
   static DateTime? _$dataNascimento(AnimalSummaryModel v) => v.dataNascimento;
   static const Field<AnimalSummaryModel, DateTime> _f$dataNascimento = Field(
     'dataNascimento',
@@ -131,7 +125,6 @@ class AnimalSummaryModelMapper extends ClassMapperBase<AnimalSummaryModel> {
     #idExternoPropriedade: _f$idExternoPropriedade,
     #codigo: _f$codigo,
     #categoria: _f$categoria,
-    #sexo: _f$sexo,
     #dataNascimento: _f$dataNascimento,
     #numeroLactacao: _f$numeroLactacao,
     #dataUltimoParto: _f$dataUltimoParto,
@@ -150,7 +143,6 @@ class AnimalSummaryModelMapper extends ClassMapperBase<AnimalSummaryModel> {
       idExternoPropriedade: data.dec(_f$idExternoPropriedade),
       codigo: data.dec(_f$codigo),
       categoria: data.dec(_f$categoria),
-      sexo: data.dec(_f$sexo),
       dataNascimento: data.dec(_f$dataNascimento),
       numeroLactacao: data.dec(_f$numeroLactacao),
       dataUltimoParto: data.dec(_f$dataUltimoParto),
@@ -240,7 +232,6 @@ abstract class AnimalSummaryModelCopyWith<
     String? idExternoPropriedade,
     String? codigo,
     String? categoria,
-    String? sexo,
     DateTime? dataNascimento,
     int? numeroLactacao,
     DateTime? dataUltimoParto,
@@ -271,7 +262,6 @@ class _AnimalSummaryModelCopyWithImpl<$R, $Out>
     String? idExternoPropriedade,
     String? codigo,
     String? categoria,
-    Object? sexo = $none,
     Object? dataNascimento = $none,
     int? numeroLactacao,
     Object? dataUltimoParto = $none,
@@ -289,7 +279,6 @@ class _AnimalSummaryModelCopyWithImpl<$R, $Out>
         #idExternoPropriedade: idExternoPropriedade,
       if (codigo != null) #codigo: codigo,
       if (categoria != null) #categoria: categoria,
-      if (sexo != $none) #sexo: sexo,
       if (dataNascimento != $none) #dataNascimento: dataNascimento,
       if (numeroLactacao != null) #numeroLactacao: numeroLactacao,
       if (dataUltimoParto != $none) #dataUltimoParto: dataUltimoParto,
@@ -312,7 +301,6 @@ class _AnimalSummaryModelCopyWithImpl<$R, $Out>
     ),
     codigo: data.get(#codigo, or: $value.codigo),
     categoria: data.get(#categoria, or: $value.categoria),
-    sexo: data.get(#sexo, or: $value.sexo),
     dataNascimento: data.get(#dataNascimento, or: $value.dataNascimento),
     numeroLactacao: data.get(#numeroLactacao, or: $value.numeroLactacao),
     dataUltimoParto: data.get(#dataUltimoParto, or: $value.dataUltimoParto),

@@ -2063,10 +2063,7 @@ String _locationLabel(PropertySummaryModel property) {
 }
 
 String _animalCategoryLabel(AnimalSummaryModel animal) {
-  return [
-    _dashIfBlank(animal.categoria),
-    if (_cleanText(animal.sexo) != null) animal.sexo!.trim(),
-  ].join(' / ');
+  return _dashIfBlank(animal.categoria);
 }
 
 String _animalCodeLabel(String code) {

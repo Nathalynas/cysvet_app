@@ -6,7 +6,6 @@ enum AnimalImportFieldType {
   text,
   integer,
   date,
-  sex,
   property,
   reproductiveStatus,
 }
@@ -14,7 +13,6 @@ enum AnimalImportFieldType {
 enum AnimalImportFieldKey {
   codigo,
   categoria,
-  sexo,
   dataNascimento,
   idPropriedade,
   statusReprodutivo,
@@ -71,13 +69,6 @@ const animalImportFields = <AnimalImportFieldSpec>[
       'vaca novilha',
       'tipo',
     ],
-  ),
-  AnimalImportFieldSpec(
-    key: AnimalImportFieldKey.sexo,
-    label: 'Sexo',
-    type: AnimalImportFieldType.sex,
-    required: true,
-    aliases: ['sexo', 'genero'],
   ),
   AnimalImportFieldSpec(
     key: AnimalImportFieldKey.dataNascimento,
@@ -227,16 +218,6 @@ String normalizeAnimalImportToken(String value) {
       .replaceAll(RegExp(r'[^a-z0-9]+'), ' ')
       .replaceAll(RegExp(r'\s+'), ' ')
       .trim();
-}
-
-String? parseAnimalImportSex(String value) {
-  final normalized = normalizeAnimalImportToken(value);
-
-  return switch (normalized) {
-    'masculino' || 'macho' || 'm' => 'Masculino',
-    'feminino' || 'femea' || 'f' => 'Feminino',
-    _ => null,
-  };
 }
 
 AnimalReproductiveStatus? parseAnimalImportReproductiveStatus(String value) {

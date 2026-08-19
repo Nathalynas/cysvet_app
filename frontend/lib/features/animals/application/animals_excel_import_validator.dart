@@ -131,12 +131,6 @@ class AnimalsExcelImportValidator {
           return const _ParsedImportValue.invalid('Informe uma data válida');
         }
         return _ParsedImportValue.valid(value);
-      case AnimalImportFieldType.sex:
-        final value = parseAnimalImportSex(text);
-        if (value == null) {
-          return const _ParsedImportValue.invalid('Sexo inválido');
-        }
-        return _ParsedImportValue.valid(value);
       case AnimalImportFieldType.property:
         final value = findAnimalImportProperty(properties, text);
         if (value == null) {
@@ -164,7 +158,6 @@ class AnimalsExcelImportValidator {
       idExternoPropriedade: property.idExterno,
       codigo: values[AnimalImportFieldKey.codigo] as String,
       categoria: values[AnimalImportFieldKey.categoria] as String,
-      sexo: values[AnimalImportFieldKey.sexo] as String,
       dataNascimento: values[AnimalImportFieldKey.dataNascimento] as DateTime,
       statusReprodutivo:
           values[AnimalImportFieldKey.statusReprodutivo]

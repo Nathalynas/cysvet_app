@@ -125,7 +125,6 @@ CREATE TABLE animal (
     id_externo VARCHAR(64) NOT NULL,
     codigo VARCHAR(255) NOT NULL,
     categoria VARCHAR(255) NOT NULL,
-    sexo VARCHAR(64) NULL,
     status VARCHAR(32) NOT NULL DEFAULT 'ATIVO',
     data_nascimento DATE NULL,
     numero_lactacao INT NOT NULL,

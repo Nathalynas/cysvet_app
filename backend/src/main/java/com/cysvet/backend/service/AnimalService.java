@@ -126,7 +126,6 @@ public class AnimalService {
         animal.setUsuario(user);
         animal.setCodigo(request.codigo());
         animal.setCategoria(request.categoria());
-        animal.setSexo(request.sexo());
         animal.setDataNascimento(request.dataNascimento());
         animal.setNumeroLactacao(request.numeroLactacao());
         animal.setDataUltimoParto(request.dataUltimoParto());
@@ -196,7 +195,6 @@ public class AnimalService {
                 animal.getLote() != null ? animal.getLote().getNome() : null,
                 animal.getCodigo(),
                 animal.getCategoria(),
-                animal.getSexo(),
                 animal.getDataNascimento(),
                 animal.getNumeroLactacao(),
                 animal.getDataUltimoParto(),

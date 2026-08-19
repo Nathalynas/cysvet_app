@@ -398,7 +398,7 @@ List<AnimalSummaryModel> _filterAnimals(
         animalReproductiveStatus == reproductiveStatusFilter;
 
     final searchable =
-        '${animal.codigo} ${animal.idExterno} ${animal.categoria} ${animal.sexo ?? ''} '
+        '${animal.codigo} ${animal.idExterno} ${animal.categoria} '
                 '${animalReproductiveStatus.label} ${animal.historicoReprodutivo ?? ''} '
                 '${formatDate(animal.dataInseminacao)}'
             .normalize();
@@ -860,15 +860,6 @@ class _AnimalBreedCell extends StatelessWidget {
           style: theme.textTheme.bodyMedium?.copyWith(
             color: colorScheme.onSurface,
             fontWeight: FontWeight.w700,
-          ),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          animal.sexo ?? '--',
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: theme.textTheme.bodySmall?.copyWith(
-            color: colorScheme.onSurfaceVariant,
           ),
         ),
         Text(

@@ -56,8 +56,6 @@ class _AnimalForm extends ConsumerStatefulWidget {
 }
 
 class _AnimalFormState extends ConsumerState<_AnimalForm> {
-  static const _sexoOptions = ['Masculino', 'Feminino'];
-
   final _codigo = TextEditingController();
   final _especie = TextEditingController();
   final _nascimento = TextEditingController();
@@ -66,7 +64,6 @@ class _AnimalFormState extends ConsumerState<_AnimalForm> {
   final _inseminacao = TextEditingController();
   final _historico = TextEditingController();
 
-  String? _sexo;
   int? _propertyId;
   AnimalReproductiveStatus _reproductiveStatus =
       AnimalReproductiveStatus.pending;
@@ -79,7 +76,6 @@ class _AnimalFormState extends ConsumerState<_AnimalForm> {
 
     _codigo.text = animal?.codigo ?? '';
     _especie.text = animal?.categoria ?? '';
-    _sexo = _normalizeSexo(animal?.sexo);
     _nascimento.text = formatDateInput(animal?.dataNascimento);
     _lactacao.text = (animal?.numeroLactacao ?? 0).toString();
     _parto.text = formatDateInput(animal?.dataUltimoParto);
@@ -107,7 +103,6 @@ class _AnimalFormState extends ConsumerState<_AnimalForm> {
     final animal = widget.animal;
     final codigoField = AnimalImportFieldKey.codigo.spec;
     final categoriaField = AnimalImportFieldKey.categoria.spec;
-    final sexoField = AnimalImportFieldKey.sexo.spec;
     final nascimentoField = AnimalImportFieldKey.dataNascimento.spec;
     final propertyField = AnimalImportFieldKey.idPropriedade.spec;
     final reproductiveStatusField = AnimalImportFieldKey.statusReprodutivo.spec;
@@ -141,7 +136,6 @@ class _AnimalFormState extends ConsumerState<_AnimalForm> {
                 property?.idExterno ?? animal?.idExternoPropriedade ?? '',
             codigo: _codigo.text.trim(),
             categoria: _especie.text.trim(),
-            sexo: _sexo,
             dataNascimento: parseDateInput(_nascimento.text),
             numeroLactacao: int.tryParse(_lactacao.text.trim()) ?? 0,
             dataUltimoParto: parseDateInput(_parto.text),
@@ -171,15 +165,6 @@ class _AnimalFormState extends ConsumerState<_AnimalForm> {
           label: categoriaField.label,
           controller: _especie,
           required: categoriaField.required,
-        ),
-        AppDropdown<String>(
-          value: _sexo,
-          labelText: sexoField.label,
-          required: sexoField.required,
-          onChanged: (value) => setState(() => _sexo = value),
-          options: _sexoOptions
-              .map((item) => AppDropdownOption(label: item, value: item))
-              .toList(growable: false),
         ),
         AppTextField(
           label: nascimentoField.label,
@@ -279,22 +264,6 @@ class _AnimalFormState extends ConsumerState<_AnimalForm> {
     }
 
     return null;
-  }
-
-  String? _normalizeSexo(String? value) {
-    final normalized = (value ?? '').trim().toLowerCase();
-
-    switch (normalized) {
-      case 'masculino':
-      case 'macho':
-        return 'Masculino';
-      case 'feminino':
-      case 'femea':
-      case 'fêmea':
-        return 'Feminino';
-      default:
-        return null;
-    }
   }
 
   AnimalReproductiveStatus _resolveReproductiveStatus(

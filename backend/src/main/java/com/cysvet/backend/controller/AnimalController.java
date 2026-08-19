@@ -37,7 +37,6 @@ public class AnimalController {
 
     private final AnimalService animalService;
     private final AnimalHistoryService animalHistoryService;
-
     @GetMapping
     @Operation(summary = "Lista animais")
     @ApiResponses(value = {

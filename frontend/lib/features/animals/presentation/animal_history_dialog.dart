@@ -889,7 +889,6 @@ class _ProductiveHistoryPanel extends StatelessWidget {
         label: 'Nascimento',
         value: formatDate(animal.dataNascimento),
       ),
-      _HistoryDetail(label: 'Sexo', value: _valueOrDash(animal.sexo)),
       _HistoryDetail(label: 'Status atual', value: animal.status.label),
       _HistoryDetail(
         label: 'Status reprodutivo',

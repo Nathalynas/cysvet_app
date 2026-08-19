@@ -31,8 +31,6 @@ public record AnimalRequest(
         @NotBlank String codigo,
         @Schema(description = "Categoria zootecnica do animal.", example = "VACA")
         @NotBlank String categoria,
-        @Schema(description = "Sexo do animal.", example = "FEMEA")
-        String sexo,
         @Schema(description = "Data de nascimento do animal.", example = "2024-01-15")
         @JsonAlias("data_nascimento")
         LocalDate dataNascimento,

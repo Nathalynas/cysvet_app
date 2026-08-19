@@ -30,7 +30,6 @@ public interface AnimalRepository extends JpaRepository<Animal, Long> {
                   or lower(a.idExterno) like lower(concat('%', :search, '%'))
                   or lower(a.codigo) like lower(concat('%', :search, '%'))
                   or lower(a.categoria) like lower(concat('%', :search, '%'))
-                  or lower(coalesce(a.sexo, '')) like lower(concat('%', :search, '%'))
                   or lower(coalesce(l.idExterno, '')) like lower(concat('%', :search, '%'))
                   or lower(coalesce(l.nome, '')) like lower(concat('%', :search, '%'))
                   or lower(p.idExterno) like lower(concat('%', :search, '%'))

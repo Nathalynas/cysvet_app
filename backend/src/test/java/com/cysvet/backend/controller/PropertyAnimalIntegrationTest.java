@@ -164,7 +164,7 @@ class PropertyAnimalIntegrationTest {
     }
 
     @Test
-    void animalEndpointsShouldPersistSexoStatusAndSupportSoftDelete() throws Exception {
+    void animalEndpointsShouldPersistStatusAndSupportSoftDelete() throws Exception {
         AuthContext auth = registerAndAuthenticate("animal.status@example.com");
         JsonNode property = createProperty(auth, """
                 {
@@ -196,7 +196,6 @@ class PropertyAnimalIntegrationTest {
                   "idLote": %d,
                   "codigo": "A-001",
                   "categoria": "Bovino",
-                  "sexo": "Femea",
                   "numeroLactacao": 2,
                   "dataInseminacao": "2026-05-01",
                   "historicoReprodutivo": "Sem intercorrencias",
@@ -211,13 +210,12 @@ class PropertyAnimalIntegrationTest {
                         .header("empresaid", auth.tenantId())
                         .queryParam("idPropriedade", Long.toString(propertyId))
                         .queryParam("idLote", Long.toString(loteId))
-                        .queryParam("search", "femea")
+                        .queryParam("search", "bovino")
                         .queryParam("status", "ATIVO"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].id").value(animalId))
                 .andExpect(jsonPath("$[0].idLote").value(loteId))
                 .andExpect(jsonPath("$[0].nomeLote").value("Lote 1"))
-                .andExpect(jsonPath("$[0].sexo").value("Femea"))
                 .andExpect(jsonPath("$[0].dataInseminacao").value("2026-05-01"))
                 .andExpect(jsonPath("$[0].statusReprodutivo").value("prenha"))
                 .andExpect(jsonPath("$[0].status").value("ATIVO"));
@@ -368,7 +366,6 @@ class PropertyAnimalIntegrationTest {
                   "idLote": %d,
                   "codigo": "SYNC-01",
                   "categoria": "Bovino",
-                  "sexo": "Macho",
                   "numeroLactacao": 0
                 }
                 """.formatted(propertyId, loteId));
@@ -425,7 +422,6 @@ class PropertyAnimalIntegrationTest {
                   "idPropriedade": %d,
                   "codigo": "46344",
                   "categoria": "VACA",
-                  "sexo": "Femea",
                   "numeroLactacao": 3,
                   "dataInseminacao": "2025-11-10",
                   "status": "ATIVO"

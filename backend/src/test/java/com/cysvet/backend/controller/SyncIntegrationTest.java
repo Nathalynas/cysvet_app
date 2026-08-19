@@ -67,7 +67,6 @@ class SyncIntegrationTest {
                   "idLote": %d,
                   "codigo": "A-SYNC-01",
                   "categoria": "VACA",
-                  "sexo": "Femea",
                   "numeroLactacao": 2,
                   "dataInseminacao": "2026-05-19"
                 }
@@ -390,7 +389,6 @@ class SyncIntegrationTest {
                   "idPropriedade": %d,
                   "codigo": "CALV-01",
                   "categoria": "VACA",
-                  "sexo": "Femea",
                   "numeroLactacao": 0
                 }
                 """.formatted(propertyId));

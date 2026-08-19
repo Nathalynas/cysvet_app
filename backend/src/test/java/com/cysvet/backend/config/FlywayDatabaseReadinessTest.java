@@ -28,7 +28,7 @@ class FlywayDatabaseReadinessTest {
                 .migrate();
 
         assertThat(result.success).isTrue();
-        assertThat(result.migrationsExecuted).isEqualTo(9);
+        assertThat(result.migrationsExecuted).isEqualTo(10);
 
         try (Connection connection = DriverManager.getConnection(jdbcUrl, "sa", "")) {
             assertTableExists(connection, "empresa");
@@ -38,6 +38,7 @@ class FlywayDatabaseReadinessTest {
             assertColumnExists(connection, "propriedade", "status");
             assertColumnExists(connection, "animal", "status_reprodutivo");
             assertColumnExists(connection, "animal", "data_inseminacao");
+            assertColumnDoesNotExist(connection, "animal", "sexo");
             assertColumnExists(connection, "visita", "animais_json");
         }
     }
@@ -65,12 +66,13 @@ class FlywayDatabaseReadinessTest {
                 .migrate();
 
         assertThat(full.success).isTrue();
-        assertThat(full.migrationsExecuted).isEqualTo(6);
+        assertThat(full.migrationsExecuted).isEqualTo(7);
 
         try (Connection connection = DriverManager.getConnection(jdbcUrl, "sa", "")) {
             assertColumnExists(connection, "animal", "id_lote");
+            assertColumnDoesNotExist(connection, "animal", "sexo");
             assertColumnExists(connection, "registro_excluido", "tenant_id");
-            assertHistoryVersionExists(connection, "9");
+            assertHistoryVersionExists(connection, "10");
         }
     }
 
@@ -94,6 +96,15 @@ class FlywayDatabaseReadinessTest {
                 columnName))
                 .as("column %s.%s should exist", tableName, columnName)
                 .isTrue();
+    }
+
+    private static void assertColumnDoesNotExist(Connection connection, String tableName, String columnName) throws SQLException {
+        assertThat(rowExists(connection,
+                "SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = ? AND column_name = ?",
+                tableName,
+                columnName))
+                .as("column %s.%s should not exist", tableName, columnName)
+                .isFalse();
     }
 
     private static void assertHistoryVersionExists(Connection connection, String version) throws SQLException {

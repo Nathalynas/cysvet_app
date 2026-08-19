@@ -26,8 +26,6 @@ public record AnimalResponse(
         String codigo,
         @Schema(description = "Categoria zootecnica do animal.", example = "VACA")
         String categoria,
-        @Schema(description = "Sexo do animal.", example = "FEMEA")
-        String sexo,
         @Schema(description = "Data de nascimento.", example = "2024-01-15")
         LocalDate dataNascimento,
         @Schema(description = "Numero de lactacoes.", example = "2")
