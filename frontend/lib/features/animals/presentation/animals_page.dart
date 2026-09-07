@@ -30,6 +30,7 @@ import '../application/animals_provider.dart';
 import '../domain/animal_summary_model.dart';
 import 'animal_dialog.dart';
 import 'animal_history_dialog.dart';
+import 'animal_mobile_card.dart';
 
 final animalsSearchQueryProvider = StateProvider.autoDispose<String>(
   (ref) => '',
@@ -726,159 +727,14 @@ class _AnimalsMobileList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        for (final animal in animals) ...[
-          _AnimalMobileCard(
-            animal: animal,
-            propertyName: propertyNameFor(animal),
-            onEdit: () => onEdit(animal),
-            onInactivate: () => onInactivate(animal),
-            onActivate: () => onActivate(animal),
-            onDelete: () => onDelete(animal),
-            onTap: () => onShowHistory(animal),
-          ),
-          const SizedBox(height: 10),
-        ],
-      ],
-    );
-  }
-}
-
-class _AnimalMobileCard extends StatelessWidget {
-  const _AnimalMobileCard({
-    required this.animal,
-    required this.propertyName,
-    required this.onEdit,
-    required this.onInactivate,
-    required this.onActivate,
-    required this.onDelete,
-    required this.onTap,
-  });
-
-  final AnimalSummaryModel animal;
-  final String propertyName;
-  final VoidCallback onEdit;
-  final VoidCallback onInactivate;
-  final VoidCallback onActivate;
-  final VoidCallback onDelete;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-    final reproductiveStatus = reproductiveStatusFor(animal);
-
-    return Material(
-      color: colorScheme.surface,
-      borderRadius: BorderRadius.circular(16),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(16),
-        hoverColor: colorScheme.primary.withValues(alpha: 0.045),
-        mouseCursor: SystemMouseCursors.click,
-        onTap: onTap,
-        child: AppCard(
-          backgroundColor: Colors.transparent,
-          padding: const EdgeInsets.all(12),
-          borderRadius: 16,
-          borderColor: colorScheme.outlineVariant.withValues(alpha: 0.8),
-          shadow: false,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              // Cabeçalho
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Container(
-                    width: 44,
-                    height: 44,
-                    alignment: Alignment.center,
-                    decoration: BoxDecoration(
-                      color: AppTheme.primary2Color.withValues(alpha: 0.10),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: const Icon(
-                      MdiIcons.cow,
-                      size: 24,
-                      color: AppTheme.primary2Color,
-                    ),
-                  ),
-
-                  const SizedBox(width: 10),
-
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          _animalCodeLabel(animal.codigo),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: theme.textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.w900,
-                            color: colorScheme.onSurface,
-                          ),
-                        ),
-
-                        const SizedBox(height: 3),
-
-                        Text(
-                          propertyName.isEmpty
-                              ? 'Propriedade não informada'
-                              : propertyName,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: colorScheme.onSurfaceVariant,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  const SizedBox(width: 8),
-
-                  SizedBox(
-                    height: 48,
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        _ReproductiveStatusPill(status: reproductiveStatus),
-
-                        const SizedBox(width: 2),
-
-                        _AnimalActionsMenu(
-                          animal: animal,
-                          onEdit: onEdit,
-                          onInactivate: onInactivate,
-                          onActivate: onActivate,
-                          onDelete: onDelete,
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-
-              const SizedBox(height: 14),
-
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(child: _AnimalBreedCell(animal: animal)),
-
-                  const SizedBox(width: 16),
-
-                  Expanded(child: _LastEventCell(animal: animal)),
-                ],
-              ),
-            ],
-          ),
-        ),
-      ),
+    return AnimalMobileCardList(
+      animals: animals,
+      propertyNameFor: propertyNameFor,
+      onTap: onShowHistory,
+      onEdit: onEdit,
+      onInactivate: onInactivate,
+      onActivate: onActivate,
+      onDelete: onDelete,
     );
   }
 }

@@ -18,6 +18,7 @@ import 'package:cysvet_app/features/animals/data/animals_repository.dart';
 import 'package:cysvet_app/features/animals/domain/animal_summary_model.dart';
 import 'package:cysvet_app/features/animals/presentation/animal_dialog.dart';
 import 'package:cysvet_app/features/animals/presentation/animal_history_dialog.dart';
+import 'package:cysvet_app/features/animals/presentation/animal_mobile_card.dart';
 import 'package:cysvet_app/features/auth/application/auth_state.dart';
 import 'package:cysvet_app/features/indicators/indicador_reprodutivo_calculator.dart';
 import 'package:cysvet_app/features/properties/application/properties_provider.dart';
@@ -26,6 +27,7 @@ import 'package:cysvet_app/features/properties/presentation/property_dialog.dart
 import 'package:cysvet_app/features/visits/application/visits_provider.dart';
 import 'package:cysvet_app/features/visits/data/visits_repository.dart';
 import 'package:cysvet_app/features/visits/domain/visit_summary_model.dart';
+import 'package:cysvet_app/features/visits/presentation/visit_mobile_card.dart';
 import 'package:cysvet_app/features/visits/presentation/visit_report_page.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_material_design_icons/flutter_material_design_icons.dart';
@@ -1314,6 +1316,26 @@ class _PropertyAnimalsTable extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isMobile = MediaQuery.sizeOf(context).width < MOBILE_WIDTH;
+
+    if (isMobile) {
+      return AnimalMobileCardList(
+        animals: animals,
+        propertyNameFor: (_) => property.nome,
+        onTap: (animal) => AnimalHistoryDialog.show(
+          context: context,
+          animal: animal,
+          propertyName: property.nome,
+        ),
+        onEdit: onEdit,
+        onInactivate: onToggleStatus,
+        onActivate: onToggleStatus,
+        onDelete: onDelete,
+        footerLabel: _animalsRecordsLabel(animals.length),
+        emptyMessage: 'Nenhum animal vinculado a esta propriedade.',
+      );
+    }
+
     final table = AppTable<AnimalSummaryModel>(
       rows: animals,
       footerLabel: _animalsRecordsLabel(animals.length),
@@ -1488,6 +1510,19 @@ class _PropertyVisitsTable extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isMobile = MediaQuery.sizeOf(context).width < MOBILE_WIDTH;
+
+    if (isMobile) {
+      return VisitMobileCardList<VisitSummaryModel>(
+        items: visits,
+        visitFor: (visit) => visit,
+        propertyNameFor: (_) => property.nome,
+        onTap: (visit) => _openVisit(context, visit),
+        footerLabel: _visitsRecordsLabel(visits.length),
+        emptyMessage: 'Nenhuma visita vinculada a esta propriedade.',
+      );
+    }
+
     return AppTable<VisitSummaryModel>(
       rows: visits,
       footerLabel: _visitsRecordsLabel(visits.length),

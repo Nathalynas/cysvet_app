@@ -33,6 +33,7 @@ import '../../users/domain/user_summary_model.dart';
 import '../../visits/application/visits_provider.dart';
 import '../../visits/data/visits_repository.dart';
 import '../../visits/domain/visit_summary_model.dart';
+import '../../visits/presentation/visit_mobile_card.dart';
 import '../../visits/presentation/visit_report_page.dart';
 import '../application/dashboard_provider.dart';
 import '../domain/dashboard_metrics_model.dart';
@@ -2350,6 +2351,23 @@ class _VisitHistoryList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isMobile = MediaQuery.sizeOf(context).width < MOBILE_WIDTH;
+
+    if (isMobile) {
+      return VisitMobileCardList<_VisitHistoryRow>(
+        items: rows,
+        visitFor: (row) => row.visit,
+        propertyNameFor: (row) => row.property,
+        onTap: (row) => _openDashboardVisit(context, row),
+        emptyMessage: 'Nenhuma visita encontrada.',
+        footerLabel: _recordsLabel(
+          rows.length,
+          singular: 'visita encontrada',
+          plural: 'visitas encontradas',
+        ),
+      );
+    }
+
     return AppTable<_VisitHistoryRow>(
       rows: rows,
       borderRadius: 16,
