@@ -7,13 +7,18 @@ import com.cysvet.backend.entity.Animal;
 import com.cysvet.backend.entity.Propriedade;
 import com.cysvet.backend.entity.EventoReprodutivo;
 import com.cysvet.backend.entity.StatusReprodutivoAnimal;
+import com.cysvet.backend.entity.StatusAnimal;
 import com.cysvet.backend.entity.TipoEventoReprodutivo;
 import com.cysvet.backend.entity.Usuario;
 import com.cysvet.backend.exception.ResourceNotFoundException;
 import com.cysvet.backend.repository.EventoReprodutivoRepository;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -27,6 +32,7 @@ public class EventoReprodutivoService {
     private final PropriedadeService propriedadeService;
     private final UsuarioAutenticadoProvider authenticatedUserProvider;
     private final RegistroExcluidoService deletedRecordService;
+    private final ObjectMapper objectMapper;
 
     @Transactional(readOnly = true)
     public List<EventoReprodutivoResponse> list(Long idPropriedade, Long idAnimal) {
@@ -139,6 +145,7 @@ public class EventoReprodutivoService {
         event.setDataEvento(request.dataEvento());
         event.setPrenhezConfirmada(request.prenhezConfirmada());
         event.setObservacoes(request.observacoes());
+        event.setDetalhesJson(writeDetails(request.detalhes()));
         event.setDataPrevistaParto(
                 request.tipo() == TipoEventoReprodutivo.INSEMINATION ? request.dataEvento().plusDays(283) : null
         );
@@ -151,6 +158,10 @@ public class EventoReprodutivoService {
             case INSEMINATION -> {
                 animal.setDataInseminacao(request.dataEvento());
                 animal.setStatusReprodutivo(StatusReprodutivoAnimal.INSEMINATED);
+                String bull = textDetail(request.detalhes(), "touro");
+                if (bull != null) {
+                    animal.setTouroIa(bull);
+                }
             }
             case PREGNANCY_DIAGNOSIS -> {
                 if (request.prenhezConfirmada() != null) {
@@ -169,7 +180,20 @@ public class EventoReprodutivoService {
             }
             case DRY_OFF -> animal.setStatusReprodutivo(StatusReprodutivoAnimal.DRY);
             case GESTATIONAL_LOSS -> animal.setStatusReprodutivo(StatusReprodutivoAnimal.EMPTY);
+            case DISCARD -> animal.setStatus(StatusAnimal.INATIVO);
+            case DEATH -> animal.setStatus(StatusAnimal.OBITO);
+            case POST_PARTUM_COMPLICATION, HEALTH_TREATMENT, MILK_CONTROL, LOT_MOVEMENT -> {
+                // Estes eventos enriquecem o histórico sem alterar o status atual do animal.
+            }
         }
+    }
+
+    private String textDetail(Map<String, Object> details, String key) {
+        if (details == null || details.get(key) == null) {
+            return null;
+        }
+        String value = details.get(key).toString().trim();
+        return value.isEmpty() ? null : value;
     }
 
     private Propriedade resolveProperty(Long idPropriedade, String idExternoPropriedade) {
@@ -205,9 +229,33 @@ public class EventoReprodutivoService {
                 event.getDataPrevistaParto(),
                 event.getPrenhezConfirmada(),
                 event.getObservacoes(),
+                readDetails(event.getDetalhesJson()),
                 event.getDataCriacao(),
                 event.getDataAtualizacao(),
                 event.getVersao()
         );
+    }
+
+    private String writeDetails(Map<String, Object> details) {
+        if (details == null || details.isEmpty()) {
+            return null;
+        }
+        try {
+            return objectMapper.writeValueAsString(details);
+        } catch (JsonProcessingException exception) {
+            throw new IllegalArgumentException("Detalhes do evento invalidos", exception);
+        }
+    }
+
+    private Map<String, Object> readDetails(String detailsJson) {
+        if (detailsJson == null || detailsJson.isBlank()) {
+            return Map.of();
+        }
+        try {
+            return objectMapper.readValue(detailsJson, new TypeReference<Map<String, Object>>() {
+            });
+        } catch (JsonProcessingException exception) {
+            throw new IllegalStateException("Falha ao ler detalhes do evento", exception);
+        }
     }
 }

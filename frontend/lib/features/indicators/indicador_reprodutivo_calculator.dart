@@ -397,7 +397,7 @@ class IndicadorReprodutivoCalculator {
       AnimalReproductiveStatus.released,
     };
 
-    if (situacaoProdutiva == AnimalProductiveSituation.calf ||
+    if (situacaoProdutiva == AnimalProductiveSituation.heifer ||
         _isAnyReproductiveStatus(
           situacaoReprodutiva,
           excludedReproductiveStatuses,

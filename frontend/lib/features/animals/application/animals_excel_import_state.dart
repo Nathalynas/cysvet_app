@@ -123,10 +123,16 @@ class AnimalExcelValidationResult {
   const AnimalExcelValidationResult({
     required this.rows,
     required this.missingRequiredFields,
+    this.validRows,
+    this.pendingRows,
+    this.invalidRows,
   });
 
   final List<AnimalExcelRowValidation> rows;
   final List<AnimalImportFieldSpec> missingRequiredFields;
+  final int? validRows;
+  final int? pendingRows;
+  final int? invalidRows;
 
   AnimalExcelImportSummary get summary {
     var valid = 0;
@@ -145,9 +151,9 @@ class AnimalExcelValidationResult {
     }
 
     return AnimalExcelImportSummary(
-      validRows: valid,
-      pendingRows: pending,
-      invalidRows: invalid,
+      validRows: validRows ?? valid,
+      pendingRows: pendingRows ?? pending,
+      invalidRows: invalidRows ?? invalid,
     );
   }
 
@@ -167,8 +173,10 @@ class AnimalsExcelImportState {
     this.errorMessage,
     this.workbook,
     this.selectedSheetName,
+    this.selectedPropertyId,
     this.sheet,
     this.mappings = const {},
+    this.usesAutomaticMapping = true,
     this.validation,
   });
 
@@ -177,19 +185,25 @@ class AnimalsExcelImportState {
   final String? errorMessage;
   final AnimalExcelWorkbookInfo? workbook;
   final String? selectedSheetName;
+  final int? selectedPropertyId;
   final AnimalExcelSheetData? sheet;
   final Map<int, AnimalExcelColumnMapping> mappings;
+  final bool usesAutomaticMapping;
   final AnimalExcelValidationResult? validation;
 
   bool get canSelectSheet {
-    return workbook != null && selectedSheetName != null && !isLoading;
+    return workbook != null &&
+        selectedSheetName != null &&
+        selectedPropertyId != null &&
+        !isLoading;
   }
 
   bool get canImport {
     final validationResult = validation;
     if (validationResult == null) return false;
-    return validationResult.missingRequiredFields.isEmpty &&
-        validationResult.validAnimals.isNotEmpty;
+    return selectedPropertyId != null &&
+        validationResult.missingRequiredFields.isEmpty &&
+        validationResult.summary.validRows > 0;
   }
 
   AnimalsExcelImportState copyWith({
@@ -201,9 +215,12 @@ class AnimalsExcelImportState {
     bool clearWorkbook = false,
     String? selectedSheetName,
     bool clearSelectedSheetName = false,
+    int? selectedPropertyId,
+    bool clearSelectedPropertyId = false,
     AnimalExcelSheetData? sheet,
     bool clearSheet = false,
     Map<int, AnimalExcelColumnMapping>? mappings,
+    bool? usesAutomaticMapping,
     AnimalExcelValidationResult? validation,
     bool clearValidation = false,
   }) {
@@ -215,8 +232,12 @@ class AnimalsExcelImportState {
       selectedSheetName: clearSelectedSheetName
           ? null
           : selectedSheetName ?? this.selectedSheetName,
+      selectedPropertyId: clearSelectedPropertyId
+          ? null
+          : selectedPropertyId ?? this.selectedPropertyId,
       sheet: clearSheet ? null : sheet ?? this.sheet,
       mappings: mappings ?? this.mappings,
+      usesAutomaticMapping: usesAutomaticMapping ?? this.usesAutomaticMapping,
       validation: clearValidation ? null : validation ?? this.validation,
     );
   }

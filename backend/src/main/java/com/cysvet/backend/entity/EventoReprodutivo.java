@@ -37,6 +37,9 @@ public class EventoReprodutivo extends TenantAwareEntity {
     @Column(name = "observacoes", length = 2000)
     private String observacoes;
 
+    @Column(name = "detalhes_json", length = 65535)
+    private String detalhesJson;
+
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "id_animal", nullable = false)
     private Animal animal;

@@ -12,11 +12,11 @@ class AnimalSummaryModel with AnimalSummaryModelMappable {
     this.idPropriedade = 0,
     this.idExternoPropriedade = '',
     this.codigo = '',
-    this.categoria = '',
     this.dataNascimento,
     this.numeroLactacao = 0,
     this.dataUltimoParto,
     this.dataInseminacao,
+    this.touroIa,
     this.diasEmLactacao,
     this.historicoReprodutivo,
     this.statusReprodutivo,
@@ -28,7 +28,6 @@ class AnimalSummaryModel with AnimalSummaryModelMappable {
   final int idPropriedade;
   final String idExternoPropriedade;
   final String codigo;
-  final String categoria;
   @MappableField(hook: _NullableDateTimeHook())
   final DateTime? dataNascimento;
   final int numeroLactacao;
@@ -36,6 +35,7 @@ class AnimalSummaryModel with AnimalSummaryModelMappable {
   final DateTime? dataUltimoParto;
   @MappableField(hook: _NullableDateTimeHook())
   final DateTime? dataInseminacao;
+  final String? touroIa;
   final int? diasEmLactacao;
   final String? historicoReprodutivo;
   @MappableField(hook: _AnimalReproductiveStatusHook())

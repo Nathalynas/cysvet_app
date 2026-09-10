@@ -10,19 +10,19 @@ import '../../../core/widgets/app_dropdown.dart';
 import '../../properties/domain/property_summary_model.dart';
 import '../application/animals_excel_import_controller.dart';
 import '../application/animals_excel_import_state.dart';
+import '../data/animals_repository.dart';
 import '../domain/animal_import_field.dart';
-import '../domain/animal_summary_model.dart';
 
 class AnimalExcelImportDialog extends ConsumerStatefulWidget {
   const AnimalExcelImportDialog({super.key, required this.properties});
 
   final List<PropertySummaryModel> properties;
 
-  static Future<List<AnimalSummaryModel>?> show(
+  static Future<AnimalSpreadsheetImportResult?> show(
     BuildContext context, {
     required List<PropertySummaryModel> properties,
   }) {
-    return AppDialog.show<List<AnimalSummaryModel>>(
+    return AppDialog.show<AnimalSpreadsheetImportResult>(
       context: context,
       title: 'Importar animais por Excel',
       width: 1180,
@@ -72,10 +72,14 @@ class _AnimalExcelImportDialogState
               .backToSheetSelection(),
           onAdvance: () => ref
               .read(animalsExcelImportControllerProvider.notifier)
-              .openSelectedSheet(properties: widget.properties),
-          onImport: () {
-            final animals = state.validation?.validAnimals ?? const [];
-            Navigator.of(context).maybePop(animals);
+              .openSelectedSheet(),
+          onImport: () async {
+            final result = await ref
+                .read(animalsExcelImportControllerProvider.notifier)
+                .importValidRows();
+            if (result != null && context.mounted) {
+              Navigator.of(context).maybePop(result);
+            }
           },
         ),
       ],
@@ -96,12 +100,10 @@ class _AnimalExcelImportDialogState
       case AnimalsExcelImportStep.selectSheet:
         return _SheetStep(
           state: state,
-          onSheetChanged: (sheetName) {
-            if (sheetName == null) return;
-            ref
-                .read(animalsExcelImportControllerProvider.notifier)
-                .selectSheet(sheetName);
-          },
+          properties: widget.properties,
+          onPropertyChanged: (propertyId) => ref
+              .read(animalsExcelImportControllerProvider.notifier)
+              .selectProperty(propertyId),
         );
       case AnimalsExcelImportStep.preview:
         return _PreviewStep(
@@ -200,10 +202,15 @@ class _FileStep extends StatelessWidget {
 }
 
 class _SheetStep extends StatelessWidget {
-  const _SheetStep({required this.state, required this.onSheetChanged});
+  const _SheetStep({
+    required this.state,
+    required this.properties,
+    required this.onPropertyChanged,
+  });
 
   final AnimalsExcelImportState state;
-  final ValueChanged<String?> onSheetChanged;
+  final List<PropertySummaryModel> properties;
+  final ValueChanged<int?> onPropertyChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -238,17 +245,25 @@ class _SheetStep extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 16),
-            AppDropdown<String>(
-              labelText: 'Aba da planilha',
-              value: state.selectedSheetName,
-              onChanged: onSheetChanged,
-              options: workbook.sheetNames
-                  .map((name) => AppDropdownOption(label: name, value: name))
+            AppDropdown<int>(
+              labelText: 'Propriedade',
+              value: state.selectedPropertyId,
+              onChanged: onPropertyChanged,
+              required: true,
+              searchable: true,
+              nullLabel: 'Selecione a propriedade',
+              options: properties
+                  .map(
+                    (property) => AppDropdownOption(
+                      label: property.nome,
+                      value: property.id,
+                    ),
+                  )
                   .toList(growable: false),
             ),
             const SizedBox(height: 12),
             Text(
-              '${workbook.sheetNames.length} abas encontradas.',
+              '${workbook.sheetNames.length} abas encontradas. Todas serão analisadas e importadas.',
               style: theme.textTheme.bodySmall?.copyWith(
                 color: theme.colorScheme.onSurfaceVariant,
               ),
@@ -287,6 +302,16 @@ class _PreviewStep extends ConsumerWidget {
     final validation = state.validation!;
     final visibleRows = sheet.rows.take(maxPreviewRows).toList(growable: false);
     final hiddenRows = sheet.rows.length - visibleRows.length;
+    final visibleColumns = [
+      for (
+        var columnIndex = 0;
+        columnIndex < sheet.columns.length;
+        columnIndex++
+      )
+        if (state.mappings[columnIndex]?.field != null &&
+            state.mappings[columnIndex]?.ignored != true)
+          columnIndex,
+    ];
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -303,6 +328,7 @@ class _PreviewStep extends ConsumerWidget {
             rows: visibleRows,
             validation: validation,
             mappings: state.mappings,
+            visibleColumns: visibleColumns,
             properties: properties,
           ),
         ),
@@ -357,7 +383,7 @@ class _SummaryHeader extends StatelessWidget {
         ];
 
         final info = Text(
-          '${sheet.columns.length} colunas lidas em "${sheet.sheetName}". Cabeçalho detectado na linha ${sheet.headerRowIndex + 1}.',
+          '${sheet.columns.length} colunas exibidas da primeira aba. Os totais incluem todas as abas da planilha.',
           maxLines: 2,
           overflow: TextOverflow.ellipsis,
           style: Theme.of(context).textTheme.bodySmall?.copyWith(
@@ -496,6 +522,7 @@ class _PreviewTable extends ConsumerWidget {
     required this.rows,
     required this.validation,
     required this.mappings,
+    required this.visibleColumns,
     required this.properties,
   });
 
@@ -503,6 +530,7 @@ class _PreviewTable extends ConsumerWidget {
   final List<AnimalExcelDataRow> rows;
   final AnimalExcelValidationResult validation;
   final Map<int, AnimalExcelColumnMapping> mappings;
+  final List<int> visibleColumns;
   final List<PropertySummaryModel> properties;
 
   @override
@@ -546,11 +574,7 @@ class _PreviewTable extends ConsumerWidget {
                     ),
                   ),
                 ),
-                for (
-                  var columnIndex = 0;
-                  columnIndex < sheet.columns.length;
-                  columnIndex++
-                )
+                for (final columnIndex in visibleColumns)
                   DataColumn(
                     label: _ColumnHeader(
                       columnIndex: columnIndex,
@@ -579,11 +603,7 @@ class _PreviewTable extends ConsumerWidget {
                           excelRowNumber: rows[rowIndex].excelRowNumber,
                         ),
                       ),
-                      for (
-                        var columnIndex = 0;
-                        columnIndex < sheet.columns.length;
-                        columnIndex++
-                      )
+                      for (final columnIndex in visibleColumns)
                         DataCell(
                           _ImportCell(
                             cell: rows[rowIndex].cells[columnIndex],
@@ -634,12 +654,14 @@ class _ColumnHeader extends ConsumerWidget {
         label: 'Não importar',
         value: _ignoredValue,
       ),
-      ...animalImportFields.map((field) {
-        return AppDropdownOption<String>(
-          label: field.required ? '${field.label} *' : field.label,
-          value: field.key.name,
-        );
-      }),
+      ...animalImportFields
+          .where((field) => field.key != AnimalImportFieldKey.idPropriedade)
+          .map((field) {
+            return AppDropdownOption<String>(
+              label: field.required ? '${field.label} *' : field.label,
+              value: field.key.name,
+            );
+          }),
     ];
 
     return SizedBox(
@@ -662,18 +684,12 @@ class _ColumnHeader extends ConsumerWidget {
                     );
 
                     if (value == null || value == _unmappedValue) {
-                      controller.unmapColumn(
-                        columnIndex: columnIndex,
-                        properties: properties,
-                      );
+                      controller.unmapColumn(columnIndex: columnIndex);
                       return;
                     }
 
                     if (value == _ignoredValue) {
-                      controller.ignoreColumn(
-                        columnIndex: columnIndex,
-                        properties: properties,
-                      );
+                      controller.ignoreColumn(columnIndex: columnIndex);
                       return;
                     }
 
@@ -682,7 +698,6 @@ class _ColumnHeader extends ConsumerWidget {
                       field: AnimalImportFieldKey.values.firstWhere(
                         (field) => field.name == value,
                       ),
-                      properties: properties,
                     );
                   },
                   options: options,
@@ -701,10 +716,7 @@ class _ColumnHeader extends ConsumerWidget {
                   onPressed: () {
                     ref
                         .read(animalsExcelImportControllerProvider.notifier)
-                        .ignoreColumn(
-                          columnIndex: columnIndex,
-                          properties: properties,
-                        );
+                        .ignoreColumn(columnIndex: columnIndex);
                   },
                   child: const Icon(Icons.visibility_off_outlined, size: 17),
                 ),
@@ -864,7 +876,7 @@ class _DialogFooter extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final validCount = state.validation?.validAnimals.length ?? 0;
+    final validCount = state.validation?.summary.validRows ?? 0;
 
     return Wrap(
       spacing: 10,

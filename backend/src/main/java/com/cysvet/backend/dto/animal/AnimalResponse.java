@@ -24,8 +24,6 @@ public record AnimalResponse(
         String nomeLote,
         @Schema(description = "Codigo do animal.", example = "BR-001")
         String codigo,
-        @Schema(description = "Categoria zootecnica do animal.", example = "VACA")
-        String categoria,
         @Schema(description = "Data de nascimento.", example = "2024-01-15")
         LocalDate dataNascimento,
         @Schema(description = "Numero de lactacoes.", example = "2")
@@ -34,6 +32,8 @@ public record AnimalResponse(
         LocalDate dataUltimoParto,
         @Schema(description = "Data da ultima inseminacao registrada.", example = "2025-11-10")
         LocalDate dataInseminacao,
+        @Schema(description = "Identificacao do touro utilizado na inseminacao artificial.", example = "Touro-123")
+        String touroIa,
         @Schema(description = "Dias em lactacao calculados.", example = "63")
         Long diasEmLactacao,
         @Schema(description = "Historico reprodutivo resumido.")

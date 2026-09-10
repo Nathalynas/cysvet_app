@@ -17,6 +17,10 @@ spring:
   jackson:
     serialization:
       write-dates-as-timestamps: false
+  servlet:
+    multipart:
+      max-file-size: 250MB
+      max-request-size: 250MB
 
 server:
   port: ${SERVER_PORT:8080}

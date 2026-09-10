@@ -2063,7 +2063,7 @@ String _locationLabel(PropertySummaryModel property) {
 }
 
 String _animalCategoryLabel(AnimalSummaryModel animal) {
-  return _dashIfBlank(animal.categoria);
+  return _dashIfBlank(animal.touroIa);
 }
 
 String _animalCodeLabel(String code) {

@@ -1,10 +1,8 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../properties/domain/property_summary_model.dart';
+import '../data/animals_repository.dart';
 import '../domain/animal_import_field.dart';
-import 'animals_excel_import_reader.dart';
 import 'animals_excel_import_state.dart';
-import 'animals_excel_import_validator.dart';
 
 final animalsExcelImportControllerProvider =
     NotifierProvider<AnimalsExcelImportController, AnimalsExcelImportState>(
@@ -12,36 +10,35 @@ final animalsExcelImportControllerProvider =
     );
 
 class AnimalsExcelImportController extends Notifier<AnimalsExcelImportState> {
-  final _reader = const AnimalsExcelImportReader();
-  final _validator = const AnimalsExcelImportValidator();
+  AnimalsRepository get _repository => ref.read(animalsRepositoryProvider);
 
   @override
-  AnimalsExcelImportState build() {
-    return const AnimalsExcelImportState();
-  }
+  AnimalsExcelImportState build() => const AnimalsExcelImportState();
 
-  void reset() {
-    state = const AnimalsExcelImportState();
-  }
+  void reset() => state = const AnimalsExcelImportState();
 
   Future<void> loadFile({
     required List<int> bytes,
     required String fileName,
   }) async {
     state = state.copyWith(isLoading: true, clearError: true);
-
     try {
-      final workbook = _reader.readWorkbook(bytes: bytes, fileName: fileName);
-      if (workbook.sheetNames.isEmpty) {
-        throw StateError('A planilha não possui abas disponíveis.');
-      }
-
+      final sheets = await _repository.inspectSpreadsheet(
+        bytes: bytes,
+        fileName: fileName,
+      );
+      if (sheets.isEmpty) throw StateError('Planilha sem abas.');
+      final workbook = AnimalExcelWorkbookInfo(
+        fileName: fileName,
+        bytes: List<int>.from(bytes),
+        sheetNames: sheets,
+      );
       state = AnimalsExcelImportState(
         step: AnimalsExcelImportStep.selectSheet,
         workbook: workbook,
-        selectedSheetName: workbook.sheetNames.first,
+        selectedSheetName: sheets.first,
       );
-    } catch (error) {
+    } catch (_) {
       state = state.copyWith(
         isLoading: false,
         errorMessage: 'Não foi possível ler o arquivo .xlsx.',
@@ -49,129 +46,121 @@ class AnimalsExcelImportController extends Notifier<AnimalsExcelImportState> {
     }
   }
 
-  void selectSheet(String sheetName) {
-    state = state.copyWith(
-      selectedSheetName: sheetName,
-      clearSheet: true,
-      clearValidation: true,
-      mappings: const {},
-      clearError: true,
-    );
+  void selectSheet(String name) => state = state.copyWith(
+    selectedSheetName: name,
+    clearSheet: true,
+    clearValidation: true,
+    mappings: const {},
+    clearError: true,
+  );
+
+  void selectProperty(int? propertyId) => state = state.copyWith(
+    selectedPropertyId: propertyId,
+    clearSelectedPropertyId: propertyId == null,
+    clearError: true,
+  );
+
+  Future<void> openSelectedSheet() => _loadPreview(const {}, autoMapping: true);
+
+  Future<void> mapColumn({
+    required int columnIndex,
+    required AnimalImportFieldKey field,
+  }) async {
+    final mappings = <int, AnimalExcelColumnMapping>{...state.mappings};
+    for (final entry in mappings.entries.toList()) {
+      if (entry.value.field == field) {
+        mappings[entry.key] = const AnimalExcelColumnMapping();
+      }
+    }
+    mappings[columnIndex] = AnimalExcelColumnMapping(field: field);
+    await _loadPreview(mappings, autoMapping: false);
   }
 
-  Future<void> openSelectedSheet({
-    required List<PropertySummaryModel> properties,
+  Future<void> ignoreColumn({required int columnIndex}) async {
+    final mappings = <int, AnimalExcelColumnMapping>{...state.mappings};
+    mappings[columnIndex] = const AnimalExcelColumnMapping(ignored: true);
+    await _loadPreview(mappings, autoMapping: false);
+  }
+
+  Future<void> unmapColumn({required int columnIndex}) async {
+    final mappings = <int, AnimalExcelColumnMapping>{...state.mappings};
+    mappings[columnIndex] = const AnimalExcelColumnMapping();
+    await _loadPreview(mappings, autoMapping: false);
+  }
+
+  void backToSheetSelection() => state = state.copyWith(
+    step: AnimalsExcelImportStep.selectSheet,
+    clearSheet: true,
+    clearValidation: true,
+    mappings: const {},
+  );
+
+  Future<AnimalSpreadsheetImportResult?> importValidRows() async {
+    final workbook = state.workbook;
+    final sheetName = state.selectedSheetName;
+    final propertyId = state.selectedPropertyId;
+    if (workbook == null ||
+        sheetName == null ||
+        propertyId == null ||
+        !state.canImport) {
+      return null;
+    }
+    state = state.copyWith(isLoading: true, clearError: true);
+    try {
+      final result = await _repository.importSpreadsheet(
+        bytes: workbook.bytes,
+        fileName: workbook.fileName,
+        sheetName: sheetName,
+        propertyId: propertyId,
+        mappings: state.mappings,
+        useAutomaticMapping: state.usesAutomaticMapping,
+      );
+      state = state.copyWith(isLoading: false);
+      return result;
+    } catch (_) {
+      state = state.copyWith(
+        isLoading: false,
+        errorMessage: 'Não foi possível importar os animais da planilha.',
+      );
+      return null;
+    }
+  }
+
+  Future<void> _loadPreview(
+    Map<int, AnimalExcelColumnMapping> mappings, {
+    required bool autoMapping,
   }) async {
     final workbook = state.workbook;
     final sheetName = state.selectedSheetName;
-    if (workbook == null || sheetName == null) return;
-
-    state = state.copyWith(isLoading: true, clearError: true);
-
+    final propertyId = state.selectedPropertyId;
+    if (workbook == null || sheetName == null || propertyId == null) return;
+    state = state.copyWith(
+      isLoading: true,
+      clearError: true,
+      mappings: mappings,
+      usesAutomaticMapping: autoMapping,
+    );
     try {
-      final sheet = _reader.readSheet(workbook: workbook, sheetName: sheetName);
-      final mappings = _initialMappings(sheet);
-      final validation = _validator.validate(
-        sheet: sheet,
+      final preview = await _repository.previewSpreadsheet(
+        bytes: workbook.bytes,
+        fileName: workbook.fileName,
+        sheetName: sheetName,
+        propertyId: propertyId,
         mappings: mappings,
-        properties: properties,
       );
-
       state = state.copyWith(
         step: AnimalsExcelImportStep.preview,
         isLoading: false,
-        sheet: sheet,
-        mappings: mappings,
-        validation: validation,
+        sheet: preview.sheet,
+        mappings: preview.mappings,
+        usesAutomaticMapping: autoMapping,
+        validation: preview.validation,
       );
-    } catch (error) {
+    } catch (_) {
       state = state.copyWith(
         isLoading: false,
-        errorMessage: 'Não foi possível abrir a aba selecionada.',
+        errorMessage: 'Não foi possível analisar as abas da planilha.',
       );
     }
-  }
-
-  void mapColumn({
-    required int columnIndex,
-    required AnimalImportFieldKey field,
-    required List<PropertySummaryModel> properties,
-  }) {
-    final sheet = state.sheet;
-    if (sheet == null) return;
-
-    final updated = <int, AnimalExcelColumnMapping>{...state.mappings};
-    for (final entry in updated.entries.toList()) {
-      if (entry.value.field == field) {
-        updated[entry.key] = const AnimalExcelColumnMapping();
-      }
-    }
-
-    updated[columnIndex] = AnimalExcelColumnMapping(field: field);
-    _setMappings(updated, properties);
-  }
-
-  void ignoreColumn({
-    required int columnIndex,
-    required List<PropertySummaryModel> properties,
-  }) {
-    final updated = <int, AnimalExcelColumnMapping>{...state.mappings};
-    updated[columnIndex] = const AnimalExcelColumnMapping(ignored: true);
-    _setMappings(updated, properties);
-  }
-
-  void unmapColumn({
-    required int columnIndex,
-    required List<PropertySummaryModel> properties,
-  }) {
-    final updated = <int, AnimalExcelColumnMapping>{...state.mappings};
-    updated[columnIndex] = const AnimalExcelColumnMapping();
-    _setMappings(updated, properties);
-  }
-
-  void backToSheetSelection() {
-    state = state.copyWith(
-      step: AnimalsExcelImportStep.selectSheet,
-      clearSheet: true,
-      clearValidation: true,
-      mappings: const {},
-    );
-  }
-
-  Map<int, AnimalExcelColumnMapping> _initialMappings(
-    AnimalExcelSheetData sheet,
-  ) {
-    final mappings = <int, AnimalExcelColumnMapping>{};
-    final usedFields = <AnimalImportFieldKey>{};
-
-    for (var index = 0; index < sheet.columns.length; index++) {
-      final field = animalImportFieldForHeader(sheet.columns[index]);
-      if (field == null || usedFields.contains(field.key)) {
-        mappings[index] = const AnimalExcelColumnMapping();
-        continue;
-      }
-
-      usedFields.add(field.key);
-      mappings[index] = AnimalExcelColumnMapping(field: field.key);
-    }
-
-    return mappings;
-  }
-
-  void _setMappings(
-    Map<int, AnimalExcelColumnMapping> mappings,
-    List<PropertySummaryModel> properties,
-  ) {
-    final sheet = state.sheet;
-    if (sheet == null) return;
-
-    state = state.copyWith(
-      mappings: mappings,
-      validation: _validator.validate(
-        sheet: sheet,
-        mappings: mappings,
-        properties: properties,
-      ),
-    );
   }
 }

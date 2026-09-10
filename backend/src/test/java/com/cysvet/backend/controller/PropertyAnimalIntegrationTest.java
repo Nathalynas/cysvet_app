@@ -195,7 +195,7 @@ class PropertyAnimalIntegrationTest {
                   "idPropriedade": %d,
                   "idLote": %d,
                   "codigo": "A-001",
-                  "categoria": "Bovino",
+                  "touroIa": "Bovino-IA",
                   "numeroLactacao": 2,
                   "dataInseminacao": "2026-05-01",
                   "historicoReprodutivo": "Sem intercorrencias",
@@ -210,7 +210,7 @@ class PropertyAnimalIntegrationTest {
                         .header("empresaid", auth.tenantId())
                         .queryParam("idPropriedade", Long.toString(propertyId))
                         .queryParam("idLote", Long.toString(loteId))
-                        .queryParam("search", "bovino")
+                        .queryParam("search", "bovino-ia")
                         .queryParam("status", "ATIVO"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].id").value(animalId))
@@ -538,7 +538,11 @@ class PropertyAnimalIntegrationTest {
                                   "tipo": "PREGNANCY_DIAGNOSIS",
                                   "dataEvento": "2026-05-20",
                                   "prenhezConfirmada": true,
-                                  "observacoes": "Confirmada por US"
+                                  "observacoes": "Confirmada por US",
+                                  "detalhes": {
+                                    "resultado": "prenhez confirmada",
+                                    "diasPrenhez": 35
+                                  }
                                 }
                                 """.formatted(propertyId, animalId)))
                 .andExpect(status().isCreated());
@@ -550,6 +554,7 @@ class PropertyAnimalIntegrationTest {
                 .andExpect(jsonPath("$.animal.id").value(animalId))
                 .andExpect(jsonPath("$.animal.statusReprodutivo").value("prenha"))
                 .andExpect(jsonPath("$.eventos[0].tipo").value("PREGNANCY_DIAGNOSIS"))
+                .andExpect(jsonPath("$.eventos[0].detalhes.diasPrenhez").value(35))
                 .andExpect(jsonPath("$.visitas[0].id").value(visitId))
                 .andExpect(jsonPath("$.visitas[0].animais[0].animalId").value(animalId))
                 .andExpect(jsonPath("$.visitas[0].animais[0].previsaoSecagem").value("2026-10-31"));

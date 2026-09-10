@@ -124,12 +124,12 @@ CREATE TABLE animal (
     tenant_id BIGINT NOT NULL,
     id_externo VARCHAR(64) NOT NULL,
     codigo VARCHAR(255) NOT NULL,
-    categoria VARCHAR(255) NOT NULL,
     status VARCHAR(32) NOT NULL DEFAULT 'ATIVO',
     data_nascimento DATE NULL,
     numero_lactacao INT NOT NULL,
     data_ultimo_parto DATE NULL,
     data_inseminacao DATE NULL,
+    touro_ia VARCHAR(255) NULL,
     historico_reprodutivo VARCHAR(2000) NULL,
     status_reprodutivo VARCHAR(32) NULL,
     id_propriedade BIGINT NOT NULL,
@@ -148,6 +148,27 @@ CREATE TABLE animal (
     CONSTRAINT fk_animal_lote
         FOREIGN KEY (id_lote) REFERENCES lote (id),
     CONSTRAINT fk_animal_usuario
+        FOREIGN KEY (id_usuario) REFERENCES usuario (id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE animal_historico (
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    data_criacao DATETIME(6) NOT NULL,
+    data_atualizacao DATETIME(6) NOT NULL,
+    versao BIGINT NOT NULL,
+    tenant_id BIGINT NOT NULL,
+    id_animal BIGINT NOT NULL,
+    id_usuario BIGINT NOT NULL,
+    tipo VARCHAR(32) NOT NULL,
+    descricao VARCHAR(500) NOT NULL,
+    PRIMARY KEY (id),
+    KEY idx_animal_historico_tenant_id (tenant_id),
+    KEY idx_animal_historico_animal_data (id_animal, data_criacao),
+    CONSTRAINT fk_animal_historico_empresa
+        FOREIGN KEY (tenant_id) REFERENCES empresa (id),
+    CONSTRAINT fk_animal_historico_animal
+        FOREIGN KEY (id_animal) REFERENCES animal (id),
+    CONSTRAINT fk_animal_historico_usuario
         FOREIGN KEY (id_usuario) REFERENCES usuario (id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -186,6 +207,7 @@ CREATE TABLE evento_reprodutivo (
     data_prevista_parto DATE NULL,
     prenhez_confirmada BOOLEAN NULL,
     observacoes VARCHAR(2000) NULL,
+    detalhes_json TEXT NULL,
     id_animal BIGINT NOT NULL,
     id_propriedade BIGINT NOT NULL,
     id_usuario BIGINT NOT NULL,

@@ -28,7 +28,7 @@ class FlywayDatabaseReadinessTest {
                 .migrate();
 
         assertThat(result.success).isTrue();
-        assertThat(result.migrationsExecuted).isEqualTo(10);
+        assertThat(result.migrationsExecuted).isEqualTo(13);
 
         try (Connection connection = DriverManager.getConnection(jdbcUrl, "sa", "")) {
             assertTableExists(connection, "empresa");
@@ -38,6 +38,10 @@ class FlywayDatabaseReadinessTest {
             assertColumnExists(connection, "propriedade", "status");
             assertColumnExists(connection, "animal", "status_reprodutivo");
             assertColumnExists(connection, "animal", "data_inseminacao");
+            assertColumnExists(connection, "animal", "touro_ia");
+            assertTableExists(connection, "animal_historico");
+            assertColumnExists(connection, "evento_reprodutivo", "detalhes_json");
+            assertColumnDoesNotExist(connection, "animal", "categoria");
             assertColumnDoesNotExist(connection, "animal", "sexo");
             assertColumnExists(connection, "visita", "animais_json");
         }
@@ -66,13 +70,14 @@ class FlywayDatabaseReadinessTest {
                 .migrate();
 
         assertThat(full.success).isTrue();
-        assertThat(full.migrationsExecuted).isEqualTo(7);
+        assertThat(full.migrationsExecuted).isEqualTo(10);
 
         try (Connection connection = DriverManager.getConnection(jdbcUrl, "sa", "")) {
             assertColumnExists(connection, "animal", "id_lote");
             assertColumnDoesNotExist(connection, "animal", "sexo");
+            assertColumnExists(connection, "animal", "touro_ia");
             assertColumnExists(connection, "registro_excluido", "tenant_id");
-            assertHistoryVersionExists(connection, "10");
+            assertHistoryVersionExists(connection, "13");
         }
     }
 

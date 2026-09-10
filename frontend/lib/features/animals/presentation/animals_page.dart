@@ -398,7 +398,7 @@ List<AnimalSummaryModel> _filterAnimals(
         animalReproductiveStatus == reproductiveStatusFilter;
 
     final searchable =
-        '${animal.codigo} ${animal.idExterno} ${animal.categoria} '
+        '${animal.codigo} ${animal.idExterno} ${animal.touroIa ?? ''} '
                 '${animalReproductiveStatus.label} ${animal.historicoReprodutivo ?? ''} '
                 '${formatDate(animal.dataInseminacao)}'
             .normalize();
@@ -546,11 +546,11 @@ class _AnimalsTable extends StatelessWidget {
         ),
 
         AppTableColumn<AnimalSummaryModel>(
-          label: 'Raça',
+          label: 'Touro IA',
           flex: 2,
           alignment: Alignment.center,
           cellBuilder: (context, animal) {
-            return Center(child: _AnimalBreedCell(animal: animal));
+            return Center(child: _AnimalIaBullCell(animal: animal));
           },
         ),
         AppTableColumn<AnimalSummaryModel>(
@@ -758,7 +758,7 @@ class _AnimalMobileCard extends StatelessWidget {
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Expanded(child: _AnimalBreedCell(animal: animal)),
+                  Expanded(child: _AnimalIaBullCell(animal: animal)),
 
                   const SizedBox(width: 16),
 
@@ -840,8 +840,8 @@ class _AnimalIdentityHeader extends StatelessWidget {
   }
 }
 
-class _AnimalBreedCell extends StatelessWidget {
-  const _AnimalBreedCell({required this.animal});
+class _AnimalIaBullCell extends StatelessWidget {
+  const _AnimalIaBullCell({required this.animal});
 
   final AnimalSummaryModel animal;
 
@@ -854,7 +854,7 @@ class _AnimalBreedCell extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          animal.categoria.isEmpty ? '--' : animal.categoria,
+          animal.touroIa?.trim().isEmpty ?? true ? '--' : animal.touroIa!,
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
           style: theme.textTheme.bodyMedium?.copyWith(
@@ -1204,7 +1204,7 @@ class _HerdIndicators extends StatelessWidget {
     final pendingCard = _HerdMetricCard(
       title: 'Pendentes',
       value: statusCounts[AnimalReproductiveStatus.pending].toString(),
-      subtitle: 'Sem backend',
+      subtitle: 'Aguardam definição',
       icon: Icons.pending_actions_outlined,
       color: const Color(0xFF8A5C00),
       iconBackgroundColor: const Color(0xFFFFF0C2),
@@ -1585,17 +1585,17 @@ Future<void> _importAnimalsExcel(
     return;
   }
 
-  final animals = await AnimalExcelImportDialog.show(
+  final result = await AnimalExcelImportDialog.show(
     context,
     properties: properties,
   );
 
-  if (animals == null || animals.isEmpty) return;
+  if (result == null || result.importedRows == 0) return;
 
   try {
-    await ref.read(animalsControllerProvider).importAnimals(animals);
+    ref.invalidate(animalsProvider);
     if (!context.mounted) return;
-    showAppSuccess('${animals.length} animais importados localmente.');
+    showAppSuccess('${result.importedRows} animais importados com sucesso.');
   } catch (error) {
     showAppError(error);
   }

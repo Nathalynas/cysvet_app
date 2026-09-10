@@ -9,6 +9,7 @@ class AnimalHistoryEventModel {
     this.dataPrevistaParto,
     this.prenhezConfirmada,
     this.observacoes,
+    this.detalhes = const {},
   });
 
   final int id;
@@ -20,6 +21,7 @@ class AnimalHistoryEventModel {
   final DateTime? dataPrevistaParto;
   final bool? prenhezConfirmada;
   final String? observacoes;
+  final Map<String, dynamic> detalhes;
 
   factory AnimalHistoryEventModel.fromMap(Map<String, dynamic> map) {
     return AnimalHistoryEventModel(
@@ -32,8 +34,14 @@ class AnimalHistoryEventModel {
       dataPrevistaParto: _asDate(map['dataPrevistaParto']),
       prenhezConfirmada: _asBool(map['prenhezConfirmada']),
       observacoes: _asNullableString(map['observacoes']),
+      detalhes: _asMap(map['detalhes']),
     );
   }
+}
+
+Map<String, dynamic> _asMap(Object? value) {
+  if (value is! Map) return const {};
+  return value.map((key, item) => MapEntry(key.toString(), item));
 }
 
 int _asInt(Object? value) {

@@ -12,6 +12,8 @@ public record AnimalHistoryResponse(
         @Schema(description = "Eventos reprodutivos relacionados ao animal.")
         List<EventoReprodutivoResponse> eventos,
         @Schema(description = "Visitas da propriedade filtradas para o animal informado.")
-        List<VisitaResponse> visitas
+        List<VisitaResponse> visitas,
+        @Schema(description = "Alteracoes e movimentacoes registradas para o animal.")
+        List<AnimalHistoricoResponse> alteracoes
 ) {
 }

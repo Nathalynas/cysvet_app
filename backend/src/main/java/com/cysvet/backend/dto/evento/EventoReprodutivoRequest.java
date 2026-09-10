@@ -8,6 +8,7 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.Map;
 
 @Schema(description = "Payload para cadastro ou atualizacao de um evento reprodutivo.")
 public record EventoReprodutivoRequest(
@@ -36,6 +37,8 @@ public record EventoReprodutivoRequest(
         Boolean prenhezConfirmada,
         @Schema(description = "Observacoes adicionais do evento.")
         String observacoes,
+        @Schema(description = "Detalhes estruturados e especificos do tipo de evento. Ex.: touro, inseminador, protocolo, diagnostico, crias, tratamento ou controle leiteiro.")
+        Map<String, Object> detalhes,
         @Schema(description = "Data da ultima atualizacao enviada pelo cliente.", example = "2026-05-12T18:30:00Z")
         @JsonAlias("data_atualizacao_cliente")
         Instant dataAtualizacaoCliente

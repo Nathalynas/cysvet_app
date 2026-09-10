@@ -57,11 +57,11 @@ class _AnimalForm extends ConsumerStatefulWidget {
 
 class _AnimalFormState extends ConsumerState<_AnimalForm> {
   final _codigo = TextEditingController();
-  final _especie = TextEditingController();
   final _nascimento = TextEditingController();
   final _lactacao = TextEditingController();
   final _parto = TextEditingController();
   final _inseminacao = TextEditingController();
+  final _touroIa = TextEditingController();
   final _historico = TextEditingController();
 
   int? _propertyId;
@@ -75,11 +75,11 @@ class _AnimalFormState extends ConsumerState<_AnimalForm> {
     final animal = widget.animal;
 
     _codigo.text = animal?.codigo ?? '';
-    _especie.text = animal?.categoria ?? '';
     _nascimento.text = formatDateInput(animal?.dataNascimento);
     _lactacao.text = (animal?.numeroLactacao ?? 0).toString();
     _parto.text = formatDateInput(animal?.dataUltimoParto);
     _inseminacao.text = formatDateInput(animal?.dataInseminacao);
+    _touroIa.text = animal?.touroIa ?? '';
     _historico.text = animal?.historicoReprodutivo ?? '';
     _propertyId = animal?.idPropriedade;
     _reproductiveStatus = _resolveReproductiveStatus(animal);
@@ -88,11 +88,11 @@ class _AnimalFormState extends ConsumerState<_AnimalForm> {
   @override
   void dispose() {
     _codigo.dispose();
-    _especie.dispose();
     _nascimento.dispose();
     _lactacao.dispose();
     _parto.dispose();
     _inseminacao.dispose();
+    _touroIa.dispose();
     _historico.dispose();
     super.dispose();
   }
@@ -102,13 +102,13 @@ class _AnimalFormState extends ConsumerState<_AnimalForm> {
     final isBusy = ref.watch(animalsBusyProvider);
     final animal = widget.animal;
     final codigoField = AnimalImportFieldKey.codigo.spec;
-    final categoriaField = AnimalImportFieldKey.categoria.spec;
     final nascimentoField = AnimalImportFieldKey.dataNascimento.spec;
     final propertyField = AnimalImportFieldKey.idPropriedade.spec;
     final reproductiveStatusField = AnimalImportFieldKey.statusReprodutivo.spec;
     final lactacaoField = AnimalImportFieldKey.numeroLactacao.spec;
     final partoField = AnimalImportFieldKey.dataUltimoParto.spec;
     final inseminacaoField = AnimalImportFieldKey.dataInseminacao.spec;
+    final touroIaField = AnimalImportFieldKey.touroIa.spec;
     final historicoField = AnimalImportFieldKey.historicoReprodutivo.spec;
 
     return AppForm(
@@ -135,11 +135,11 @@ class _AnimalFormState extends ConsumerState<_AnimalForm> {
             idExternoPropriedade:
                 property?.idExterno ?? animal?.idExternoPropriedade ?? '',
             codigo: _codigo.text.trim(),
-            categoria: _especie.text.trim(),
             dataNascimento: parseDateInput(_nascimento.text),
             numeroLactacao: int.tryParse(_lactacao.text.trim()) ?? 0,
             dataUltimoParto: parseDateInput(_parto.text),
             dataInseminacao: parseDateInput(_inseminacao.text),
+            touroIa: _touroIa.text.trim(),
             historicoReprodutivo: _historico.text.trim(),
             statusReprodutivo: _reproductiveStatus,
             status: animal?.status ?? AnimalStatus.active,
@@ -160,11 +160,6 @@ class _AnimalFormState extends ConsumerState<_AnimalForm> {
           label: codigoField.label,
           controller: _codigo,
           required: codigoField.required,
-        ),
-        AppTextField(
-          label: categoriaField.label,
-          controller: _especie,
-          required: categoriaField.required,
         ),
         AppTextField(
           label: nascimentoField.label,
@@ -246,6 +241,10 @@ class _AnimalFormState extends ConsumerState<_AnimalForm> {
             }
             return null;
           },
+        ),
+        AppTextField(
+          label: touroIaField.label,
+          controller: _touroIa,
         ),
         AppTextField(
           label: historicoField.label,

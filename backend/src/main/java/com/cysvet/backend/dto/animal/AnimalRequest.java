@@ -3,6 +3,7 @@ package com.cysvet.backend.dto.animal;
 import com.cysvet.backend.entity.StatusAnimal;
 import com.cysvet.backend.entity.StatusReprodutivoAnimal;
 import com.fasterxml.jackson.annotation.JsonAlias;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.NotBlank;
@@ -11,6 +12,7 @@ import java.time.Instant;
 import java.time.LocalDate;
 
 @Schema(description = "Payload para cadastro ou atualizacao de um animal.")
+@JsonIgnoreProperties(value = "categoria")
 public record AnimalRequest(
         @Schema(description = "Identificador externo do animal no sistema cliente.", example = "animal-001")
         @JsonAlias("id_externo")
@@ -29,8 +31,6 @@ public record AnimalRequest(
         String idExternoLote,
         @Schema(description = "Codigo do animal.", example = "BR-001")
         @NotBlank String codigo,
-        @Schema(description = "Categoria zootecnica do animal.", example = "VACA")
-        @NotBlank String categoria,
         @Schema(description = "Data de nascimento do animal.", example = "2024-01-15")
         @JsonAlias("data_nascimento")
         LocalDate dataNascimento,
@@ -43,6 +43,9 @@ public record AnimalRequest(
         @Schema(description = "Data da ultima inseminacao informada para o animal.", example = "2025-11-10")
         @JsonAlias("data_inseminacao")
         LocalDate dataInseminacao,
+        @Schema(description = "Identificacao do touro utilizado na inseminacao artificial.", example = "Touro-123")
+        @JsonAlias("touro_ia")
+        String touroIa,
         @Schema(description = "Historico reprodutivo resumido do animal.")
         @JsonAlias("historico_reprodutivo")
         String historicoReprodutivo,

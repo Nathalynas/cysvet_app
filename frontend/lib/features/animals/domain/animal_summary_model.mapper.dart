@@ -54,13 +54,6 @@ class AnimalSummaryModelMapper extends ClassMapperBase<AnimalSummaryModel> {
     opt: true,
     def: '',
   );
-  static String _$categoria(AnimalSummaryModel v) => v.categoria;
-  static const Field<AnimalSummaryModel, String> _f$categoria = Field(
-    'categoria',
-    _$categoria,
-    opt: true,
-    def: '',
-  );
   static DateTime? _$dataNascimento(AnimalSummaryModel v) => v.dataNascimento;
   static const Field<AnimalSummaryModel, DateTime> _f$dataNascimento = Field(
     'dataNascimento',
@@ -88,6 +81,12 @@ class AnimalSummaryModelMapper extends ClassMapperBase<AnimalSummaryModel> {
     _$dataInseminacao,
     opt: true,
     hook: _NullableDateTimeHook(),
+  );
+  static String? _$touroIa(AnimalSummaryModel v) => v.touroIa;
+  static const Field<AnimalSummaryModel, String> _f$touroIa = Field(
+    'touroIa',
+    _$touroIa,
+    opt: true,
   );
   static int? _$diasEmLactacao(AnimalSummaryModel v) => v.diasEmLactacao;
   static const Field<AnimalSummaryModel, int> _f$diasEmLactacao = Field(
@@ -124,11 +123,11 @@ class AnimalSummaryModelMapper extends ClassMapperBase<AnimalSummaryModel> {
     #idPropriedade: _f$idPropriedade,
     #idExternoPropriedade: _f$idExternoPropriedade,
     #codigo: _f$codigo,
-    #categoria: _f$categoria,
     #dataNascimento: _f$dataNascimento,
     #numeroLactacao: _f$numeroLactacao,
     #dataUltimoParto: _f$dataUltimoParto,
     #dataInseminacao: _f$dataInseminacao,
+    #touroIa: _f$touroIa,
     #diasEmLactacao: _f$diasEmLactacao,
     #historicoReprodutivo: _f$historicoReprodutivo,
     #statusReprodutivo: _f$statusReprodutivo,
@@ -142,11 +141,11 @@ class AnimalSummaryModelMapper extends ClassMapperBase<AnimalSummaryModel> {
       idPropriedade: data.dec(_f$idPropriedade),
       idExternoPropriedade: data.dec(_f$idExternoPropriedade),
       codigo: data.dec(_f$codigo),
-      categoria: data.dec(_f$categoria),
       dataNascimento: data.dec(_f$dataNascimento),
       numeroLactacao: data.dec(_f$numeroLactacao),
       dataUltimoParto: data.dec(_f$dataUltimoParto),
       dataInseminacao: data.dec(_f$dataInseminacao),
+      touroIa: data.dec(_f$touroIa),
       diasEmLactacao: data.dec(_f$diasEmLactacao),
       historicoReprodutivo: data.dec(_f$historicoReprodutivo),
       statusReprodutivo: data.dec(_f$statusReprodutivo),
@@ -231,11 +230,11 @@ abstract class AnimalSummaryModelCopyWith<
     int? idPropriedade,
     String? idExternoPropriedade,
     String? codigo,
-    String? categoria,
     DateTime? dataNascimento,
     int? numeroLactacao,
     DateTime? dataUltimoParto,
     DateTime? dataInseminacao,
+    String? touroIa,
     int? diasEmLactacao,
     String? historicoReprodutivo,
     AnimalReproductiveStatus? statusReprodutivo,
@@ -261,11 +260,11 @@ class _AnimalSummaryModelCopyWithImpl<$R, $Out>
     int? idPropriedade,
     String? idExternoPropriedade,
     String? codigo,
-    String? categoria,
     Object? dataNascimento = $none,
     int? numeroLactacao,
     Object? dataUltimoParto = $none,
     Object? dataInseminacao = $none,
+    Object? touroIa = $none,
     Object? diasEmLactacao = $none,
     Object? historicoReprodutivo = $none,
     Object? statusReprodutivo = $none,
@@ -278,11 +277,11 @@ class _AnimalSummaryModelCopyWithImpl<$R, $Out>
       if (idExternoPropriedade != null)
         #idExternoPropriedade: idExternoPropriedade,
       if (codigo != null) #codigo: codigo,
-      if (categoria != null) #categoria: categoria,
       if (dataNascimento != $none) #dataNascimento: dataNascimento,
       if (numeroLactacao != null) #numeroLactacao: numeroLactacao,
       if (dataUltimoParto != $none) #dataUltimoParto: dataUltimoParto,
       if (dataInseminacao != $none) #dataInseminacao: dataInseminacao,
+      if (touroIa != $none) #touroIa: touroIa,
       if (diasEmLactacao != $none) #diasEmLactacao: diasEmLactacao,
       if (historicoReprodutivo != $none)
         #historicoReprodutivo: historicoReprodutivo,
@@ -300,11 +299,11 @@ class _AnimalSummaryModelCopyWithImpl<$R, $Out>
       or: $value.idExternoPropriedade,
     ),
     codigo: data.get(#codigo, or: $value.codigo),
-    categoria: data.get(#categoria, or: $value.categoria),
     dataNascimento: data.get(#dataNascimento, or: $value.dataNascimento),
     numeroLactacao: data.get(#numeroLactacao, or: $value.numeroLactacao),
     dataUltimoParto: data.get(#dataUltimoParto, or: $value.dataUltimoParto),
     dataInseminacao: data.get(#dataInseminacao, or: $value.dataInseminacao),
+    touroIa: data.get(#touroIa, or: $value.touroIa),
     diasEmLactacao: data.get(#diasEmLactacao, or: $value.diasEmLactacao),
     historicoReprodutivo: data.get(
       #historicoReprodutivo,

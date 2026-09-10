@@ -212,10 +212,6 @@ class _VisitFormPageState extends ConsumerState<VisitFormPage> {
       label: 'Pré-parto',
       value: AnimalProductiveSituation.prepartum,
     ),
-    AppDropdownOption<String>(
-      label: 'Bezerra',
-      value: AnimalProductiveSituation.calf,
-    ),
   ];
 
   static const _situacaoReprodutivaOptions = [
@@ -231,7 +227,7 @@ class _VisitFormPageState extends ConsumerState<VisitFormPage> {
     AppDropdownOption<String>(label: 'Descarte', value: 'descarte'),
     AppDropdownOption<String>(label: 'PEV', value: 'pev'),
     AppDropdownOption<String>(label: 'Sem idade', value: 'sem idade'),
-    AppDropdownOption<String>(label: 'Bezerra', value: 'bezerra'),
+    AppDropdownOption<String>(label: 'Novilha', value: 'novilha'),
     AppDropdownOption<String>(label: 'Inseminada', value: 'inseminada'),
     AppDropdownOption<String>(label: 'Seca', value: 'seca'),
     AppDropdownOption<String>(label: 'Pendente', value: 'pending'),
@@ -767,7 +763,7 @@ class _VisitFormPageState extends ConsumerState<VisitFormPage> {
       animalId: animal.id,
       animalIdExterno: animal.idExterno,
       animalCodigo: animal.codigo,
-      animalCategoria: animal.categoria,
+      animalCategoria: _resolvedReproductiveStatus(animal).label,
       dataNascimento: animal.dataNascimento,
       dataUltimoParto: lastBirthDate,
       numeroPartos: animal.numeroLactacao > 0 ? animal.numeroLactacao : null,
@@ -795,7 +791,7 @@ class _VisitFormPageState extends ConsumerState<VisitFormPage> {
     AnimalSummaryModel animal, {
     required DateTime? dataUltimoParto,
   }) {
-    final category = animal.categoria.normalize();
+    final category = _resolvedReproductiveStatus(animal).label.normalize();
 
     if (category.contains('novilha')) {
       return AnimalProductiveSituation.heifer;
@@ -850,7 +846,7 @@ class _VisitFormPageState extends ConsumerState<VisitFormPage> {
     if (history.contains('sem idade')) {
       return AnimalReproductiveStatus.noAge.apiValue;
     }
-    if (history.contains('bezerra')) {
+    if (history.contains('bezerra') || history.contains('novilha')) {
       return AnimalReproductiveStatus.calf.apiValue;
     }
     return null;
@@ -906,7 +902,7 @@ class _VisitFormPageState extends ConsumerState<VisitFormPage> {
     if (history.contains('sem idade')) {
       return AnimalReproductiveStatus.noAge;
     }
-    if (history.contains('bezerra')) {
+    if (history.contains('bezerra') || history.contains('novilha')) {
       return AnimalReproductiveStatus.calf;
     }
     if (history.contains('vazia') ||

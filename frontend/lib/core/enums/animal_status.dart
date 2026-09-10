@@ -41,7 +41,7 @@ enum AnimalReproductiveStatus {
   discard('descarte', 'Descarte'),
   pev('pev', 'PEV'),
   noAge('sem idade', 'Sem idade'),
-  calf('bezerra', 'Bezerra'),
+  calf('novilha', 'Novilha', aliases: ['bezerra']),
   inseminated('inseminada', 'Inseminada', aliases: ['inseminated']),
   dry('dry', 'Seca', aliases: ['seca']),
   pending('pending', 'Pendente');
@@ -116,9 +116,7 @@ class AnimalProductiveSituation {
   static const dry = 'seca';
   static const heifer = 'novilha';
   static const prepartum = 'pre parto';
-  static const calf = 'bezerra';
-
-  static const values = [lactating, dry, heifer, prepartum, calf];
+  static const values = [lactating, dry, heifer, prepartum];
 
   static String label(String value) {
     return switch (value) {
@@ -126,7 +124,6 @@ class AnimalProductiveSituation {
       dry => 'Seca',
       heifer => 'Novilha',
       prepartum => 'Pre parto',
-      calf => 'Bezerra',
       _ => value,
     };
   }

@@ -17,6 +17,8 @@ public interface AnimalRepository extends JpaRepository<Animal, Long> {
 
     Optional<Animal> findByIdExterno(String idExterno);
 
+    Optional<Animal> findByPropriedadeIdAndCodigoIgnoreCase(Long idPropriedade, String codigo);
+
     @Query("""
             select a
             from Animal a
@@ -29,7 +31,7 @@ public interface AnimalRepository extends JpaRepository<Animal, Long> {
                   :search is null
                   or lower(a.idExterno) like lower(concat('%', :search, '%'))
                   or lower(a.codigo) like lower(concat('%', :search, '%'))
-                  or lower(a.categoria) like lower(concat('%', :search, '%'))
+                  or lower(coalesce(a.touroIa, '')) like lower(concat('%', :search, '%'))
                   or lower(coalesce(l.idExterno, '')) like lower(concat('%', :search, '%'))
                   or lower(coalesce(l.nome, '')) like lower(concat('%', :search, '%'))
                   or lower(p.idExterno) like lower(concat('%', :search, '%'))

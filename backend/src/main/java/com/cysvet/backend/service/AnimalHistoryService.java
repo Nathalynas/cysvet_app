@@ -1,6 +1,7 @@
 package com.cysvet.backend.service;
 
 import com.cysvet.backend.dto.animal.AnimalHistoryResponse;
+import com.cysvet.backend.dto.animal.AnimalHistoricoResponse;
 import com.cysvet.backend.dto.animal.AnimalResponse;
 import com.cysvet.backend.dto.evento.EventoReprodutivoResponse;
 import com.cysvet.backend.dto.visita.VisitaAnimalItemDto;
@@ -8,6 +9,7 @@ import com.cysvet.backend.dto.visita.VisitaResponse;
 import com.cysvet.backend.entity.Animal;
 import com.cysvet.backend.entity.Visita;
 import com.cysvet.backend.repository.VisitaRepository;
+import com.cysvet.backend.repository.AnimalHistoricoRepository;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -21,6 +23,7 @@ public class AnimalHistoryService {
     private final EventoReprodutivoService eventoReprodutivoService;
     private final VisitaRepository visitaRepository;
     private final VisitaService visitaService;
+    private final AnimalHistoricoRepository animalHistoricoRepository;
 
     @Transactional(readOnly = true)
     public AnimalHistoryResponse getHistory(Long animalId) {
@@ -32,8 +35,17 @@ public class AnimalHistoryService {
                 .map(visita -> filterVisitForAnimal(visita, animal))
                 .filter(item -> item != null)
                 .toList();
+        List<AnimalHistoricoResponse> alteracoes = animalHistoricoRepository
+                .findAllByAnimalIdOrderByDataCriacaoDesc(animalId)
+                .stream()
+                .map(item -> new AnimalHistoricoResponse(
+                        item.getTipo(),
+                        item.getDescricao(),
+                        item.getUsuario().getNome(),
+                        item.getDataCriacao()))
+                .toList();
 
-        return new AnimalHistoryResponse(animalResponse, eventos, visitas);
+        return new AnimalHistoryResponse(animalResponse, eventos, visitas, alteracoes);
     }
 
     private VisitaResponse filterVisitForAnimal(Visita visita, Animal animal) {

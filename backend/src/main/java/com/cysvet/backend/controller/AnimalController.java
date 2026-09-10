@@ -5,7 +5,10 @@ import com.cysvet.backend.dto.animal.AnimalRequest;
 import com.cysvet.backend.dto.animal.AnimalHistoryResponse;
 import com.cysvet.backend.dto.animal.AnimalResponse;
 import com.cysvet.backend.dto.animal.AnimalStatusRequest;
+import com.cysvet.backend.dto.animal.AnimalSpreadsheetImportResponse;
+import com.cysvet.backend.dto.animal.AnimalSpreadsheetPreviewResponse;
 import com.cysvet.backend.service.AnimalHistoryService;
+import com.cysvet.backend.service.AnimalSpreadsheetImportService;
 import com.cysvet.backend.service.AnimalService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -27,6 +30,11 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.RequestPart;
+import org.springframework.web.multipart.MultipartFile;
+import java.util.Map;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 @RestController
 @RequestMapping("/api/animals")
@@ -37,6 +45,48 @@ public class AnimalController {
 
     private final AnimalService animalService;
     private final AnimalHistoryService animalHistoryService;
+    private final AnimalSpreadsheetImportService animalSpreadsheetImportService;
+    private final ObjectMapper objectMapper;
+
+    @PostMapping(value = "/import/xlsx/inspect", consumes = "multipart/form-data")
+    @Operation(summary = "Lista as abas de uma planilha de animais")
+    public List<String> inspectSpreadsheet(@RequestPart("file") MultipartFile file) {
+        return animalSpreadsheetImportService.inspect(file);
+    }
+
+    @PostMapping(value = "/import/xlsx/preview", consumes = "multipart/form-data")
+    @Operation(summary = "Gera a prévia e validação de uma aba de animais")
+    public AnimalSpreadsheetPreviewResponse previewSpreadsheet(
+            @RequestPart("file") MultipartFile file,
+            @RequestParam("sheetName") String sheetName,
+            @RequestParam Long idPropriedade,
+            @RequestParam(required = false) String mappings
+    ) {
+        return animalSpreadsheetImportService.preview(file, sheetName, idPropriedade, parseMappings(mappings));
+    }
+
+    @PostMapping(value = "/import/xlsx", consumes = "multipart/form-data")
+    @Operation(summary = "Importa os animais válidos de uma planilha")
+    public AnimalSpreadsheetImportResponse importSpreadsheet(
+            @RequestPart("file") MultipartFile file,
+            @RequestParam("sheetName") String sheetName,
+            @RequestParam Long idPropriedade,
+            @RequestParam String mappings
+    ) {
+        return animalSpreadsheetImportService.importValid(file, sheetName, idPropriedade, parseMappings(mappings));
+    }
+
+    private Map<Integer, String> parseMappings(String mappings) {
+        try {
+            if (mappings == null || mappings.isBlank()) return null;
+            Map<String, String> raw = objectMapper.readValue(mappings, new TypeReference<>() {});
+            Map<Integer, String> result = new java.util.LinkedHashMap<>();
+            raw.forEach((key, value) -> result.put(Integer.parseInt(key), value));
+            return result;
+        } catch (Exception error) {
+            throw new IllegalArgumentException("Mapeamento da planilha inválido");
+        }
+    }
     @GetMapping
     @Operation(summary = "Lista animais")
     @ApiResponses(value = {

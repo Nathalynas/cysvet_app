@@ -24,9 +24,6 @@ public class Animal extends TenantAwareEntity {
     @Column(name = "codigo", nullable = false)
     private String codigo;
 
-    @Column(name = "categoria", nullable = false)
-    private String categoria;
-
     @Column(name = "data_nascimento")
     private LocalDate dataNascimento;
 
@@ -38,6 +35,9 @@ public class Animal extends TenantAwareEntity {
 
     @Column(name = "data_inseminacao")
     private LocalDate dataInseminacao;
+
+    @Column(name = "touro_ia")
+    private String touroIa;
 
     @Column(name = "historico_reprodutivo", length = 2000)
     private String historicoReprodutivo;

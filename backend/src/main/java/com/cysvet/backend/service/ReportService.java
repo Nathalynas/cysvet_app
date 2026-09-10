@@ -72,11 +72,11 @@ public class ReportService {
             PdfPTable animalTable = new PdfPTable(3);
             animalTable.setWidthPercentage(100);
             addCell(animalTable, "Codigo");
-            addCell(animalTable, "Categoria");
+            addCell(animalTable, "Touro IA");
             addCell(animalTable, "Lactacao");
             for (Animal animal : animals) {
                 addCell(animalTable, animal.getCodigo());
-                addCell(animalTable, animal.getCategoria());
+                addCell(animalTable, animal.getTouroIa() == null ? "" : animal.getTouroIa());
                 addCell(animalTable, String.valueOf(animal.getNumeroLactacao()));
             }
             document.add(animalTable);
@@ -120,14 +120,14 @@ public class ReportService {
 
         try (XSSFWorkbook workbook = new XSSFWorkbook(); ByteArrayOutputStream output = new ByteArrayOutputStream()) {
             XSSFSheet animalsSheet = workbook.createSheet("Animais");
-            createRow(animalsSheet, 0, "Codigo", "Categoria", "Nascimento", "Lactacao", "Ultimo Parto", "Data Inseminacao");
+            createRow(animalsSheet, 0, "Codigo", "Touro IA", "Nascimento", "Lactacao", "Ultimo Parto", "Data Inseminacao");
             for (int index = 0; index < animals.size(); index++) {
                 Animal animal = animals.get(index);
                 createRow(
                         animalsSheet,
                         index + 1,
                         animal.getCodigo(),
-                        animal.getCategoria(),
+                        animal.getTouroIa() == null ? "" : animal.getTouroIa(),
                         animal.getDataNascimento() == null ? "" : animal.getDataNascimento().toString(),
                         String.valueOf(animal.getNumeroLactacao()),
                         animal.getDataUltimoParto() == null ? "" : animal.getDataUltimoParto().toString(),

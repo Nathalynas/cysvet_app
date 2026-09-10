@@ -8,9 +8,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/utils/formatters.dart';
 import '../../indicators/indicador_reprodutivo_calculator.dart';
-import '../../visits/application/visits_provider.dart';
 import '../../visits/domain/visit_summary_model.dart';
 import '../data/animals_repository.dart';
+import '../domain/animal_history_change_model.dart';
 import '../domain/animal_history_event_model.dart';
 import '../domain/animal_summary_model.dart';
 
@@ -26,12 +26,6 @@ AnimalReproductiveStatus reproductiveStatusFor(AnimalSummaryModel animal) {
 
 final _animalHistoryProvider = FutureProvider.autoDispose
     .family<_AnimalHistoryData, AnimalSummaryModel>((ref, animal) async {
-      // TODO(api): substituir esta composicao front-end por um endpoint
-      // consolidado, por exemplo GET /api/animals/{id}/history, retornando
-      // historico produtivo, eventos, visitas, movimentacoes e alteracoes.
-      // Temporario: eventos vêm de /api/events?idAnimal; visitas vêm de
-      // /api/visits?idPropriedade e sao filtradas no front. Movimentacoes e
-      // alteracoes ainda usam somente o estado atual de AnimalSummaryModel.
       final historyPayload = animal.id > 0
           ? await ref
                 .watch(animalsRepositoryProvider)
@@ -40,18 +34,12 @@ final _animalHistoryProvider = FutureProvider.autoDispose
               animal: animal,
               events: const <AnimalHistoryEventModel>[],
               visits: const <VisitSummaryModel>[],
+              changes: const <AnimalHistoryChangeModel>[],
             );
-      final localVisits = ref.watch(localVisitsProvider).values;
 
       final events = [...historyPayload.events]..sort(_compareHistoryEventsDesc);
-      final remoteVisits = historyPayload.visits;
-      final visitsById = {
-        for (final visit in remoteVisits) visit.id: visit,
-        for (final visit in localVisits)
-          if (_visitBelongsToAnimalProperty(visit, animal)) visit.id: visit,
-      };
       final visitRecords =
-          visitsById.values
+          historyPayload.visits
               .expand((visit) => _visitRecordsForAnimal(visit, animal))
               .toList()
             ..sort(_compareVisitRecordsDesc);
@@ -60,6 +48,7 @@ final _animalHistoryProvider = FutureProvider.autoDispose
         animal: historyPayload.animal.id > 0 ? historyPayload.animal : animal,
         events: events,
         visits: visitRecords,
+        changes: historyPayload.changes,
       );
     });
 
@@ -172,10 +161,8 @@ class _AnimalHistoryBody extends StatelessWidget {
         _AnimalHistorySection(
           icon: Icons.sync_alt_outlined,
           title: 'Alterações e movimentações',
-          child: _AnimalMovementHistoryPanel(
-            animal: animal,
-            propertyName: propertyName,
-          ),
+          count: data.changes.length,
+          child: _AnimalMovementHistoryPanel(changes: data.changes),
         ),
       ],
     );
@@ -253,8 +240,8 @@ class _AnimalHistoryMetricGrid extends StatelessWidget {
   Widget build(BuildContext context) {
     final items = [
       _HistoryInfoItem(
-        label: 'Categoria',
-        value: _valueOrDash(animal.categoria),
+        label: 'Touro IA',
+        value: _valueOrDash(animal.touroIa),
       ),
       _HistoryInfoItem(
         label: 'Lactações',
@@ -1035,48 +1022,37 @@ class _AnimalVisitHistoryList extends StatelessWidget {
 }
 
 class _AnimalMovementHistoryPanel extends StatelessWidget {
-  const _AnimalMovementHistoryPanel({
-    required this.animal,
-    required this.propertyName,
-  });
+  const _AnimalMovementHistoryPanel({required this.changes});
 
-  final AnimalSummaryModel animal;
-  final String propertyName;
+  final List<AnimalHistoryChangeModel> changes;
 
   @override
   Widget build(BuildContext context) {
-    // TODO(api): quando o endpoint/model de historico completo existir,
-    // renderizar aqui movimentacoes reais de propriedade/lote, alteracoes de
-    // status e auditoria. Hoje estes dados estao temporariamente derivados do
-    // estado atual do AnimalSummaryModel.
-    return _HistoryPanel(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          _HistoryDetailRow(
-            detail: _HistoryDetail(
-              label: 'Propriedade atual',
-              value: propertyName.trim().isEmpty
-                  ? 'Não informada'
-                  : propertyName,
-            ),
+    if (changes.isEmpty) {
+      return const _HistoryEmptyPanel(
+        message: 'Nenhuma alteração ou movimentação registrada para este animal.',
+      );
+    }
+
+    return Column(
+      children: [
+        for (var index = 0; index < changes.length; index++) ...[
+          _HistoryTimelineItem(
+            icon: _historyChangeIcon(changes[index].tipo),
+            title: _historyChangeLabel(changes[index].tipo),
+            date: changes[index].data,
+            subtitle: changes[index].descricao,
+            details: [
+              if (changes[index].nomeUsuario != null)
+                _HistoryDetail(
+                  label: 'Responsável',
+                  value: changes[index].nomeUsuario!,
+                ),
+            ],
           ),
-          const SizedBox(height: 10),
-          _HistoryDetailRow(
-            detail: _HistoryDetail(
-              label: 'Status atual',
-              value: animal.status.label,
-            ),
-          ),
-          const SizedBox(height: 12),
-          Text(
-            'Sem movimentações históricas registradas para este animal.',
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
-            ),
-          ),
+          if (index < changes.length - 1) const SizedBox(height: 10),
         ],
-      ),
+      ],
     );
   }
 }
@@ -1350,11 +1326,13 @@ class _AnimalHistoryData {
     required this.animal,
     required this.events,
     required this.visits,
+    required this.changes,
   });
 
   final AnimalSummaryModel animal;
   final List<AnimalHistoryEventModel> events;
   final List<_AnimalVisitHistoryRecord> visits;
+  final List<AnimalHistoryChangeModel> changes;
 
   VisitAnimalEntryModel? get latestVisitEntry =>
       visits.isEmpty ? null : visits.first.entry;
@@ -1445,19 +1423,6 @@ class _HistoryDetail {
   final String value;
 }
 
-bool _visitBelongsToAnimalProperty(
-  VisitSummaryModel visit,
-  AnimalSummaryModel animal,
-) {
-  if (animal.idPropriedade > 0 && visit.idPropriedade == animal.idPropriedade) {
-    return true;
-  }
-
-  final animalExternalProperty = animal.idExternoPropriedade.trim();
-  return animalExternalProperty.isNotEmpty &&
-      visit.idExternoPropriedade.trim() == animalExternalProperty;
-}
-
 Iterable<_AnimalVisitHistoryRecord> _visitRecordsForAnimal(
   VisitSummaryModel visit,
   AnimalSummaryModel animal,
@@ -1539,6 +1504,12 @@ String _eventTypeLabel(String value) {
     'CALVING' => 'Parto',
     'DRY_OFF' => 'Secagem',
     'GESTATIONAL_LOSS' => 'Perda gestacional',
+    'POST_PARTUM_COMPLICATION' => 'Complicação pós-parto',
+    'HEALTH_TREATMENT' => 'Saúde e tratamento',
+    'MILK_CONTROL' => 'Controle leiteiro',
+    'LOT_MOVEMENT' => 'Movimentação de lote',
+    'DISCARD' => 'Descarte',
+    'DEATH' => 'Óbito',
     _ => _valueOrDash(value),
   };
 }
@@ -1550,7 +1521,35 @@ IconData _eventTypeIcon(String value) {
     'CALVING' => Icons.child_friendly_outlined,
     'DRY_OFF' => Icons.water_drop_outlined,
     'GESTATIONAL_LOSS' => Icons.warning_amber_outlined,
+    'POST_PARTUM_COMPLICATION' => Icons.medical_information_outlined,
+    'HEALTH_TREATMENT' => Icons.medical_services_outlined,
+    'MILK_CONTROL' => Icons.water_drop_outlined,
+    'LOT_MOVEMENT' => Icons.swap_horiz_outlined,
+    'DISCARD' => Icons.remove_circle_outline,
+    'DEATH' => Icons.dangerous_outlined,
     _ => Icons.event_outlined,
+  };
+}
+
+String _historyChangeLabel(String value) {
+  return switch (value) {
+    'CADASTRO' => 'Cadastro',
+    'ATUALIZACAO' => 'Atualização',
+    'MOVIMENTACAO' => 'Movimentação',
+    'STATUS' => 'Status do animal',
+    'STATUS_REPRODUTIVO' => 'Status reprodutivo',
+    _ => 'Alteração',
+  };
+}
+
+IconData _historyChangeIcon(String value) {
+  return switch (value) {
+    'CADASTRO' => Icons.add_circle_outline,
+    'ATUALIZACAO' => Icons.edit_outlined,
+    'MOVIMENTACAO' => Icons.swap_horiz_outlined,
+    'STATUS' => Icons.toggle_on_outlined,
+    'STATUS_REPRODUTIVO' => Icons.monitor_heart_outlined,
+    _ => Icons.history_outlined,
   };
 }
 
@@ -1576,6 +1575,48 @@ List<_HistoryDetail> _eventDetails(AnimalHistoryEventModel event) {
   }
 
   _addTextDetail(details, 'Observação', event.observacoes);
+  details.addAll(_eventStructuredDetails(event.detalhes));
+  return details;
+}
+
+List<_HistoryDetail> _eventStructuredDetails(Map<String, dynamic> values) {
+  const labels = {
+    'touro': 'Touro',
+    'inseminador': 'Inseminador',
+    'metodo': 'Método',
+    'protocolo': 'Protocolo',
+    'gnrh': 'GnRH na IA',
+    'numeroIa': 'Número da IA',
+    'resultado': 'Resultado',
+    'diasPrenhez': 'Dias de prenhez',
+    'quantidadeCrias': 'Quantidade de crias',
+    'sexoCrias': 'Sexo das crias',
+    'criasVivas': 'Crias vivas',
+    'complicacao': 'Complicação',
+    'tratamento': 'Tratamento',
+    'loteOrigem': 'Lote de origem',
+    'loteDestino': 'Lote de destino',
+    'motivo': 'Motivo',
+    'del': 'DEL',
+    'producao': 'Produção',
+    'lote': 'Lote',
+    'bst': 'BST',
+  };
+
+  final details = <_HistoryDetail>[];
+  for (final entry in values.entries) {
+    final value = entry.value;
+    if (value == null) continue;
+    final text = switch (value) {
+      bool value => value ? 'Sim' : 'Não',
+      List value => value.where((item) => item != null).join(', '),
+      _ => value.toString(),
+    }.trim();
+    if (text.isEmpty) continue;
+    details.add(
+      _HistoryDetail(label: labels[entry.key] ?? entry.key, value: text),
+    );
+  }
   return details;
 }
 

@@ -3858,7 +3858,7 @@ List<_ChartCountItem> _buildParityChartItems(List<_AnimalRecord> records) {
   for (final record in records) {
     final animal = record.animal;
     final text = [
-      animal.categoria,
+      animal.statusReprodutivo?.label ?? '',
       record.latestEntry?.situacaoProdutiva ?? '',
     ].join(' ').normalize();
     final isHeifer =
@@ -4466,7 +4466,7 @@ AnimalReproductiveStatus _reproductiveStatusFor(_AnimalRecord record) {
 _ProductiveStatus _productiveStatusFor(_AnimalRecord record) {
   final text = _normalizedRecordText(record);
   final animal = record.animal;
-  final category = animal.categoria.normalize();
+  final category = (animal.statusReprodutivo?.label ?? '').normalize();
   final reproductiveStatus = _reproductiveStatusFor(record);
 
   if (text.contains('novilha') || category.contains('novilha')) {
@@ -4543,7 +4543,7 @@ bool _decisionPending(_AnimalRecord record) {
 String _normalizedRecordText(_AnimalRecord record) {
   final entry = record.latestEntry;
   return [
-    record.animal.categoria,
+    record.animal.statusReprodutivo?.label ?? '',
     record.animal.historicoReprodutivo ?? '',
     entry?.situacaoProdutiva ?? '',
     entry?.situacaoReprodutiva ?? '',

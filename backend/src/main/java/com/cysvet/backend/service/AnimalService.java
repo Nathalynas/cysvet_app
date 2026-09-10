@@ -4,6 +4,7 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
+import java.util.Objects;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -12,12 +13,16 @@ import com.cysvet.backend.dto.animal.AnimalRequest;
 import com.cysvet.backend.dto.animal.AnimalResponse;
 import com.cysvet.backend.dto.sync.SyncEntityNames;
 import com.cysvet.backend.entity.Animal;
+import com.cysvet.backend.entity.AnimalHistorico;
 import com.cysvet.backend.entity.Lote;
 import com.cysvet.backend.entity.Propriedade;
 import com.cysvet.backend.entity.StatusAnimal;
+import com.cysvet.backend.entity.StatusReprodutivoAnimal;
+import com.cysvet.backend.entity.TipoHistoricoAnimal;
 import com.cysvet.backend.entity.Usuario;
 import com.cysvet.backend.exception.ResourceNotFoundException;
 import com.cysvet.backend.repository.AnimalRepository;
+import com.cysvet.backend.repository.AnimalHistoricoRepository;
 
 import lombok.RequiredArgsConstructor;
 
@@ -26,6 +31,7 @@ import lombok.RequiredArgsConstructor;
 public class AnimalService {
 
     private final AnimalRepository animalRepository;
+    private final AnimalHistoricoRepository animalHistoricoRepository;
     private final PropriedadeService propriedadeService;
     private final LoteService loteService;
     private final UsuarioAutenticadoProvider authenticatedUserProvider;
@@ -62,6 +68,28 @@ public class AnimalService {
         Animal animal = new Animal();
         apply(animal, request, user);
         Animal saved = animalRepository.save(animal);
+        registerHistory(saved, user, TipoHistoricoAnimal.CADASTRO, "Animal cadastrado.");
+        deletedRecordService.clearDeletionMarker(SyncEntityNames.ANIMAL, saved.getIdExterno());
+        return toResponse(saved);
+    }
+
+    @Transactional
+    public AnimalResponse createOrUpdateFromImport(AnimalRequest request) {
+        Usuario user = authenticatedUserProvider.getCurrentUser();
+        Animal animal = animalRepository
+                .findByPropriedadeIdAndCodigoIgnoreCase(request.idPropriedade(), request.codigo())
+                .orElseGet(Animal::new);
+        AnimalSnapshot previous = animal.getId() == null ? null : AnimalSnapshot.from(animal);
+        String idExterno = animal.getId() == null ? request.idExterno() : animal.getIdExterno();
+
+        apply(animal, request, user);
+        animal.setIdExterno(idExterno);
+        Animal saved = animalRepository.save(animal);
+        if (previous == null) {
+            registerHistory(saved, user, TipoHistoricoAnimal.CADASTRO, "Animal cadastrado pela importação.");
+        } else {
+            registerChanges(previous, saved, user, "importação");
+        }
         deletedRecordService.clearDeletionMarker(SyncEntityNames.ANIMAL, saved.getIdExterno());
         return toResponse(saved);
     }
@@ -70,8 +98,10 @@ public class AnimalService {
     public AnimalResponse update(Long id, AnimalRequest request) {
         Usuario user = authenticatedUserProvider.getCurrentUser();
         Animal animal = getEntity(id);
+        AnimalSnapshot previous = AnimalSnapshot.from(animal);
         apply(animal, request, user);
         Animal saved = animalRepository.save(animal);
+        registerChanges(previous, saved, user, "cadastro");
         deletedRecordService.clearDeletionMarker(SyncEntityNames.ANIMAL, saved.getIdExterno());
         return toResponse(saved);
     }
@@ -100,8 +130,14 @@ public class AnimalService {
             return SyncUpsertResult.conflicted(animal);
         }
 
+        AnimalSnapshot previous = animal.getId() == null ? null : AnimalSnapshot.from(animal);
         apply(animal, request, user);
         Animal saved = animalRepository.save(animal);
+        if (previous == null) {
+            registerHistory(saved, user, TipoHistoricoAnimal.CADASTRO, "Animal cadastrado pela sincronização.");
+        } else {
+            registerChanges(previous, saved, user, "sincronização");
+        }
         deletedRecordService.clearDeletionMarker(SyncEntityNames.ANIMAL, saved.getIdExterno());
         return SyncUpsertResult.applied(saved);
     }
@@ -125,11 +161,11 @@ public class AnimalService {
         animal.setLote(lote);
         animal.setUsuario(user);
         animal.setCodigo(request.codigo());
-        animal.setCategoria(request.categoria());
         animal.setDataNascimento(request.dataNascimento());
         animal.setNumeroLactacao(request.numeroLactacao());
         animal.setDataUltimoParto(request.dataUltimoParto());
         animal.setDataInseminacao(request.dataInseminacao());
+        animal.setTouroIa(request.touroIa());
         animal.setHistoricoReprodutivo(request.historicoReprodutivo());
         animal.setStatusReprodutivo(request.statusReprodutivo());
         if (request.status() != null) {
@@ -150,10 +186,113 @@ public class AnimalService {
     }
 
     private Animal updateStatus(Animal animal, StatusAnimal status, Usuario user) {
+        StatusAnimal previousStatus = animal.getStatus();
         animal.setStatus(status);
         Animal saved = animalRepository.save(animal);
+        if (!Objects.equals(previousStatus, saved.getStatus())) {
+            registerHistory(
+                    saved,
+                    user,
+                    TipoHistoricoAnimal.STATUS,
+                    "Status alterado de %s para %s.".formatted(
+                            statusLabel(previousStatus),
+                            statusLabel(saved.getStatus())));
+        }
         deletedRecordService.clearDeletionMarker(SyncEntityNames.ANIMAL, saved.getIdExterno());
         return saved;
+    }
+
+    private void registerChanges(AnimalSnapshot previous, Animal animal, Usuario user, String source) {
+        if (!Objects.equals(previous.propriedadeId(), animal.getPropriedade().getId())) {
+            registerHistory(animal, user, TipoHistoricoAnimal.MOVIMENTACAO,
+                    "Propriedade alterada para %s.".formatted(animal.getPropriedade().getNome()));
+        }
+        if (!Objects.equals(previous.loteId(), loteId(animal))) {
+            registerHistory(animal, user, TipoHistoricoAnimal.MOVIMENTACAO,
+                    "Lote alterado de %s para %s.".formatted(previous.loteNome(), loteName(animal)));
+        }
+        if (!Objects.equals(previous.status(), animal.getStatus())) {
+            registerHistory(animal, user, TipoHistoricoAnimal.STATUS,
+                    "Status alterado de %s para %s.".formatted(
+                            statusLabel(previous.status()),
+                            statusLabel(animal.getStatus())));
+        }
+        if (!Objects.equals(previous.statusReprodutivo(), animal.getStatusReprodutivo())) {
+            registerHistory(animal, user, TipoHistoricoAnimal.STATUS_REPRODUTIVO,
+                    "Status reprodutivo alterado de %s para %s.".formatted(
+                            reproductiveStatusLabel(previous.statusReprodutivo()),
+                            reproductiveStatusLabel(animal.getStatusReprodutivo())));
+        }
+        if (previous.hasOtherChanges(animal)) {
+            registerHistory(animal, user, TipoHistoricoAnimal.ATUALIZACAO,
+                    "Dados do animal atualizados pela %s.".formatted(source));
+        }
+    }
+
+    private void registerHistory(Animal animal, Usuario user, TipoHistoricoAnimal type, String description) {
+        AnimalHistorico history = new AnimalHistorico();
+        history.setAnimal(animal);
+        history.setUsuario(user);
+        history.setTipo(type);
+        history.setDescricao(description);
+        animalHistoricoRepository.save(history);
+    }
+
+    private Long loteId(Animal animal) {
+        return animal.getLote() == null ? null : animal.getLote().getId();
+    }
+
+    private String loteName(Animal animal) {
+        return animal.getLote() == null ? "Sem lote" : animal.getLote().getNome();
+    }
+
+    private String statusLabel(StatusAnimal status) {
+        return status == null ? "Não informado" : status.name();
+    }
+
+    private String reproductiveStatusLabel(StatusReprodutivoAnimal status) {
+        return status == null ? "Não informado" : status.getValue();
+    }
+
+    private record AnimalSnapshot(
+            Long propriedadeId,
+            Long loteId,
+            String loteNome,
+            String codigo,
+            LocalDate dataNascimento,
+            Integer numeroLactacao,
+            LocalDate dataUltimoParto,
+            LocalDate dataInseminacao,
+            String touroIa,
+            String historicoReprodutivo,
+            StatusReprodutivoAnimal statusReprodutivo,
+            StatusAnimal status
+    ) {
+        private static AnimalSnapshot from(Animal animal) {
+            return new AnimalSnapshot(
+                    animal.getPropriedade().getId(),
+                    animal.getLote() == null ? null : animal.getLote().getId(),
+                    animal.getLote() == null ? "Sem lote" : animal.getLote().getNome(),
+                    animal.getCodigo(),
+                    animal.getDataNascimento(),
+                    animal.getNumeroLactacao(),
+                    animal.getDataUltimoParto(),
+                    animal.getDataInseminacao(),
+                    animal.getTouroIa(),
+                    animal.getHistoricoReprodutivo(),
+                    animal.getStatusReprodutivo(),
+                    animal.getStatus());
+        }
+
+        private boolean hasOtherChanges(Animal animal) {
+            return !Objects.equals(codigo, animal.getCodigo())
+                    || !Objects.equals(dataNascimento, animal.getDataNascimento())
+                    || !Objects.equals(numeroLactacao, animal.getNumeroLactacao())
+                    || !Objects.equals(dataUltimoParto, animal.getDataUltimoParto())
+                    || !Objects.equals(dataInseminacao, animal.getDataInseminacao())
+                    || !Objects.equals(touroIa, animal.getTouroIa())
+                    || !Objects.equals(historicoReprodutivo, animal.getHistoricoReprodutivo());
+        }
     }
 
     private Propriedade resolveProperty(Long idPropriedade, String idExternoPropriedade) {
@@ -194,11 +333,11 @@ public class AnimalService {
                 animal.getLote() != null ? animal.getLote().getIdExterno() : null,
                 animal.getLote() != null ? animal.getLote().getNome() : null,
                 animal.getCodigo(),
-                animal.getCategoria(),
                 animal.getDataNascimento(),
                 animal.getNumeroLactacao(),
                 animal.getDataUltimoParto(),
                 animal.getDataInseminacao(),
+                animal.getTouroIa(),
                 diasEmLactacao,
                 animal.getHistoricoReprodutivo(),
                 animal.getStatusReprodutivo(),

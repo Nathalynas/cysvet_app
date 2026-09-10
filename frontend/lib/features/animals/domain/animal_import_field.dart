@@ -1,20 +1,14 @@
 import '../../../core/constants/app_constants.dart';
 import '../../../core/enums/animal_status.dart';
-import '../../properties/domain/property_summary_model.dart';
 
-enum AnimalImportFieldType {
-  text,
-  integer,
-  date,
-  property,
-  reproductiveStatus,
-}
+enum AnimalImportFieldType { text, integer, date, property, reproductiveStatus }
 
 enum AnimalImportFieldKey {
   codigo,
-  categoria,
+  touroIa,
   dataNascimento,
   idPropriedade,
+  situacaoProdutiva,
   statusReprodutivo,
   numeroLactacao,
   dataUltimoParto,
@@ -58,23 +52,23 @@ const animalImportFields = <AnimalImportFieldSpec>[
     ],
   ),
   AnimalImportFieldSpec(
-    key: AnimalImportFieldKey.categoria,
-    label: 'Espécie',
+    key: AnimalImportFieldKey.touroIa,
+    label: 'Touro IA',
     type: AnimalImportFieldType.text,
-    required: true,
+    required: false,
     aliases: [
-      'especie',
-      'categoria',
-      'categoria zootecnica',
-      'vaca novilha',
-      'tipo',
+      'touro ia',
+      'touro de ia',
+      'touro inseminacao',
+      'reprodutor',
+      'touro',
     ],
   ),
   AnimalImportFieldSpec(
     key: AnimalImportFieldKey.dataNascimento,
     label: 'Data de nascimento',
     type: AnimalImportFieldType.date,
-    required: true,
+    required: false,
     aliases: [
       'data de nascimento',
       'data nascimento',
@@ -89,35 +83,27 @@ const animalImportFields = <AnimalImportFieldSpec>[
     label: 'Propriedade vinculada',
     type: AnimalImportFieldType.property,
     required: true,
-    aliases: [
-      'propriedade',
-      'fazenda',
-      'farm',
-      'id propriedade',
-      'propriedade vinculada',
-    ],
+    aliases: [],
+  ),
+  AnimalImportFieldSpec(
+    key: AnimalImportFieldKey.situacaoProdutiva,
+    label: 'Situação produtiva',
+    type: AnimalImportFieldType.text,
+    required: false,
+    aliases: ['situacao produtiva', 'sit produtiva'],
   ),
   AnimalImportFieldSpec(
     key: AnimalImportFieldKey.statusReprodutivo,
     label: 'Status reprodutivo',
     type: AnimalImportFieldType.reproductiveStatus,
-    required: true,
-    aliases: [
-      'status reprodutivo',
-      'situacao reprodutiva',
-      'situacao produtiva',
-      'diagnostico',
-      'diagnostico 1',
-      'diagnostco 1',
-      'resultado',
-      'repr',
-    ],
+    required: false,
+    aliases: ['status reprodutivo', 'situacao reprodutiva', 'sit reprodutiva'],
   ),
   AnimalImportFieldSpec(
     key: AnimalImportFieldKey.numeroLactacao,
     label: 'Número de lactação',
     type: AnimalImportFieldType.integer,
-    required: true,
+    required: false,
     aliases: [
       'numero de lactacao',
       'n lactacao',
@@ -233,24 +219,6 @@ AnimalReproductiveStatus? parseAnimalImportReproductiveStatus(String value) {
 
     if (candidates.contains(normalized)) {
       return status;
-    }
-  }
-
-  return null;
-}
-
-PropertySummaryModel? findAnimalImportProperty(
-  List<PropertySummaryModel> properties,
-  String value,
-) {
-  final normalized = normalizeAnimalImportToken(value);
-  if (normalized.isEmpty) return null;
-
-  for (final property in properties) {
-    if (property.id.toString() == value.trim() ||
-        normalizeAnimalImportToken(property.nome) == normalized ||
-        normalizeAnimalImportToken(property.idExterno) == normalized) {
-      return property;
     }
   }
 

@@ -4,6 +4,7 @@ import com.cysvet.backend.entity.TipoEventoReprodutivo;
 import io.swagger.v3.oas.annotations.media.Schema;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.Map;
 
 @Schema(description = "Dados retornados para um evento reprodutivo.")
 public record EventoReprodutivoResponse(
@@ -29,6 +30,8 @@ public record EventoReprodutivoResponse(
         Boolean prenhezConfirmada,
         @Schema(description = "Observacoes adicionais do evento.")
         String observacoes,
+        @Schema(description = "Detalhes estruturados especificos do evento.")
+        Map<String, Object> detalhes,
         @Schema(description = "Data de criacao do registro.", example = "2026-05-01T12:00:00Z")
         Instant dataCriacao,
         @Schema(description = "Data da ultima atualizacao.", example = "2026-05-12T18:30:00Z")

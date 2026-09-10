@@ -18,7 +18,7 @@ public enum StatusReprodutivoAnimal {
     DISCARD("descarte"),
     PEV("pev"),
     NO_AGE("sem idade"),
-    CALF("bezerra"),
+    CALF("novilha", "bezerra"),
     INSEMINATED("inseminada", "inseminated"),
     DRY("dry", "seca"),
     PENDING("pending");
