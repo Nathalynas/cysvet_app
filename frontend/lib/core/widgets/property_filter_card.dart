@@ -2,7 +2,7 @@ import 'package:cysvet_app/core/widgets/app_button.dart';
 import 'package:cysvet_app/app/theme.dart';
 import 'package:cysvet_app/core/widgets/app_card.dart';
 import 'package:cysvet_app/core/widgets/app_dropdown.dart';
-import 'package:cysvet_app/features/properties/domain/property_summary_model.dart';
+import 'package:cysvet_app/models/property_summary_model.dart';
 import 'package:flutter/material.dart';
 
 class PropertyFilterCard extends StatelessWidget {

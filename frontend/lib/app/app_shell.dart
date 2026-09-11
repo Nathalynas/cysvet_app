@@ -9,7 +9,7 @@ import 'package:go_router/go_router.dart';
 
 import '../core/constants/app_constants.dart';
 import '../core/widgets/app_button.dart';
-import '../features/auth/application/auth_state.dart';
+import '../providers/auth_state.dart';
 import 'theme.dart';
 
 class AppShell extends ConsumerWidget {

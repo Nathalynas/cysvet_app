@@ -3,8 +3,8 @@ import 'dart:async';
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../features/auth/application/auth_state.dart';
-import '../../features/auth/domain/auth_session_model.dart';
+import '../../providers/auth_state.dart';
+import 'package:cysvet_app/models/auth_session_model.dart';
 import '../config/api_config.dart';
 
 final apiClientProvider = Provider<Dio>((ref) {

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../app/theme.dart';
+import 'package:cysvet_app/app/theme.dart';
 
 class _ButtonControlStyle {
   static const double height = 42;
