@@ -22,7 +22,6 @@ import 'package:cysvet_app/pages/animals/animal_mobile_card.dart';
 import 'package:cysvet_app/providers/auth_state.dart';
 import 'package:cysvet_app/models/indicador_reprodutivo_calculator.dart';
 import 'package:cysvet_app/providers/properties_provider.dart';
-import 'package:cysvet_app/api/properties_api.dart';
 import 'package:cysvet_app/models/property_summary_model.dart';
 import 'package:cysvet_app/pages/properties/property_dialog.dart';
 import 'package:cysvet_app/providers/visits_provider.dart';
@@ -62,24 +61,15 @@ final propertyDetailsProvider = FutureProvider.autoDispose
         throw StateError('Identificador de propriedade invalido.');
       }
 
-      final session = ref.watch(authSessionProvider);
-      final localItems = ref.watch(localPropertiesProvider);
-      final deletedIds = ref.watch(deletedPropertiesProvider);
+      // TODO(api): substituir a busca pela lista por GET /api/properties/:id
+      // quando o backend expuser o endpoint de detalhe.
+      final properties = await ref.watch(propertiesProvider.future);
 
-      if (session == null) {
-        throw StateError('Sessao indisponivel.');
+      for (final property in properties) {
+        if (property.id == propertyId) return property;
       }
 
-      if (deletedIds.contains(propertyId)) {
-        throw StateError('Propriedade nao encontrada.');
-      }
-
-      final localProperty = localItems[propertyId];
-      if (localProperty != null) {
-        return localProperty;
-      }
-
-      return ref.watch(propertiesRepositoryProvider).getById(propertyId);
+      throw StateError('Propriedade nao encontrada.');
     });
 
 final propertyDetailsAnimalsProvider = FutureProvider.autoDispose
@@ -1309,6 +1299,9 @@ class _PropertyVisitsTab extends StatelessWidget {
   }
 }
 
+const double _propertyAnimalsTableBreakpoint = 1180;
+const double _propertyAnimalsTableMinWidth = 1880;
+
 class _PropertyAnimalsTable extends StatelessWidget {
   const _PropertyAnimalsTable({
     required this.property,
@@ -1326,31 +1319,11 @@ class _PropertyAnimalsTable extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isMobile = MediaQuery.sizeOf(context).width < MOBILE_WIDTH;
-
-    if (isMobile) {
-      return AnimalMobileCardList(
-        animals: animals,
-        propertyNameFor: (_) => property.nome,
-        onTap: (animal) => AnimalHistoryDialog.show(
-          context: context,
-          animal: animal,
-          propertyName: property.nome,
-        ),
-        onEdit: onEdit,
-        onInactivate: onToggleStatus,
-        onActivate: onToggleStatus,
-        onDelete: onDelete,
-        footerLabel: _animalsRecordsLabel(animals.length),
-        emptyMessage: 'Nenhum animal vinculado a esta propriedade.',
-      );
-    }
-
     final table = AppTable<AnimalSummaryModel>(
       rows: animals,
       footerLabel: _animalsRecordsLabel(animals.length),
       emptyMessage: 'Nenhum animal vinculado a esta propriedade.',
-      mobileBreakpoint: 1180,
+      mobileBreakpoint: _propertyAnimalsTableBreakpoint,
       borderRadius: 16,
       shadow: false,
       onRowTap: (animal) => AnimalHistoryDialog.show(
@@ -1371,11 +1344,11 @@ class _PropertyAnimalsTable extends StatelessWidget {
           cellBuilder: (context, animal) => _AnimalIdentityCell(animal: animal),
         ),
         AppTableColumn<AnimalSummaryModel>(
-          label: 'Touro IA',
+          label: 'Raça',
           flex: 2,
           alignment: Alignment.center,
           cellBuilder: (context, animal) =>
-              Center(child: _AnimalIaBullCell(animal: animal)),
+              Center(child: _AnimalBreedCell(animal: animal)),
         ),
         AppTableColumn<AnimalSummaryModel>(
           label: 'Idade',
@@ -1497,11 +1470,28 @@ class _PropertyAnimalsTable extends StatelessWidget {
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        if (constraints.maxWidth < 1180) {
-          return table;
+        if (constraints.maxWidth < _propertyAnimalsTableBreakpoint) {
+          return AnimalMobileCardList(
+            animals: animals,
+            propertyNameFor: (_) => property.nome,
+            onTap: (animal) => AnimalHistoryDialog.show(
+              context: context,
+              animal: animal,
+              propertyName: property.nome,
+            ),
+            onEdit: onEdit,
+            onInactivate: onToggleStatus,
+            onActivate: onToggleStatus,
+            onDelete: onDelete,
+            footerLabel: _animalsRecordsLabel(animals.length),
+            emptyMessage: 'Nenhum animal vinculado a esta propriedade.',
+          );
         }
 
-        final tableWidth = math.max(1880.0, constraints.maxWidth);
+        final tableWidth = math.max(
+          _propertyAnimalsTableMinWidth,
+          constraints.maxWidth,
+        );
         return SingleChildScrollView(
           scrollDirection: Axis.horizontal,
           clipBehavior: Clip.none,
@@ -1790,8 +1780,8 @@ class _AnimalIdentityCell extends StatelessWidget {
   }
 }
 
-class _AnimalIaBullCell extends StatelessWidget {
-  const _AnimalIaBullCell({required this.animal});
+class _AnimalBreedCell extends StatelessWidget {
+  const _AnimalBreedCell({required this.animal});
 
   final AnimalSummaryModel animal;
 
@@ -1803,15 +1793,6 @@ class _AnimalIaBullCell extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          animal.touroIa?.trim().isNotEmpty == true ? animal.touroIa! : '--',
-          maxLines: 3,
-          overflow: TextOverflow.visible,
-          style: theme.textTheme.bodyMedium?.copyWith(
-            color: colorScheme.onSurface,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
         Text(
           'Nascimento: ${formatDate(animal.dataNascimento)}',
           maxLines: 2,

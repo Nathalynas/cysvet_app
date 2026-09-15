@@ -27,6 +27,7 @@ import 'package:cysvet_app/models/animal_summary_model.dart';
 import 'animal_dialog.dart';
 import 'animal_excel_import_dialog.dart';
 import 'animal_history_dialog.dart';
+import 'animal_mobile_card.dart';
 
 class AnimalsPage extends ConsumerWidget {
   const AnimalsPage({super.key});
@@ -402,6 +403,9 @@ List<AnimalSummaryModel> _filterAnimals(
 typedef _AnimalCallback = void Function(AnimalSummaryModel animal);
 typedef _AnimalPropertyNameFor = String Function(AnimalSummaryModel animal);
 
+const double _animalsTableBreakpoint = 1180;
+const double _animalsTableMinWidth = 1880;
+
 class _AnimalsCountSummary extends StatelessWidget {
   const _AnimalsCountSummary({
     required this.activeAnimals,
@@ -463,35 +467,40 @@ class _AnimalsMainContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isMobile = MediaQuery.sizeOf(context).width < MOBILE_WIDTH;
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final useAnimalCards = constraints.maxWidth < _animalsTableBreakpoint;
 
-    final animalsContent = isMobile
-        ? _AnimalsMobileList(
-            animals: animals,
-            propertyNameFor: propertyNameFor,
-            onEdit: onEdit,
-            onInactivate: onInactivate,
-            onActivate: onActivate,
-            onDelete: onDelete,
-            onShowHistory: onShowHistory,
-          )
-        : _AnimalsTable(
-            animals: animals,
-            propertyNameFor: propertyNameFor,
-            onEdit: onEdit,
-            onInactivate: onInactivate,
-            onActivate: onActivate,
-            onDelete: onDelete,
-            onShowHistory: onShowHistory,
-          );
+        final animalsContent = useAnimalCards
+            ? AnimalMobileCardList(
+                animals: animals,
+                propertyNameFor: propertyNameFor,
+                onTap: onShowHistory,
+                onEdit: onEdit,
+                onInactivate: onInactivate,
+                onActivate: onActivate,
+                onDelete: onDelete,
+                footerLabel: _recordsLabel(animals.length),
+              )
+            : _AnimalsTable(
+                animals: animals,
+                propertyNameFor: propertyNameFor,
+                onEdit: onEdit,
+                onInactivate: onInactivate,
+                onActivate: onActivate,
+                onDelete: onDelete,
+                onShowHistory: onShowHistory,
+              );
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        _HerdIndicators(animals: animals),
-        const SizedBox(height: 16),
-        animalsContent,
-      ],
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            _HerdIndicators(animals: animals),
+            const SizedBox(height: 16),
+            animalsContent,
+          ],
+        );
+      },
     );
   }
 }
@@ -520,7 +529,7 @@ class _AnimalsTable extends StatelessWidget {
     final table = AppTable<AnimalSummaryModel>(
       rows: animals,
       footerLabel: _recordsLabel(animals.length),
-      mobileBreakpoint: 1180,
+      mobileBreakpoint: _animalsTableBreakpoint,
       onRowTap: onShowHistory,
       columns: [
         AppTableColumn<AnimalSummaryModel>(
@@ -670,195 +679,16 @@ class _AnimalsTable extends StatelessWidget {
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        if (constraints.maxWidth < 1180) {
-          return table;
-        }
-
-        final tableWidth = math.max(1880.0, constraints.maxWidth);
+        final tableWidth = math.max(
+          _animalsTableMinWidth,
+          constraints.maxWidth,
+        );
         return SingleChildScrollView(
           scrollDirection: Axis.horizontal,
           clipBehavior: Clip.none,
           child: SizedBox(width: tableWidth, child: table),
         );
       },
-    );
-  }
-}
-
-class _AnimalsMobileList extends StatelessWidget {
-  const _AnimalsMobileList({
-    required this.animals,
-    required this.propertyNameFor,
-    required this.onEdit,
-    required this.onInactivate,
-    required this.onActivate,
-    required this.onDelete,
-    required this.onShowHistory,
-  });
-
-  final List<AnimalSummaryModel> animals;
-  final _AnimalPropertyNameFor propertyNameFor;
-  final _AnimalCallback onEdit;
-  final _AnimalCallback onInactivate;
-  final _AnimalCallback onActivate;
-  final _AnimalCallback onDelete;
-  final _AnimalCallback onShowHistory;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: [
-        for (final animal in animals) ...[
-          _AnimalMobileCard(
-            animal: animal,
-            propertyName: propertyNameFor(animal),
-            onEdit: () => onEdit(animal),
-            onInactivate: () => onInactivate(animal),
-            onActivate: () => onActivate(animal),
-            onDelete: () => onDelete(animal),
-            onTap: () => onShowHistory(animal),
-          ),
-          const SizedBox(height: 10),
-        ],
-      ],
-    );
-  }
-}
-
-class _AnimalMobileCard extends StatelessWidget {
-  const _AnimalMobileCard({
-    required this.animal,
-    required this.propertyName,
-    required this.onEdit,
-    required this.onInactivate,
-    required this.onActivate,
-    required this.onDelete,
-    required this.onTap,
-  });
-
-  final AnimalSummaryModel animal;
-  final String propertyName;
-  final VoidCallback onEdit;
-  final VoidCallback onInactivate;
-  final VoidCallback onActivate;
-  final VoidCallback onDelete;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-    final reproductiveStatus = reproductiveStatusFor(animal);
-
-    return Material(
-      color: colorScheme.surface,
-      borderRadius: BorderRadius.circular(16),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(16),
-        hoverColor: colorScheme.primary.withValues(alpha: 0.045),
-        mouseCursor: SystemMouseCursors.click,
-        onTap: onTap,
-        child: AppCard(
-          backgroundColor: Colors.transparent,
-          padding: const EdgeInsets.all(12),
-          borderRadius: 16,
-          borderColor: colorScheme.outlineVariant.withValues(alpha: 0.8),
-          shadow: false,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              // Cabeçalho
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Container(
-                    width: 44,
-                    height: 44,
-                    alignment: Alignment.center,
-                    decoration: BoxDecoration(
-                      color: AppTheme.primary2Color.withValues(alpha: 0.10),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: const Icon(
-                      MdiIcons.cow,
-                      size: 24,
-                      color: AppTheme.primary2Color,
-                    ),
-                  ),
-
-                  const SizedBox(width: 10),
-
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          _animalCodeLabel(animal.codigo),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: theme.textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.w900,
-                            color: colorScheme.onSurface,
-                          ),
-                        ),
-
-                        const SizedBox(height: 3),
-
-                        Text(
-                          propertyName.isEmpty
-                              ? 'Propriedade não informada'
-                              : propertyName,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: colorScheme.onSurfaceVariant,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  const SizedBox(width: 8),
-
-                  SizedBox(
-                    height: 48,
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        _ReproductiveStatusPill(status: reproductiveStatus),
-
-                        const SizedBox(width: 2),
-
-                        _AnimalActionsMenu(
-                          animal: animal,
-                          onEdit: onEdit,
-                          onInactivate: onInactivate,
-                          onActivate: onActivate,
-                          onDelete: onDelete,
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-
-              const SizedBox(height: 14),
-
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(child: _AnimalIaBullCell(animal: animal)),
-
-                  const SizedBox(width: 16),
-
-                  Expanded(child: _LastEventCell(animal: animal)),
-                ],
-              ),
-            ],
-          ),
-        ),
-      ),
     );
   }
 }
