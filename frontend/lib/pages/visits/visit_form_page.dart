@@ -7,6 +7,7 @@ import 'package:uuid/uuid.dart';
 
 import 'package:cysvet_app/app/app_shell.dart';
 import 'package:cysvet_app/core/enums/animal_status.dart';
+import 'package:cysvet_app/core/platform/offline_platform.dart';
 import 'package:cysvet_app/core/presentation/app_scaffold_messenger.dart';
 import 'package:cysvet_app/core/utils/formatters.dart';
 import 'package:cysvet_app/core/widgets/app_button.dart';
@@ -14,12 +15,12 @@ import 'package:cysvet_app/core/widgets/app_card.dart';
 import 'package:cysvet_app/core/widgets/app_dialog.dart';
 import 'package:cysvet_app/core/widgets/app_dropdown.dart';
 import 'package:cysvet_app/core/widgets/app_text_field.dart';
-import 'package:cysvet_app/api/animals_api.dart';
 import 'package:cysvet_app/models/animal_summary_model.dart';
+import 'package:cysvet_app/providers/animals_provider.dart';
+import 'package:cysvet_app/providers/connectivity_provider.dart';
 import 'package:cysvet_app/models/indicador_reprodutivo_calculator.dart';
 import 'package:cysvet_app/providers/properties_provider.dart';
 import 'package:cysvet_app/models/property_summary_model.dart';
-import 'package:cysvet_app/api/visits_api.dart';
 import 'package:cysvet_app/providers/visits_provider.dart';
 import 'package:cysvet_app/models/visit_summary_model.dart';
 
@@ -185,9 +186,16 @@ typedef _VisitEntryCalculator =
     VisitAnimalEntryModel Function(VisitAnimalEntryModel entry);
 
 class VisitFormPage extends ConsumerStatefulWidget {
-  const VisitFormPage({super.key, this.initialPropertyId});
+  const VisitFormPage({
+    super.key,
+    this.initialPropertyId,
+    this.editingIdExterno,
+  });
 
   final int? initialPropertyId;
+
+  /// Mobile: `idExterno` da visita salva no aparelho a ser continuada/editada.
+  final String? editingIdExterno;
 
   @override
   ConsumerState<VisitFormPage> createState() => _VisitFormPageState();
@@ -245,12 +253,22 @@ class _VisitFormPageState extends ConsumerState<VisitFormPage> {
   Map<int, _AnimalIaHistory> _iaHistoryByAnimalId = const {};
   Set<int> _reviewedAnimalIds = const {};
 
+  /// Visita local sendo editada (mobile). Mantém o mesmo `idExterno` para que
+  /// salvar de novo atualize o registro em vez de criar outro.
+  VisitSummaryModel? _editingVisit;
+  bool _isEditingDraft = false;
+
   @override
   void initState() {
     super.initState();
     _dataVisita.text = formatDateInput(DateTime.now());
     _propertyId = widget.initialPropertyId;
-    if (_propertyId != null) {
+    if (widget.editingIdExterno != null) {
+      _isLoadingAnimals = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _loadEditingVisit(widget.editingIdExterno!);
+      });
+    } else if (_propertyId != null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) {
           _loadAnimalsForSelectedProperty();
@@ -302,7 +320,7 @@ class _VisitFormPageState extends ConsumerState<VisitFormPage> {
             child: ListView(
               padding: EdgeInsets.zero,
               children: [
-                const PageTitle(title: 'Nova visita', backRoute: '/visitas'),
+                PageTitle(title: _pageTitle, backRoute: '/visitas'),
                 Padding(
                   padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
                   child: Column(
@@ -315,7 +333,7 @@ class _VisitFormPageState extends ConsumerState<VisitFormPage> {
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
                             Text(
-                              'Nova visita',
+                              _pageTitle,
                               style: theme.textTheme.titleLarge?.copyWith(
                                 fontWeight: FontWeight.w800,
                               ),
@@ -415,10 +433,85 @@ class _VisitFormPageState extends ConsumerState<VisitFormPage> {
             isLoadingAnimals: _isLoadingAnimals,
             onCancel: () => context.go('/visitas'),
             onSave: _saveVisit,
+            // Rascunho só no app mobile e enquanto a visita não foi finalizada.
+            onSaveDraft:
+                isOfflineFirstPlatform &&
+                    (_editingVisit == null || _isEditingDraft)
+                ? () => _saveVisit(asDraft: true)
+                : null,
           ),
         ],
       ),
     );
+  }
+
+  String get _pageTitle {
+    if (_editingVisit == null) return 'Nova visita';
+    return _isEditingDraft ? 'Continuar visita' : 'Editar visita';
+  }
+
+  Future<void> _loadEditingVisit(String idExterno) async {
+    try {
+      final record = await ref
+          .read(visitsControllerProvider)
+          .findLocal(idExterno);
+      if (!mounted) return;
+      if (record == null) {
+        setState(() => _isLoadingAnimals = false);
+        showAppWarning('Visita não encontrada no aparelho.');
+        return;
+      }
+
+      final visit = record.visit;
+      setState(() {
+        _editingVisit = visit;
+        _isEditingDraft = record.isDraft;
+        _propertyId = visit.idPropriedade == 0 ? null : visit.idPropriedade;
+        if (visit.dataVisita != null) {
+          _dataVisita.text = formatDateInput(visit.dataVisita!);
+        }
+        if (_propertyId == null) _isLoadingAnimals = false;
+      });
+      await _loadAnimalsForSelectedProperty();
+    } catch (error) {
+      if (!mounted) return;
+      setState(() => _isLoadingAnimals = false);
+      showAppError(error);
+    }
+  }
+
+  /// Reaplica os eventos já registrados na visita editada sobre a lista de
+  /// animais da propriedade.
+  ({List<VisitAnimalEntryModel> entries, Set<int> reviewedIds})
+  _applyEditingEntries(int propertyId, List<VisitAnimalEntryModel> entries) {
+    final editing = _editingVisit;
+    if (editing == null || editing.idPropriedade != propertyId) {
+      return (entries: entries, reviewedIds: const <int>{});
+    }
+
+    final reviewedIds = <int>{};
+    final merged = entries
+        .map((entry) {
+          for (final saved in editing.animais) {
+            if (_sameAnimalEntry(saved, entry)) {
+              reviewedIds.add(entry.animalId);
+              return saved.copyWith(animalId: entry.animalId);
+            }
+          }
+          return entry;
+        })
+        .toList(growable: false);
+    return (entries: merged, reviewedIds: reviewedIds);
+  }
+
+  bool _sameAnimalEntry(VisitAnimalEntryModel a, VisitAnimalEntryModel b) {
+    if (a.animalId != 0 && a.animalId == b.animalId) return true;
+    final externalId = a.animalIdExterno.trim();
+    if (externalId.isNotEmpty && externalId == b.animalIdExterno.trim()) {
+      return true;
+    }
+    final code = a.animalCodigo.trim();
+    return code.isNotEmpty && code == b.animalCodigo.trim();
   }
 
   VisitAnimalEntryModel? get _selectedEntry {
@@ -452,9 +545,14 @@ class _VisitFormPageState extends ConsumerState<VisitFormPage> {
 
     try {
       final animals = await ref
-          .read(animalsRepositoryProvider)
-          .list(propertyId: propertyId);
-      final previousVisits = await _loadPreviousVisitsForProperty(propertyId);
+          .read(animalsControllerProvider)
+          .listByProperty(propertyId);
+      final previousVisits = await ref
+          .read(visitsControllerProvider)
+          .listByProperty(
+            propertyId,
+            excludeIdExterno: _editingVisit?.idExterno,
+          );
       if (!mounted) {
         return;
       }
@@ -467,18 +565,25 @@ class _VisitFormPageState extends ConsumerState<VisitFormPage> {
         animals: animals,
         visits: previousVisits,
       );
-      final entries = animals
-          .map(
-            (animal) => _entryFromAnimal(
-              animal,
-              iaHistoryByAnimalId: iaHistoryByAnimalId,
-              lastBirthByAnimalId: lastBirthByAnimalId,
-            ),
-          )
-          .toList(growable: false);
+      final editing = _applyEditingEntries(
+        propertyId,
+        animals
+            .map(
+              (animal) => _entryFromAnimal(
+                animal,
+                iaHistoryByAnimalId: iaHistoryByAnimalId,
+                lastBirthByAnimalId: lastBirthByAnimalId,
+              ),
+            )
+            .toList(growable: false),
+      );
+      final entries = editing.entries;
       setState(() {
         _loadedPropertyId = propertyId;
         _animalEntries = entries;
+        if (editing.reviewedIds.isNotEmpty) {
+          _reviewedAnimalIds = editing.reviewedIds;
+        }
         _iaHistoryByAnimalId = iaHistoryByAnimalId;
         _selectedAnimalId = entries.isEmpty ? null : entries.first.animalId;
       });
@@ -497,28 +602,6 @@ class _VisitFormPageState extends ConsumerState<VisitFormPage> {
           _isLoadingAnimals = false;
         });
       }
-    }
-  }
-
-  Future<List<VisitSummaryModel>> _loadPreviousVisitsForProperty(
-    int propertyId,
-  ) async {
-    final localVisits = ref
-        .read(localVisitsProvider)
-        .values
-        .where((visit) => visit.idPropriedade == propertyId)
-        .toList(growable: false);
-
-    try {
-      final remoteVisits = await ref
-          .read(visitsRepositoryProvider)
-          .list(propertyId: propertyId);
-      return {
-        for (final visit in remoteVisits) visit.id: visit,
-        for (final visit in localVisits) visit.id: visit,
-      }.values.toList(growable: false);
-    } catch (error) {
-      return localVisits;
     }
   }
 
@@ -648,7 +731,7 @@ class _VisitFormPageState extends ConsumerState<VisitFormPage> {
     return code.isNotEmpty && entry.animalCodigo.trim() == code;
   }
 
-  Future<void> _saveVisit() async {
+  Future<void> _saveVisit({bool asDraft = false}) async {
     final isValid = _formKey.currentState?.validate() ?? false;
     if (!isValid) {
       return;
@@ -657,24 +740,44 @@ class _VisitFormPageState extends ConsumerState<VisitFormPage> {
     try {
       final properties = ref.read(propertiesProvider).asData?.value ?? const [];
       final property = _selectedProperty(properties);
+      final editing = _editingVisit;
       final payload = VisitSummaryModel(
-        idExterno: const Uuid().v4(),
+        id: editing?.id ?? 0,
+        idExterno: editing?.idExterno ?? const Uuid().v4(),
         idPropriedade: _propertyId ?? 0,
-        idExternoPropriedade: property?.idExterno ?? '',
+        idExternoPropriedade:
+            property?.idExterno ?? editing?.idExternoPropriedade ?? '',
         dataVisita: parseDateInput(_dataVisita.text),
+        observacoes: editing?.observacoes,
+        idUsuario: editing?.idUsuario,
+        nomeUsuario: editing?.nomeUsuario,
         animais: _animalEntries
             .where((item) => _reviewedAnimalIds.contains(item.animalId))
             .toList(growable: false),
       );
 
-      await ref.read(visitsControllerProvider).save(payload);
+      final controller = ref.read(visitsControllerProvider);
+      if (asDraft) {
+        await controller.saveDraft(payload);
+      } else {
+        await controller.save(payload);
+      }
       if (mounted) {
-        showAppSuccess('Visita salva com sucesso.');
+        showAppSuccess(_savedMessage(asDraft: asDraft));
         context.go('/visitas');
       }
     } catch (error) {
       showAppError(error);
     }
+  }
+
+  String _savedMessage({required bool asDraft}) {
+    if (!isOfflineFirstPlatform) return 'Visita salva com sucesso.';
+    if (asDraft) return 'Rascunho salvo no aparelho.';
+    if (ref.read(isOfflineProvider)) {
+      return 'Visita salva no aparelho. Será sincronizada quando a conexão voltar.';
+    }
+    return 'Visita salva. Sincronizando com o servidor...';
   }
 
   void _resetAnimalCollection() {
@@ -1043,12 +1146,16 @@ class _VisitActionsBar extends StatelessWidget {
     required this.isLoadingAnimals,
     required this.onCancel,
     required this.onSave,
+    this.onSaveDraft,
   });
 
   final bool isBusy;
   final bool isLoadingAnimals;
   final VoidCallback onCancel;
   final VoidCallback onSave;
+
+  /// Só informado no mobile (rascunho local).
+  final VoidCallback? onSaveDraft;
 
   @override
   Widget build(BuildContext context) {
@@ -1077,8 +1184,19 @@ class _VisitActionsBar extends StatelessWidget {
                       height: 40,
                       onPressed: isBusy ? null : onCancel,
                     ),
+                    if (onSaveDraft != null)
+                      AppButton(
+                        text: 'Salvar rascunho',
+                        outlined: true,
+                        height: 40,
+                        onPressed: isLoadingAnimals || isBusy
+                            ? null
+                            : onSaveDraft,
+                      ),
                     AppButton(
-                      text: 'Salvar visita',
+                      text: onSaveDraft != null
+                          ? 'Finalizar visita'
+                          : 'Salvar visita',
                       height: 40,
                       loading: isBusy,
                       onPressed: isLoadingAnimals || isBusy ? null : onSave,

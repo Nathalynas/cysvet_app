@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cysvet_app/providers/auth_state.dart';
 import 'package:cysvet_app/core/enums/property_status.dart';
 import 'package:cysvet_app/api/properties_api.dart';
+import 'package:cysvet_app/local/properties_local_store.dart';
+import 'package:cysvet_app/providers/offline_first.dart';
 import 'package:cysvet_app/models/property_summary_model.dart';
 
 final propertiesBusyProvider = NotifierProvider<PropertiesBusyNotifier, bool>(
@@ -34,7 +36,14 @@ final propertiesProvider = FutureProvider<List<PropertySummaryModel>>((
     throw StateError('Sessão indisponível.');
   }
 
-  final remoteItems = await ref.watch(propertiesRepositoryProvider).list();
+  final repository = ref.watch(propertiesRepositoryProvider);
+  final localStore = ref.watch(propertiesLocalStoreProvider);
+  final remoteItems = await fetchWithLocalFallback(
+    scope: ref.watch(offlineScopeProvider),
+    remote: repository.list,
+    saveLocal: (scope, items) => localStore.replaceAll(scope.companyId, items),
+    readLocal: (scope) => localStore.list(scope.companyId),
+  );
   final merged = {
     for (final property in remoteItems)
       property.id: localItems[property.id] ?? property,

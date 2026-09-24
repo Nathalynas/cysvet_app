@@ -5,6 +5,8 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:cysvet_app/api/auth_api.dart';
+import 'package:cysvet_app/core/network/api_error.dart';
+import 'package:cysvet_app/core/platform/offline_platform.dart';
 import 'package:cysvet_app/providers/auth_session_storage.dart';
 import 'package:cysvet_app/models/auth_session_model.dart';
 
@@ -122,6 +124,40 @@ class AuthSessionNotifier extends Notifier<AuthSessionModel?> {
     );
   }
 
+  /// Renova o access token se ele estiver expirado (usado antes de
+  /// sincronizar, já que no mobile a sessão pode ter sido restaurada offline).
+  /// Erros de rede são propagados; refresh recusado encerra a sessão.
+  Future<void> refreshIfExpired() async {
+    final session = state;
+    if (session == null || !_isAccessTokenExpired(session.accessToken)) {
+      return;
+    }
+    if (session.refreshToken.isEmpty) {
+      await clearSession();
+      throw StateError('Sua sessao expirou. Entre novamente para continuar.');
+    }
+
+    try {
+      final refreshed = await ref
+          .read(authRepositoryProvider)
+          .refresh(refreshToken: session.refreshToken);
+      final normalized = _normalizeSession(
+        refreshed,
+        preferredCompanyId: session.activeCompanyId,
+      );
+      if (normalized == null) {
+        await clearSession();
+        throw StateError('Sua sessao expirou. Entre novamente para continuar.');
+      }
+      await setSession(normalized);
+    } catch (error) {
+      if (!isNetworkError(error) && state != null) {
+        await clearSession();
+      }
+      rethrow;
+    }
+  }
+
   Future<void> clearSession() async {
     state = null;
     await ref.read(authSessionStorageProvider).clear();
@@ -156,9 +192,14 @@ class AuthSessionNotifier extends Notifier<AuthSessionModel?> {
             refreshedSession,
             preferredCompanyId: session.activeCompanyId,
           );
-        } catch (_) {
-          await clearSession();
-          return;
+        } catch (error) {
+          // Mobile sem internet: mantém a sessão salva para o veterinário
+          // continuar trabalhando offline. O token é renovado pelo
+          // SyncController assim que a conexão voltar.
+          if (!isOfflineFirstPlatform || !isNetworkError(error)) {
+            await clearSession();
+            return;
+          }
         }
 
         if (session == null) {

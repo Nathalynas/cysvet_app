@@ -4,6 +4,8 @@ import 'package:cysvet_app/core/enums/animal_status.dart';
 import '../filters/animal_filter.dart';
 import 'package:cysvet_app/providers/auth_state.dart';
 import 'package:cysvet_app/api/animals_api.dart';
+import 'package:cysvet_app/local/animals_local_store.dart';
+import 'package:cysvet_app/providers/offline_first.dart';
 import 'package:cysvet_app/models/animal_summary_model.dart';
 
 final animalsBusyProvider = NotifierProvider<AnimalsBusyNotifier, bool>(
@@ -34,9 +36,10 @@ final animalsProvider = FutureProvider<List<AnimalSummaryModel>>((ref) async {
     throw StateError('Sessao indisponivel.');
   }
 
-  final remoteItems = await ref
-      .watch(animalsRepositoryProvider)
-      .list(propertyId: propertyId);
+  final remoteItems = await fetchAnimalsWithLocalFallback(
+    ref,
+    propertyId: propertyId,
+  );
   final merged =
       {
         for (final animal in remoteItems)
@@ -50,10 +53,33 @@ final animalsProvider = FutureProvider<List<AnimalSummaryModel>>((ref) async {
   return merged;
 });
 
+/// Lista animais do backend; no mobile, grava o cache local e usa-o quando
+/// não houver conexão.
+Future<List<AnimalSummaryModel>> fetchAnimalsWithLocalFallback(
+  Ref ref, {
+  int? propertyId,
+}) {
+  final localStore = ref.read(animalsLocalStoreProvider);
+  return fetchWithLocalFallback(
+    scope: ref.read(offlineScopeProvider),
+    remote: () =>
+        ref.read(animalsRepositoryProvider).list(propertyId: propertyId),
+    saveLocal: (scope, items) =>
+        localStore.replaceAll(scope.companyId, items, propertyId: propertyId),
+    readLocal: (scope) =>
+        localStore.list(scope.companyId, propertyId: propertyId),
+  );
+}
+
 class AnimalsController {
   const AnimalsController(this._ref);
 
   final Ref _ref;
+
+  /// Animais da propriedade, com fallback local no mobile.
+  Future<List<AnimalSummaryModel>> listByProperty(int propertyId) {
+    return fetchAnimalsWithLocalFallback(_ref, propertyId: propertyId);
+  }
 
   Future<void> save(AnimalSummaryModel animal) async {
     _ref.read(animalsBusyProvider.notifier).setBusy(true);

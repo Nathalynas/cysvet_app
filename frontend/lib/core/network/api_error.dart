@@ -1,4 +1,27 @@
+import 'dart:io';
+
 import 'package:dio/dio.dart';
+
+/// Falha de transporte (sem internet, timeout, backend inacessível). Nesses
+/// casos o mobile cai para os dados locais em vez de exibir erro.
+bool isNetworkError(Object error) {
+  if (error is SocketException) return true;
+  if (error is! DioException) return false;
+
+  switch (error.type) {
+    case DioExceptionType.connectionTimeout:
+    case DioExceptionType.sendTimeout:
+    case DioExceptionType.receiveTimeout:
+    case DioExceptionType.connectionError:
+      return true;
+    case DioExceptionType.unknown:
+      return error.error is SocketException || error.error is HttpException;
+    case DioExceptionType.badCertificate:
+    case DioExceptionType.cancel:
+    case DioExceptionType.badResponse:
+      return false;
+  }
+}
 
 String describeError(Object error, {String? fallbackMessage}) {
   if (error is DioException) {

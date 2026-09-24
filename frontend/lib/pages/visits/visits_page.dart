@@ -12,6 +12,8 @@ import 'package:cysvet_app/core/utils/formatters.dart';
 import 'package:cysvet_app/core/widgets/app_button.dart';
 import 'package:cysvet_app/core/widgets/app_card.dart';
 import 'package:cysvet_app/core/widgets/search_card.dart';
+import 'package:cysvet_app/core/widgets/sync_status_indicator.dart';
+import 'package:cysvet_app/local/visits_local_store.dart';
 import 'package:cysvet_app/filters/visit_filter.dart';
 import 'package:cysvet_app/providers/properties_provider.dart';
 import 'package:cysvet_app/models/property_summary_model.dart';
@@ -25,6 +27,10 @@ class VisitsPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final visits = ref.watch(visitsProvider);
+    // Mobile: estado local (rascunho/sync) por idExterno. Vazio no desktop/web.
+    final localRecords =
+        ref.watch(localVisitRecordsProvider).asData?.value ??
+        const <String, LocalVisitRecord>{};
     final properties = ref.watch(propertiesProvider);
     final selectedPropertyId = ref.watch(visitsPropertyFilterProvider);
     final searchQuery = ref.watch(visitsSearchQueryProvider);
@@ -119,6 +125,10 @@ class VisitsPage extends ConsumerWidget {
                         return _VisitsGrid(
                           visits: filteredItems,
                           propertyById: propertyById,
+                          localRecords: localRecords,
+                          onEdit: (visit) => context.go(
+                            '/visitas/editar/${Uri.encodeComponent(visit.idExterno)}',
+                          ),
                           onOpen: (visit) {
                             final property = propertyById[visit.idPropriedade];
                             final propertyName =
@@ -244,11 +254,15 @@ class _VisitsGrid extends StatelessWidget {
   const _VisitsGrid({
     required this.visits,
     required this.propertyById,
+    required this.localRecords,
+    required this.onEdit,
     required this.onOpen,
   });
 
   final List<VisitSummaryModel> visits;
   final Map<int, PropertySummaryModel> propertyById;
+  final Map<String, LocalVisitRecord> localRecords;
+  final ValueChanged<VisitSummaryModel> onEdit;
   final ValueChanged<VisitSummaryModel> onOpen;
 
   @override
@@ -270,15 +284,20 @@ class _VisitsGrid extends StatelessWidget {
             crossAxisCount: columns,
             crossAxisSpacing: 22,
             mainAxisSpacing: 22,
-            mainAxisExtent: 395,
+            // Espaço extra para o status de sincronização (só mobile).
+            mainAxisExtent: localRecords.isEmpty ? 395 : 425,
           ),
           itemBuilder: (context, index) {
             final visit = visits[index];
             final property = propertyById[visit.idPropriedade];
 
+            final localRecord = localRecords[visit.idExterno];
+
             return _VisitCard(
               visit: visit,
               propertyName: property?.nome ?? visit.idExternoPropriedade,
+              localRecord: localRecord,
+              onEdit: localRecord == null ? null : () => onEdit(visit),
               onTap: () => onOpen(visit),
             );
           },
@@ -293,11 +312,17 @@ class _VisitCard extends StatelessWidget {
     required this.visit,
     required this.propertyName,
     required this.onTap,
+    this.localRecord,
+    this.onEdit,
   });
 
   final VisitSummaryModel visit;
   final String propertyName;
   final VoidCallback onTap;
+
+  /// Só no mobile: estado local da visita e ação de editar/continuar.
+  final LocalVisitRecord? localRecord;
+  final VoidCallback? onEdit;
 
   @override
   Widget build(BuildContext context) {
@@ -346,6 +371,16 @@ class _VisitCard extends StatelessWidget {
                         fontWeight: FontWeight.w600,
                       ),
                     ),
+                    if (localRecord != null) ...[
+                      const SizedBox(height: 8),
+                      Tooltip(
+                        message: localRecord!.syncError ?? '',
+                        child: SyncStatusIndicator(
+                          status: localRecord!.syncStatus,
+                          compact: true,
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               ),
@@ -404,16 +439,44 @@ class _VisitCard extends StatelessWidget {
 
           const SizedBox(height: 16),
 
-          AppButton(
-            text: 'Ver relatório',
-            height: 46,
-            expanded: true,
-            outlined: true,
-            borderRadius: 10,
-            icon: const Icon(Icons.description_outlined, size: 18),
-            trailingIcon: const Icon(Icons.chevron_right_rounded, size: 22),
-            onPressed: onTap,
-          ),
+          if (localRecord?.isDraft == true)
+            AppButton(
+              text: 'Continuar visita',
+              height: 46,
+              expanded: true,
+              borderRadius: 10,
+              icon: const Icon(Icons.edit_outlined, size: 18),
+              trailingIcon: const Icon(Icons.chevron_right_rounded, size: 22),
+              onPressed: onEdit,
+            )
+          else
+            Row(
+              children: [
+                if (onEdit != null) ...[
+                  IconButton.outlined(
+                    tooltip: 'Editar visita',
+                    onPressed: onEdit,
+                    icon: const Icon(Icons.edit_outlined, size: 20),
+                  ),
+                  const SizedBox(width: 8),
+                ],
+                Expanded(
+                  child: AppButton(
+                    text: 'Ver relatório',
+                    height: 46,
+                    expanded: true,
+                    outlined: true,
+                    borderRadius: 10,
+                    icon: const Icon(Icons.description_outlined, size: 18),
+                    trailingIcon: const Icon(
+                      Icons.chevron_right_rounded,
+                      size: 22,
+                    ),
+                    onPressed: onTap,
+                  ),
+                ),
+              ],
+            ),
         ],
       ),
     );

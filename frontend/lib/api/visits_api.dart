@@ -26,30 +26,30 @@ class VisitsRepository {
     );
 
     final items = apiList(response.data);
-    return items.map(_toVisitModel).toList(growable: false);
+    return items.map(toModel).toList(growable: false);
   }
 
   Future<VisitSummaryModel> getById(int id) async {
     final response = await _dio.get<Object?>('/api/visits/$id');
-    return _toVisitModel(apiMap(response.data));
+    return toModel(apiMap(response.data));
   }
 
   Future<VisitSummaryModel> create(VisitSummaryModel visit) async {
     final response = await _dio.post<Object?>(
       '/api/visits',
-      data: _toRequest(visit),
+      data: toRequest(visit),
     );
 
-    return _toVisitModel(apiMap(response.data));
+    return toModel(apiMap(response.data));
   }
 
   Future<VisitSummaryModel> update(VisitSummaryModel visit) async {
     final response = await _dio.put<Object?>(
       '/api/visits/${visit.id}',
-      data: _toRequest(visit),
+      data: toRequest(visit),
     );
 
-    return _toVisitModel(apiMap(response.data));
+    return toModel(apiMap(response.data));
   }
 
   Future<Uint8List> downloadReportPdf(int visitId) async {
@@ -64,7 +64,8 @@ class VisitsRepository {
     return Uint8List.fromList(response.data ?? const []);
   }
 
-  VisitSummaryModel _toVisitModel(Map<String, dynamic> map) {
+  /// Converte `VisitaResponse` (REST ou pull de sync) no model da visita.
+  VisitSummaryModel toModel(Map<String, dynamic> map) {
     return VisitSummaryModelMapper.fromMap(_normalizeVisitUser(map));
   }
 
@@ -101,10 +102,12 @@ class VisitsRepository {
     return text;
   }
 
-  Map<String, dynamic> _toRequest(VisitSummaryModel visit) {
+  /// Payload `VisitaRequest`, usado no REST e como payload da fila de sync.
+  Map<String, dynamic> toRequest(VisitSummaryModel visit) {
     return {
       'idExterno': visit.idExterno,
-      'idPropriedade': visit.idPropriedade == 0 ? null : visit.idPropriedade,
+      // Ids <= 0 são locais (ainda não existem no servidor).
+      'idPropriedade': visit.idPropriedade > 0 ? visit.idPropriedade : null,
       'idExternoPropriedade': visit.idExternoPropriedade.isEmpty
           ? null
           : visit.idExternoPropriedade,
@@ -119,7 +122,7 @@ class VisitsRepository {
 
   Map<String, dynamic> _toAnimalItemRequest(VisitAnimalEntryModel item) {
     return {
-      'animalId': item.animalId == 0 ? null : item.animalId,
+      'animalId': item.animalId > 0 ? item.animalId : null,
       'animalIdExterno': item.animalIdExterno.isEmpty
           ? null
           : item.animalIdExterno,

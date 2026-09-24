@@ -113,6 +113,15 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             ),
           ),
           GoRoute(
+            path: '/visitas/editar/:idExterno',
+            pageBuilder: (context, state) => _buildShellChildPage(
+              state,
+              VisitFormPage(
+                editingIdExterno: state.pathParameters['idExterno'],
+              ),
+            ),
+          ),
+          GoRoute(
             path: '/visitas/:visitId/detalhes',
             pageBuilder: (context, state) {
               final routeData = state.extra is VisitReportRouteData

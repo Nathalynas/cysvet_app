@@ -8,6 +8,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../core/constants/app_constants.dart';
+import '../core/platform/offline_platform.dart';
+import '../core/widgets/sync_status_bar.dart';
 import '../core/widgets/app_button.dart';
 import '../providers/auth_state.dart';
 import 'theme.dart';
@@ -66,6 +68,9 @@ class AppShell extends ConsumerWidget {
     final pageHeader = _getPageHeader(context);
     final session = ref.watch(authSessionProvider);
     final isMobile = MediaQuery.of(context).size.width < MOBILE_WIDTH;
+    // Offline-first só existe no app nativo (Android/iOS), independente do
+    // layout; web/desktop não exibem nada disso.
+    final showSyncBar = isOfflineFirstPlatform;
 
     if (!isMobile) {
       return Scaffold(
@@ -76,6 +81,7 @@ class AppShell extends ConsumerWidget {
               showMenuButton: false,
               onMenuPressed: null,
             ),
+            if (showSyncBar) const SyncStatusBar(),
             Expanded(
               child: Row(
                 children: [
@@ -114,6 +120,7 @@ class AppShell extends ConsumerWidget {
                 },
                 backRoute: pageHeader.backRoute,
               ),
+              if (showSyncBar) const SyncStatusBar(),
               Expanded(child: _ShellContent(child: child)),
             ],
           );
@@ -143,7 +150,8 @@ class AppShell extends ConsumerWidget {
   _PageHeaderConfig _getPageHeader(BuildContext context) {
     final location = GoRouterState.of(context).uri.path;
 
-    if (location.startsWith('/visitas/nova')) {
+    if (location.startsWith('/visitas/nova') ||
+        location.startsWith('/visitas/editar')) {
       return const _PageHeaderConfig(backRoute: '/visitas');
     }
 
