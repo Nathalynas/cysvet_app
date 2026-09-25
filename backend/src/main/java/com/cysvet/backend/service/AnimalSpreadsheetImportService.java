@@ -87,7 +87,7 @@ public class AnimalSpreadsheetImportService {
                     }
                     SheetResult result = new SheetResult(sheetName, requestedMappings, property, save);
                     var parser = SAXHelper.newXMLReader();
-                    parser.setContentHandler(new XSSFSheetXMLHandler(styles, null, strings, result, new DataFormatter(Locale.forLanguageTag("pt-BR")), false));
+                    parser.setContentHandler(new XSSFSheetXMLHandler(styles, null, strings, result, new FormatadorDeCelulas(), false));
                     parser.parse(new InputSource(stream));
                     result.finish();
                     if (combined == null) combined = result;
@@ -146,7 +146,7 @@ public class AnimalSpreadsheetImportService {
         void process(int rowNumber, List<String> cells) {
             if (columns.isEmpty() || rowNumber <= headerRowIndex) return;
             total++; List<AnimalSpreadsheetIssueResponse> issues=new ArrayList<>(); Map<String,String> values=new LinkedHashMap<>();
-            for (var entry:mappings.entrySet()) { int col=entry.getKey(); String field=entry.getValue(); String value=col<cells.size()?cells.get(col).trim():""; values.put(field,value); if (REQUIRED.contains(field) && value.isBlank()) issues.add(new AnimalSpreadsheetIssueResponse(col,"Campo obrigatório vazio")); }
+            for (var entry:mappings.entrySet()) { int col=entry.getKey(); String field=entry.getValue(); String value=col<cells.size()?semMarcadorDeVazio(cells.get(col)):""; values.put(field,value); if (REQUIRED.contains(field) && value.isBlank()) issues.add(new AnimalSpreadsheetIssueResponse(col,"Campo obrigatório vazio")); }
             String code = normalize(values.get("codigo"));
             if (!code.isEmpty() && !importedCodes.add(code)) issues.add(new AnimalSpreadsheetIssueResponse(columnFor("codigo"),"Animal duplicado na planilha"));
             AnimalRequest request=null;
@@ -172,11 +172,48 @@ public class AnimalSpreadsheetImportService {
         boolean isHeifer(String productiveSituation) { String value=normalize(productiveSituation); return value.contains("novilha") || value.contains("bezerra"); }
         String requiredText(Map<String,String> v,String field){String value=v.get(field);if(value==null||value.isBlank())throw invalid(field,"Campo obrigatório vazio");return value;}
         Integer integer(Map<String,String> v,String field,boolean required){String s=blankToNull(v.get(field));if(s==null)return null;try { double d=Double.parseDouble(s.replace(',','.'));if(d!=Math.rint(d))throw new NumberFormatException();return (int)d;}catch(NumberFormatException e){throw invalid(field,"Informe um número inteiro");}}
-        LocalDate date(Map<String,String> v,String field,boolean required){String s=blankToNull(v.get(field));if(s==null)return null; try { if(s.matches("\\d+(?:[.,]\\d+)?")) return DateUtil.getJavaDate(Double.parseDouble(s.replace(',','.'))).toInstant().atZone(java.time.ZoneId.systemDefault()).toLocalDate(); for(DateTimeFormatter f:List.of(DateTimeFormatter.ISO_LOCAL_DATE,DateTimeFormatter.ofPattern("M/d/uuuu"),DateTimeFormatter.ofPattern("M/d/uu"),DateTimeFormatter.ofPattern("d/M/uuuu"),DateTimeFormatter.ofPattern("d/M/uu"),DateTimeFormatter.ofPattern("d-M-uuuu"),DateTimeFormatter.ofPattern("d-M-uu"))) try{return LocalDate.parse(s,f);}catch(DateTimeParseException ignored){} }catch(Exception ignored){} throw invalid(field,"Informe uma data válida");}
+        LocalDate date(Map<String,String> v,String field,boolean required){String s=blankToNull(v.get(field));if(s==null)return null; try { if(s.matches("\\d+(?:[.,]\\d+)?")) return DateUtil.getJavaDate(Double.parseDouble(s.replace(',','.'))).toInstant().atZone(java.time.ZoneId.systemDefault()).toLocalDate(); for(DateTimeFormatter f:List.of(DateTimeFormatter.ISO_LOCAL_DATE,DateTimeFormatter.ofPattern("d/M/uuuu"),DateTimeFormatter.ofPattern("d/M/uu"),DateTimeFormatter.ofPattern("M/d/uuuu"),DateTimeFormatter.ofPattern("M/d/uu"),DateTimeFormatter.ofPattern("d-M-uuuu"),DateTimeFormatter.ofPattern("d-M-uu"))) try{return LocalDate.parse(s,f);}catch(DateTimeParseException ignored){} }catch(Exception ignored){} throw invalid(field,"Informe uma data válida");}
         StatusReprodutivoAnimal status(String s){if(blankToNull(s)==null)return StatusReprodutivoAnimal.PENDING;try{return StatusReprodutivoAnimal.fromValue(s);}catch(Exception e){throw invalid("statusReprodutivo","Status reprodutivo inválido");}}
         IllegalArgumentException invalid(String field,String message){return new IllegalArgumentException(field+"|"+message);}
         int columnFor(String field){return mappings.entrySet().stream().filter(entry -> entry.getValue().equals(field)).map(Map.Entry::getKey).findFirst().orElse(0);}
     }
+    // Planilhas de campo usam 0, FALSO, "s/inf" e erros de formula no lugar de celula vazia.
+    private static final java.util.Set<String> MARCADORES_DE_VAZIO = java.util.Set.of(
+            "0", "0,0", "0.0", "false", "falso", "s/inf", "s/ inf", "s inf", "sem inf", "sem informacao", "-", "--", "n/a");
+
+    private static String semMarcadorDeVazio(String value) {
+        String text = value == null ? "" : value.trim();
+        String lower = text.toLowerCase(Locale.ROOT);
+        if (MARCADORES_DE_VAZIO.contains(lower) || lower.startsWith("error:") || lower.startsWith("#")) {
+            return "";
+        }
+        return text;
+    }
+
+    /**
+     * Celulas com formato de data saem como dd/MM/yyyy a partir do valor numerico do Excel,
+     * independente do formato visual (dd/mm/yy, m/d/yy...). Assim o dia e o mes nunca sao
+     * reinterpretados. O valor 0 (ou so hora) e tratado como celula vazia.
+     */
+    private static final class FormatadorDeCelulas extends DataFormatter {
+        private static final DateTimeFormatter DATA_BRASILEIRA = DateTimeFormatter.ofPattern("dd/MM/uuuu");
+
+        private FormatadorDeCelulas() {
+            super(Locale.forLanguageTag("pt-BR"));
+        }
+
+        @Override
+        public String formatRawCellContents(double value, int formatIndex, String formatString, boolean use1904Windowing) {
+            if (DateUtil.isADateFormat(formatIndex, formatString)) {
+                if (value < 1 || !DateUtil.isValidExcelDate(value)) {
+                    return "";
+                }
+                return DateUtil.getLocalDateTime(value, use1904Windowing).toLocalDate().format(DATA_BRASILEIRA);
+            }
+            return super.formatRawCellContents(value, formatIndex, formatString, use1904Windowing);
+        }
+    }
+
     private static int column(String ref) { int n=0; for(char c:ref.toCharArray()){if(Character.isLetter(c))n=n*26+(Character.toUpperCase(c)-'A'+1);else break;}return n-1; }
     private static int detectHeader(List<List<String>> rows){int best=0,bestScore=-1,bestCount=-1;for(int i=0;i<rows.size();i++){int count=(int)rows.get(i).stream().filter(v->!v.isBlank()).count();int score=(int)rows.get(i).stream().map(AnimalSpreadsheetImportService::fieldForHeader).filter(java.util.Objects::nonNull).distinct().count();if(score>bestScore||(score==bestScore&&count>bestCount)){best=i;bestScore=score;bestCount=count;}}return best;}
     private static String fieldForHeader(String header) { String n=normalize(header); for (var e:ALIASES.entrySet()) if(e.getValue().stream().anyMatch(a->n.equals(a)||(a.length()>=6&&n.contains(a)))) return e.getKey(); return null; }
