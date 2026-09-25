@@ -6,5 +6,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 public enum SyncItemStatus {
     SYNCED,
     REPLAYED,
-    CONFLICT_SERVER_WINS
+    CONFLICT_SERVER_WINS,
+    @Schema(description = "Item recusado por dados invalidos ou referencia inexistente; nada foi aplicado e a chave de mutacao pode ser reenviada.")
+    REJECTED
 }

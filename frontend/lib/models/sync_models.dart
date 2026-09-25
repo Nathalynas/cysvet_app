@@ -121,6 +121,9 @@ enum SyncItemStatus {
   synced,
   replayed,
   conflictServerWins,
+
+  /// Dados inválidos ou referência inexistente: nada foi aplicado no servidor.
+  rejected,
   unknown;
 
   static SyncItemStatus fromApi(String? value) {
@@ -131,13 +134,16 @@ enum SyncItemStatus {
         return SyncItemStatus.replayed;
       case 'CONFLICT_SERVER_WINS':
         return SyncItemStatus.conflictServerWins;
+      case 'REJECTED':
+        return SyncItemStatus.rejected;
       default:
         return SyncItemStatus.unknown;
     }
   }
 
   /// O backend aceitou (ou já tinha aceitado) a mutação; ela sai da fila.
-  bool get isAccepted => this != SyncItemStatus.unknown;
+  bool get isAccepted =>
+      this != SyncItemStatus.rejected && this != SyncItemStatus.unknown;
 }
 
 class SyncItemResult {

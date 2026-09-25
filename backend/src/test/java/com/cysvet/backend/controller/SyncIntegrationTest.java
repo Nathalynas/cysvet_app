@@ -140,8 +140,10 @@ class SyncIntegrationTest {
                                   ]
                                 }
                                 """))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.message").value("Lote deve informar idPropriedade ou idExternoPropriedade"));
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items[0].status").value("REJECTED"))
+                .andExpect(jsonPath("$.items[0].idExterno").value("lot-invalid-1"))
+                .andExpect(jsonPath("$.items[0].message").value("Lote deve informar idPropriedade ou idExternoPropriedade"));
 
         String syncRequest = """
                 {
@@ -179,6 +181,91 @@ class SyncIntegrationTest {
                 .andExpect(jsonPath("$.items[0].idExterno").value("prop-sync-idem-1"))
                 .andExpect(jsonPath("$.items[0].status").value("REPLAYED"))
                 .andExpect(jsonPath("$.items[0].message").value("Operacao reaproveitada por idempotencia"));
+    }
+
+    @Test
+    void syncShouldRejectOnlyInvalidItemAndKeepValidItemsOfSameBatch() throws Exception {
+        AuthContext auth = registerAndAuthenticate("sync.partial@example.com", "Admin Partial", "123456");
+
+        mockMvc.perform(post("/api/sync")
+                        .header("Authorization", auth.authorization())
+                        .header("empresaid", auth.tenantId())
+                        .contentType(APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "items": [
+                                    {
+                                      "chaveMutacao": "mut-partial-property-1",
+                                      "operationType": "CREATE",
+                                      "entity": "property",
+                                      "payload": {
+                                        "idExterno": "prop-partial-1",
+                                        "nome": "Fazenda Parcial",
+                                        "nomeProprietario": "Rosa"
+                                      }
+                                    },
+                                    {
+                                      "chaveMutacao": "mut-partial-animal-orphan",
+                                      "operationType": "CREATE",
+                                      "entity": "animal",
+                                      "payload": {
+                                        "idExterno": "animal-partial-orphan",
+                                        "idExternoPropriedade": "prop-inexistente",
+                                        "codigo": "ORFAO-01",
+                                        "numeroLactacao": 0
+                                      }
+                                    },
+                                    {
+                                      "chaveMutacao": "mut-partial-animal-1",
+                                      "operationType": "CREATE",
+                                      "entity": "animal",
+                                      "payload": {
+                                        "idExterno": "animal-partial-1",
+                                        "idExternoPropriedade": "prop-partial-1",
+                                        "codigo": "PARCIAL-01",
+                                        "numeroLactacao": 1
+                                      }
+                                    }
+                                  ]
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items[0].status").value("SYNCED"))
+                .andExpect(jsonPath("$.items[1].status").value("REJECTED"))
+                .andExpect(jsonPath("$.items[1].idExterno").value("animal-partial-orphan"))
+                .andExpect(jsonPath("$.items[1].message").value("Propriedade nao encontrada"))
+                .andExpect(jsonPath("$.items[2].status").value("SYNCED"));
+
+        JsonNode pull = pullSnapshot(auth, null);
+        assertEquals("Fazenda Parcial", findByExternalId(pull.path("properties"), "prop-partial-1").path("nome").asText());
+        assertEquals("PARCIAL-01", findByExternalId(pull.path("animals"), "animal-partial-1").path("codigo").asText());
+        pull.path("animals").forEach(animal ->
+                assertFalse("animal-partial-orphan".equals(animal.path("idExterno").asText())));
+
+        // A chave rejeitada nao fica registrada: o reenvio corrigido e aplicado, nao REPLAYED.
+        mockMvc.perform(post("/api/sync")
+                        .header("Authorization", auth.authorization())
+                        .header("empresaid", auth.tenantId())
+                        .contentType(APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "items": [
+                                    {
+                                      "chaveMutacao": "mut-partial-animal-orphan",
+                                      "operationType": "CREATE",
+                                      "entity": "animal",
+                                      "payload": {
+                                        "idExterno": "animal-partial-orphan",
+                                        "idExternoPropriedade": "prop-partial-1",
+                                        "codigo": "ORFAO-01",
+                                        "numeroLactacao": 0
+                                      }
+                                    }
+                                  ]
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items[0].status").value("SYNCED"));
     }
 
     @Test

@@ -4,7 +4,10 @@ import java.time.Instant;
 import java.util.List;
 
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.cysvet.backend.dto.animal.AnimalRequest;
@@ -50,14 +53,36 @@ public class SyncService {
     private final RegistroExcluidoService deletedRecordService;
     private final ObjectMapper objectMapper;
     private final Validator validator;
+    private final PlatformTransactionManager transactionManager;
 
-    @Transactional
+    // Sem transacao unica de lote: cada item roda na propria transacao para que
+    // um item rejeitado nao desfaca os itens validos ja aplicados. Erros de
+    // infraestrutura continuam propagando; no reenvio, os itens aplicados voltam
+    // como REPLAYED pela idempotencia.
     public SyncResponse sync(SyncRequest request) {
-        Usuario user = authenticatedUserProvider.getCurrentUser();
+        TransactionTemplate itemTransaction = new TransactionTemplate(transactionManager);
+        itemTransaction.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
+
         List<SyncItemResponse> responses = request.items().stream()
-                .map(item -> process(item, user))
+                .map(item -> processInOwnTransaction(item, itemTransaction))
                 .toList();
         return new SyncResponse(responses);
+    }
+
+    private SyncItemResponse processInOwnTransaction(SyncItemRequest item, TransactionTemplate itemTransaction) {
+        try {
+            return itemTransaction.execute(status -> process(item, authenticatedUserProvider.getCurrentUser()));
+        } catch (IllegalArgumentException | ResourceNotFoundException exception) {
+            // A chave de mutacao nao e registrada: o cliente pode corrigir e reenviar o mesmo item.
+            return new SyncItemResponse(
+                    item.chaveMutacao(),
+                    SyncItemStatus.REJECTED,
+                    null,
+                    extractExternalId(item),
+                    null,
+                    exception.getMessage()
+            );
+        }
     }
 
     @Transactional(readOnly = true)

@@ -241,9 +241,9 @@ class SyncController extends Notifier<SyncState> {
           !isNetworkError(error) && statusCode != null && statusCode != 401;
       if (!rejectedByServer) rethrow;
 
-      // TODO BACKEND: `SyncService.sync` processa o lote numa única transação
-      // e um item inválido derruba todos (sem resultado por item). Enquanto
-      // isso não mudar, reenvia item a item para isolar o problemático.
+      // O backend devolve REJECTED por item; um erro no lote inteiro indica
+      // envelope inválido ou servidor antigo. Reenvia item a item para isolar
+      // o problemático sem travar os demais.
       if (batch.length > 1) {
         var conflicts = 0;
         for (final mutation in batch) {
@@ -275,9 +275,14 @@ class SyncController extends Notifier<SyncState> {
 
     final accepted = <SyncMutation>[];
     final missing = <SyncMutation>[];
+    final rejected = <SyncMutation, String>{};
     var conflicts = 0;
     for (final mutation in batch) {
       final result = byKey[mutation.chaveMutacao];
+      if (result?.status == SyncItemStatus.rejected) {
+        rejected[mutation] = result?.message ?? 'O servidor recusou este item.';
+        continue;
+      }
       if (result == null || !result.status.isAccepted) {
         missing.add(mutation);
         continue;
@@ -315,6 +320,14 @@ class SyncController extends Notifier<SyncState> {
         _visitIds(missing),
         SyncStatusEnum.error,
         error: message,
+      );
+    }
+    for (final entry in rejected.entries) {
+      await queue.markError(_ids([entry.key]), entry.value);
+      await visitsStore.updateSyncStatus(
+        _visitIds([entry.key]),
+        SyncStatusEnum.error,
+        error: entry.value,
       );
     }
     return conflicts;
