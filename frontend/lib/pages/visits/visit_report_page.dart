@@ -101,7 +101,6 @@ class VisitReportPage extends ConsumerWidget {
       backgroundColor: theme.scaffoldBackgroundColor,
       body: ColoredBox(
         color: theme.scaffoldBackgroundColor,
-        // TODO(frontend-only): Pagina de detalhes exibindo o relatorio como documento fixo.
         child: AsyncValueView<VisitReportRouteData>(
           value: value,
           loadingMessage: 'Carregando relatório...',
@@ -312,7 +311,6 @@ class _ReportDocumentViewportState extends State<_ReportDocumentViewport> {
     final scaledHeight =
         (_documentHeight ?? _ReportTokens.estimatedDocumentHeight) * _scale;
 
-    // TODO(frontend-only): Usar scroll horizontal/vertical quando a tela for menor que o documento.
     return LayoutBuilder(
       builder: (context, constraints) {
         final isMobile = constraints.maxWidth < MOBILE_WIDTH;
@@ -425,7 +423,8 @@ class VisitReportCard extends StatelessWidget {
       currentUserName: currentUserName,
     );
 
-    // TODO(frontend-only): Layout do relatorio nao deve ser responsivo internamente.
+    // Largura fixa: o relatório imita o documento impresso, então não se
+    // reorganiza em telas menores; a página externa faz escala e rolagem.
     return SizedBox(
       width: _ReportTokens.documentWidth,
       child: DecoratedBox(

@@ -61,8 +61,9 @@ final propertyDetailsProvider = FutureProvider.autoDispose
         throw StateError('Identificador de propriedade invalido.');
       }
 
-      // TODO(api): substituir a busca pela lista por GET /api/properties/:id
-      // quando o backend expuser o endpoint de detalhe.
+      // Busca na lista em vez de GET /api/properties/:id porque a lista tem
+      // fallback local: funciona offline e com propriedades ainda não
+      // sincronizadas (id local negativo).
       final properties = await ref.watch(propertiesProvider.future);
 
       for (final property in properties) {
