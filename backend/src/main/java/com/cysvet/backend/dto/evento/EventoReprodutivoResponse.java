@@ -37,6 +37,8 @@ public record EventoReprodutivoResponse(
         @Schema(description = "Data da ultima atualizacao.", example = "2026-05-12T18:30:00Z")
         Instant dataAtualizacao,
         @Schema(description = "Versao do registro.", example = "2")
-        Long versao
+        Long versao,
+        @Schema(description = "Identificador externo da visita que gerou o evento; nulo para eventos registrados diretamente.", example = "visit-001")
+        String idExternoVisita
 ) {
 }

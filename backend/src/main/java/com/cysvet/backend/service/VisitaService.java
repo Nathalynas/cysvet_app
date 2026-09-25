@@ -26,6 +26,7 @@ public class VisitaService {
     private final PropriedadeService propriedadeService;
     private final UsuarioAutenticadoProvider authenticatedUserProvider;
     private final RegistroExcluidoService deletedRecordService;
+    private final VisitaEventosService visitaEventosService;
     private final ObjectMapper objectMapper;
 
     @Transactional(readOnly = true)
@@ -67,6 +68,7 @@ public class VisitaService {
         apply(visit, request, user);
         Visita saved = visitRepository.save(visit);
         deletedRecordService.clearDeletionMarker(SyncEntityNames.VISIT, saved.getIdExterno());
+        visitaEventosService.regenerar(saved);
         return toResponse(saved);
     }
 
@@ -77,6 +79,7 @@ public class VisitaService {
         apply(visit, request, user);
         Visita saved = visitRepository.save(visit);
         deletedRecordService.clearDeletionMarker(SyncEntityNames.VISIT, saved.getIdExterno());
+        visitaEventosService.regenerar(saved);
         return toResponse(saved);
     }
 
@@ -84,6 +87,7 @@ public class VisitaService {
     public void delete(Long id) {
         Usuario user = authenticatedUserProvider.getCurrentUser();
         Visita visit = getEntity(id);
+        visitaEventosService.removerDaVisita(visit, user.getId());
         visitRepository.delete(visit);
         deletedRecordService.registerDeletion(SyncEntityNames.VISIT, visit.getIdExterno(), user.getId());
     }
@@ -100,12 +104,14 @@ public class VisitaService {
         apply(visit, request, user);
         Visita saved = visitRepository.save(visit);
         deletedRecordService.clearDeletionMarker(SyncEntityNames.VISIT, saved.getIdExterno());
+        visitaEventosService.regenerar(saved);
         return SyncUpsertResult.applied(saved);
     }
 
     @Transactional
     public void deleteByExternalId(String idExterno, Usuario user) {
         Visita visit = getByExternalId(idExterno);
+        visitaEventosService.removerDaVisita(visit, user.getId());
         visitRepository.delete(visit);
         deletedRecordService.registerDeletion(SyncEntityNames.VISIT, visit.getIdExterno(), user.getId());
     }

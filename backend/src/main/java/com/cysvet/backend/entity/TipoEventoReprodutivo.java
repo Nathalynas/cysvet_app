@@ -11,5 +11,9 @@ public enum TipoEventoReprodutivo {
     MILK_CONTROL,
     LOT_MOVEMENT,
     DISCARD,
-    DEATH
+    DEATH,
+    // Situacao reprodutiva observada pelo veterinario (ex.: na visita), com o
+    // valor em detalhes.status. Cobre situacoes sem evento proprio, como PEV,
+    // liberada ou aguardando DG.
+    REPRODUCTIVE_STATUS_CHECK
 }

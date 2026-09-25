@@ -8,6 +8,7 @@ import jakarta.persistence.FetchType;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import java.time.Instant;
 import java.time.LocalDate;
 import lombok.Getter;
 import lombok.Setter;
@@ -49,6 +50,27 @@ public class Animal extends TenantAwareEntity {
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false, length = 32)
     private StatusAnimal status = StatusAnimal.ATIVO;
+
+    // Base do resumo reprodutivo (cadastro, importacao ou correcao manual).
+    // Os campos de resumo acima sao recalculados a partir dela e dos eventos.
+    @Column(name = "base_numero_lactacao", nullable = false)
+    private Integer baseNumeroLactacao = 0;
+
+    @Column(name = "base_data_ultimo_parto")
+    private LocalDate baseDataUltimoParto;
+
+    @Column(name = "base_data_inseminacao")
+    private LocalDate baseDataInseminacao;
+
+    @Column(name = "base_touro_ia")
+    private String baseTouroIa;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "base_status_reprodutivo", length = 32)
+    private StatusReprodutivoAnimal baseStatusReprodutivo;
+
+    @Column(name = "base_status_reprodutivo_em")
+    private Instant baseStatusReprodutivoEm;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "id_propriedade", nullable = false)

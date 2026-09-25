@@ -36,6 +36,7 @@ public class AnimalService {
     private final LoteService loteService;
     private final UsuarioAutenticadoProvider authenticatedUserProvider;
     private final RegistroExcluidoService deletedRecordService;
+    private final ResumoReprodutivoAnimalService resumoReprodutivoAnimalService;
 
     @Transactional(readOnly = true)
     public List<AnimalResponse> list(Long idPropriedade, Long idLote, String search, String status) {
@@ -85,6 +86,7 @@ public class AnimalService {
         apply(animal, request, user);
         animal.setIdExterno(idExterno);
         Animal saved = animalRepository.save(animal);
+        resumoReprodutivoAnimalService.recalcular(saved);
         if (previous == null) {
             registerHistory(saved, user, TipoHistoricoAnimal.CADASTRO, "Animal cadastrado pela importação.");
         } else {
@@ -101,6 +103,7 @@ public class AnimalService {
         AnimalSnapshot previous = AnimalSnapshot.from(animal);
         apply(animal, request, user);
         Animal saved = animalRepository.save(animal);
+        resumoReprodutivoAnimalService.recalcular(saved);
         registerChanges(previous, saved, user, "cadastro");
         deletedRecordService.clearDeletionMarker(SyncEntityNames.ANIMAL, saved.getIdExterno());
         return toResponse(saved);
@@ -133,6 +136,7 @@ public class AnimalService {
         AnimalSnapshot previous = animal.getId() == null ? null : AnimalSnapshot.from(animal);
         apply(animal, request, user);
         Animal saved = animalRepository.save(animal);
+        resumoReprodutivoAnimalService.recalcular(saved);
         if (previous == null) {
             registerHistory(saved, user, TipoHistoricoAnimal.CADASTRO, "Animal cadastrado pela sincronização.");
         } else {
@@ -156,6 +160,8 @@ public class AnimalService {
             throw new IllegalArgumentException("Lote informado nao pertence a propriedade do animal");
         }
 
+        applyReproductiveBase(animal, request);
+
         animal.setIdExterno(request.idExterno());
         animal.setPropriedade(property);
         animal.setLote(lote);
@@ -172,6 +178,30 @@ public class AnimalService {
             animal.setStatus(request.status());
         } else if (animal.getStatus() == null) {
             animal.setStatus(StatusAnimal.ATIVO);
+        }
+    }
+
+    // So os campos alterados pelo usuario viram base. O cliente reenvia o
+    // resumo inteiro a cada edicao; tratar valores inalterados como correcao
+    // faria a base sobrepor eventos que ainda estao chegando pelo sync.
+    private void applyReproductiveBase(Animal animal, AnimalRequest request) {
+        boolean isNew = animal.getId() == null;
+
+        if (isNew
+                || !Objects.equals(animal.getNumeroLactacao(), request.numeroLactacao())
+                || !Objects.equals(animal.getDataUltimoParto(), request.dataUltimoParto())) {
+            animal.setBaseNumeroLactacao(request.numeroLactacao());
+            animal.setBaseDataUltimoParto(request.dataUltimoParto());
+        }
+        if (isNew
+                || !Objects.equals(animal.getDataInseminacao(), request.dataInseminacao())
+                || !Objects.equals(animal.getTouroIa(), request.touroIa())) {
+            animal.setBaseDataInseminacao(request.dataInseminacao());
+            animal.setBaseTouroIa(request.touroIa());
+        }
+        if (isNew || animal.getStatusReprodutivo() != request.statusReprodutivo()) {
+            animal.setBaseStatusReprodutivo(request.statusReprodutivo());
+            animal.setBaseStatusReprodutivoEm(Instant.now());
         }
     }
 

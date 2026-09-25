@@ -51,4 +51,9 @@ public class EventoReprodutivo extends TenantAwareEntity {
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "id_usuario", nullable = false)
     private Usuario usuario;
+
+    // Preenchido quando o evento foi gerado a partir de uma visita.
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "id_visita")
+    private Visita visita;
 }

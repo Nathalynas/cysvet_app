@@ -1,6 +1,7 @@
 package com.cysvet.backend.repository;
 
 import com.cysvet.backend.entity.EventoReprodutivo;
+import com.cysvet.backend.entity.TipoEventoReprodutivo;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
@@ -20,6 +21,12 @@ public interface EventoReprodutivoRepository extends JpaRepository<EventoReprodu
     );
 
     List<EventoReprodutivo> findAllByAnimalIdOrderByDataEventoDesc(Long idAnimal);
+
+    List<EventoReprodutivo> findAllByAnimalId(Long idAnimal);
+
+    List<EventoReprodutivo> findAllByVisitaId(Long idVisita);
+
+    boolean existsByAnimalIdAndTipoAndDataEvento(Long idAnimal, TipoEventoReprodutivo tipo, LocalDate dataEvento);
 
     Optional<EventoReprodutivo> findByIdExterno(String idExterno);
 

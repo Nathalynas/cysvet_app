@@ -6,7 +6,6 @@ import com.cysvet.backend.dto.sync.SyncEntityNames;
 import com.cysvet.backend.entity.Animal;
 import com.cysvet.backend.entity.Propriedade;
 import com.cysvet.backend.entity.EventoReprodutivo;
-import com.cysvet.backend.entity.StatusReprodutivoAnimal;
 import com.cysvet.backend.entity.StatusAnimal;
 import com.cysvet.backend.entity.TipoEventoReprodutivo;
 import com.cysvet.backend.entity.Usuario;
@@ -27,6 +26,10 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class EventoReprodutivoService {
 
+    // Mesmo prazo usado pelo app e pelas planilhas de campo (IA + 282 dias).
+    static final int DIAS_DA_IA_ATE_O_PARTO = 282;
+
+    private final ResumoReprodutivoAnimalService resumoReprodutivoAnimalService;
     private final EventoReprodutivoRepository eventoReprodutivoRepository;
     private final AnimalService animalService;
     private final PropriedadeService propriedadeService;
@@ -69,29 +72,19 @@ public class EventoReprodutivoService {
     @Transactional
     public EventoReprodutivoResponse create(EventoReprodutivoRequest request) {
         Usuario user = authenticatedUserProvider.getCurrentUser();
-        EventoReprodutivo event = new EventoReprodutivo();
-        apply(event, request, user);
-        EventoReprodutivo saved = eventoReprodutivoRepository.save(event);
-        deletedRecordService.clearDeletionMarker(SyncEntityNames.EVENT, saved.getIdExterno());
-        return toResponse(saved);
+        return toResponse(save(new EventoReprodutivo(), request, user));
     }
 
     @Transactional
     public EventoReprodutivoResponse update(Long id, EventoReprodutivoRequest request) {
         Usuario user = authenticatedUserProvider.getCurrentUser();
-        EventoReprodutivo event = getEntity(id);
-        apply(event, request, user);
-        EventoReprodutivo saved = eventoReprodutivoRepository.save(event);
-        deletedRecordService.clearDeletionMarker(SyncEntityNames.EVENT, saved.getIdExterno());
-        return toResponse(saved);
+        return toResponse(save(getEntity(id), request, user));
     }
 
     @Transactional
     public void delete(Long id) {
         Usuario user = authenticatedUserProvider.getCurrentUser();
-        EventoReprodutivo event = getEntity(id);
-        eventoReprodutivoRepository.delete(event);
-        deletedRecordService.registerDeletion(SyncEntityNames.EVENT, event.getIdExterno(), user.getId());
+        remove(getEntity(id), user);
     }
 
     @Transactional
@@ -103,17 +96,33 @@ public class EventoReprodutivoService {
             return SyncUpsertResult.conflicted(event);
         }
 
-        apply(event, request, user);
-        EventoReprodutivo saved = eventoReprodutivoRepository.save(event);
-        deletedRecordService.clearDeletionMarker(SyncEntityNames.EVENT, saved.getIdExterno());
-        return SyncUpsertResult.applied(saved);
+        return SyncUpsertResult.applied(save(event, request, user));
     }
 
     @Transactional
     public void deleteByExternalId(String idExterno, Usuario user) {
-        EventoReprodutivo event = getByExternalId(idExterno);
+        remove(getByExternalId(idExterno), user);
+    }
+
+    private EventoReprodutivo save(EventoReprodutivo event, EventoReprodutivoRequest request, Usuario user) {
+        Animal previousAnimal = event.getAnimal();
+        apply(event, request, user);
+        EventoReprodutivo saved = eventoReprodutivoRepository.save(event);
+        deletedRecordService.clearDeletionMarker(SyncEntityNames.EVENT, saved.getIdExterno());
+
+        resumoReprodutivoAnimalService.recalcular(saved.getAnimal());
+        if (previousAnimal != null && !previousAnimal.getId().equals(saved.getAnimal().getId())) {
+            resumoReprodutivoAnimalService.recalcular(previousAnimal);
+        }
+        return saved;
+    }
+
+    private void remove(EventoReprodutivo event, Usuario user) {
+        Animal animal = event.getAnimal();
         eventoReprodutivoRepository.delete(event);
+        eventoReprodutivoRepository.flush();
         deletedRecordService.registerDeletion(SyncEntityNames.EVENT, event.getIdExterno(), user.getId());
+        resumoReprodutivoAnimalService.recalcular(animal);
     }
 
     @Transactional(readOnly = true)
@@ -129,7 +138,6 @@ public class EventoReprodutivoService {
     }
 
     private void apply(EventoReprodutivo event, EventoReprodutivoRequest request, Usuario user) {
-        boolean isNewEvent = event.getId() == null;
         Propriedade property = resolveProperty(request.idPropriedade(), request.idExternoPropriedade());
         Animal animal = resolveAnimal(request.idAnimal(), request.idExternoAnimal());
 
@@ -146,54 +154,19 @@ public class EventoReprodutivoService {
         event.setPrenhezConfirmada(request.prenhezConfirmada());
         event.setObservacoes(request.observacoes());
         event.setDetalhesJson(writeDetails(request.detalhes()));
-        event.setDataPrevistaParto(
-                request.tipo() == TipoEventoReprodutivo.INSEMINATION ? request.dataEvento().plusDays(283) : null
-        );
+        event.setDataPrevistaParto(previsaoDeParto(request.tipo(), request.dataEvento()));
 
-        syncAnimalReproductiveSnapshot(animal, request, isNewEvent);
-    }
-
-    private void syncAnimalReproductiveSnapshot(Animal animal, EventoReprodutivoRequest request, boolean isNewEvent) {
-        switch (request.tipo()) {
-            case INSEMINATION -> {
-                animal.setDataInseminacao(request.dataEvento());
-                animal.setStatusReprodutivo(StatusReprodutivoAnimal.INSEMINATED);
-                String bull = textDetail(request.detalhes(), "touro");
-                if (bull != null) {
-                    animal.setTouroIa(bull);
-                }
-            }
-            case PREGNANCY_DIAGNOSIS -> {
-                if (request.prenhezConfirmada() != null) {
-                    animal.setStatusReprodutivo(request.prenhezConfirmada()
-                            ? StatusReprodutivoAnimal.PREGNANT
-                            : StatusReprodutivoAnimal.EMPTY);
-                }
-            }
-            case CALVING -> {
-                animal.setDataInseminacao(null);
-                animal.setStatusReprodutivo(StatusReprodutivoAnimal.PENDING);
-                if (isNewEvent) {
-                    animal.setDataUltimoParto(request.dataEvento());
-                    animal.setNumeroLactacao(animal.getNumeroLactacao() + 1);
-                }
-            }
-            case DRY_OFF -> animal.setStatusReprodutivo(StatusReprodutivoAnimal.DRY);
-            case GESTATIONAL_LOSS -> animal.setStatusReprodutivo(StatusReprodutivoAnimal.EMPTY);
-            case DISCARD -> animal.setStatus(StatusAnimal.INATIVO);
-            case DEATH -> animal.setStatus(StatusAnimal.OBITO);
-            case POST_PARTUM_COMPLICATION, HEALTH_TREATMENT, MILK_CONTROL, LOT_MOVEMENT -> {
-                // Estes eventos enriquecem o histórico sem alterar o status atual do animal.
-            }
+        // O resumo reprodutivo e recalculado depois de salvar; aqui ficam so os
+        // efeitos sobre a situacao do animal no rebanho.
+        if (request.tipo() == TipoEventoReprodutivo.DISCARD) {
+            animal.setStatus(StatusAnimal.INATIVO);
+        } else if (request.tipo() == TipoEventoReprodutivo.DEATH) {
+            animal.setStatus(StatusAnimal.OBITO);
         }
     }
 
-    private String textDetail(Map<String, Object> details, String key) {
-        if (details == null || details.get(key) == null) {
-            return null;
-        }
-        String value = details.get(key).toString().trim();
-        return value.isEmpty() ? null : value;
+    static LocalDate previsaoDeParto(TipoEventoReprodutivo tipo, LocalDate dataEvento) {
+        return tipo == TipoEventoReprodutivo.INSEMINATION ? dataEvento.plusDays(DIAS_DA_IA_ATE_O_PARTO) : null;
     }
 
     private Propriedade resolveProperty(Long idPropriedade, String idExternoPropriedade) {
@@ -232,7 +205,8 @@ public class EventoReprodutivoService {
                 readDetails(event.getDetalhesJson()),
                 event.getDataCriacao(),
                 event.getDataAtualizacao(),
-                event.getVersao()
+                event.getVersao(),
+                event.getVisita() == null ? null : event.getVisita().getIdExterno()
         );
     }
 
