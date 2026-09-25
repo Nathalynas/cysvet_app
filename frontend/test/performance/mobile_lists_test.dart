@@ -3,14 +3,16 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:cysvet_app/features/animals/application/animals_provider.dart';
-import 'package:cysvet_app/features/animals/domain/animal_summary_model.dart';
-import 'package:cysvet_app/features/animals/presentation/animals_page.dart';
-import 'package:cysvet_app/features/properties/application/properties_provider.dart';
-import 'package:cysvet_app/features/properties/domain/property_summary_model.dart';
-import 'package:cysvet_app/features/visits/application/visits_provider.dart';
-import 'package:cysvet_app/features/visits/domain/visit_summary_model.dart';
-import 'package:cysvet_app/features/visits/presentation/visits_page.dart';
+import 'package:cysvet_app/filters/animal_filter.dart';
+import 'package:cysvet_app/filters/visit_filter.dart';
+import 'package:cysvet_app/models/animal_summary_model.dart';
+import 'package:cysvet_app/models/property_summary_model.dart';
+import 'package:cysvet_app/models/visit_summary_model.dart';
+import 'package:cysvet_app/pages/animals/animals_page.dart';
+import 'package:cysvet_app/pages/visits/visits_page.dart';
+import 'package:cysvet_app/providers/animals_provider.dart';
+import 'package:cysvet_app/providers/properties_provider.dart';
+import 'package:cysvet_app/providers/visits_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -98,7 +100,7 @@ void main() {
               .length;
           // Diagnostic lookup only; update if private card classes are renamed.
           final cardType = page == 'animals'
-              ? '_AnimalMobileCard'
+              ? 'AnimalMobileCard'
               : '_VisitCard';
           final cards = find
               .byWidgetPredicate(
