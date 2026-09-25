@@ -1514,6 +1514,7 @@ String _eventTypeLabel(String value) {
     'LOT_MOVEMENT' => 'Movimentação de lote',
     'DISCARD' => 'Descarte',
     'DEATH' => 'Óbito',
+    'REPRODUCTIVE_STATUS_CHECK' => 'Situação observada',
     _ => _valueOrDash(value),
   };
 }
@@ -1531,6 +1532,7 @@ IconData _eventTypeIcon(String value) {
     'LOT_MOVEMENT' => Icons.swap_horiz_outlined,
     'DISCARD' => Icons.remove_circle_outline,
     'DEATH' => Icons.dangerous_outlined,
+    'REPRODUCTIVE_STATUS_CHECK' => Icons.fact_check_outlined,
     _ => Icons.event_outlined,
   };
 }
@@ -1605,6 +1607,9 @@ List<_HistoryDetail> _eventStructuredDetails(Map<String, dynamic> values) {
     'producao': 'Produção',
     'lote': 'Lote',
     'bst': 'BST',
+    'status': 'Situação reprodutiva',
+    'situacaoProdutiva': 'Situação produtiva',
+    'diagnostico': 'Diagnóstico',
   };
 
   final details = <_HistoryDetail>[];
