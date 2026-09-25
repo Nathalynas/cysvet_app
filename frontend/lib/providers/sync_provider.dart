@@ -369,10 +369,10 @@ class SyncController extends Notifier<SyncState> {
           .map((record) => record.idExterno)
           .toList(growable: false),
     );
-    // TODO BACKEND: eventos reprodutivos (`events`) do pull ainda não são
-    // usados no app — os eventos da visita trafegam dentro de
-    // `VisitaRequest.animais`. Se o backend passar a derivar
-    // EventoReprodutivo a partir da visita, reconciliar aqui também.
+    // Os eventos (`events`) são gerados no servidor a partir da visita e o
+    // resumo recalculado de cada animal chega em `animals`, substituindo a
+    // prévia local. Os eventos não são guardados no aparelho: o histórico
+    // completo do animal ainda depende de conexão.
 
     if (result.serverTime != null) {
       await queue.writeMeta(

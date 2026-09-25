@@ -6,9 +6,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../filters/visit_filter.dart';
 import 'package:cysvet_app/core/enums/sync_status_enum.dart';
 import 'package:cysvet_app/core/network/api_error.dart';
+import 'package:cysvet_app/local/animals_local_store.dart';
 import 'package:cysvet_app/local/sync_queue_store.dart';
 import 'package:cysvet_app/local/visits_local_store.dart';
+import 'package:cysvet_app/models/animal_summary_model.dart';
+import 'package:cysvet_app/models/resumo_reprodutivo_preview.dart';
 import 'package:cysvet_app/models/sync_models.dart';
+import 'package:cysvet_app/providers/animals_provider.dart';
 import 'package:cysvet_app/providers/auth_state.dart';
 import 'package:cysvet_app/providers/offline_first.dart';
 import 'package:cysvet_app/providers/sync_provider.dart';
@@ -250,6 +254,7 @@ class VisitsController {
                   .read(visitsRepositoryProvider)
                   .toRequest(record.visit),
             );
+        await _applyAnimalPreview(scope, record.visit);
       }
 
       final sync = _ref.read(syncControllerProvider.notifier);
@@ -261,6 +266,37 @@ class VisitsController {
     } finally {
       _ref.read(visitsBusyProvider.notifier).setBusy(false);
     }
+  }
+
+  // Mostra no aparelho o efeito da visita finalizada sobre os animais até o
+  // servidor devolver, pelo pull, o resumo recalculado a partir dos eventos.
+  Future<void> _applyAnimalPreview(
+    OfflineScope scope,
+    VisitSummaryModel visit,
+  ) async {
+    final store = _ref.read(animalsLocalStoreProvider);
+    final animals = await store.list(
+      scope.companyId,
+      propertyId: visit.idPropriedade > 0 ? visit.idPropriedade : null,
+    );
+    final byId = {for (final animal in animals) animal.id: animal};
+    final byIdExterno = {
+      for (final animal in animals) animal.idExterno: animal,
+    };
+
+    final previews = <int, AnimalSummaryModel>{};
+    for (final entry in visit.animais) {
+      final animal = byId[entry.animalId] ?? byIdExterno[entry.animalIdExterno];
+      if (animal == null) continue;
+      previews[animal.id] = previewAnimalAfterVisit(
+        previews[animal.id] ?? animal,
+        entry,
+      );
+    }
+    if (previews.isEmpty) return;
+
+    await store.upsertAll(scope.companyId, previews.values.toList());
+    _ref.invalidate(animalsProvider);
   }
 
   Future<Uint8List> downloadReportPdf(int visitId) async {
