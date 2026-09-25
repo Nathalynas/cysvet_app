@@ -37,7 +37,7 @@ void showAppInfo(String message) {
 void showTypedAppSnackBar(
   String message, {
   AppSnackBarType type = AppSnackBarType.info,
-  Duration duration = const Duration(seconds:3),
+  Duration duration = const Duration(seconds: 3),
 }) {
   final messenger = appScaffoldMessengerKey.currentState;
   final context = messenger?.context;

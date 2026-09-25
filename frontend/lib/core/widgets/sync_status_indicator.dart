@@ -33,6 +33,8 @@ class SyncStatusIndicator extends StatelessWidget {
 
   IconData _iconFor(SyncStatusEnum status) {
     switch (status) {
+      case SyncStatusEnum.localOnly:
+        return Icons.save_outlined;
       case SyncStatusEnum.synced:
         return Icons.cloud_done_outlined;
       case SyncStatusEnum.pending:
@@ -46,6 +48,8 @@ class SyncStatusIndicator extends StatelessWidget {
 
   StatusBadgeType _typeFor(SyncStatusEnum status) {
     switch (status) {
+      case SyncStatusEnum.localOnly:
+        return StatusBadgeType.neutral;
       case SyncStatusEnum.synced:
         return StatusBadgeType.success;
       case SyncStatusEnum.pending:

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import '../../app/theme.dart';
+import 'package:cysvet_app/app/theme.dart';
 
 class _TextFieldControlStyle {
   static const double height = 42;
