@@ -26,6 +26,13 @@ final apiClientProvider = Provider<Dio>((ref) {
   dio.interceptors.add(
     InterceptorsWrapper(
       onRequest: (options, handler) {
+        // Login, refresh e logout não usam sessão nem empresa; mandar o access
+        // token expirado junto não ajuda e confunde o refresh.
+        if (options.path.startsWith('/api/auth/')) {
+          handler.next(options);
+          return;
+        }
+
         final token = session?.accessToken;
         if (token != null && token.isNotEmpty) {
           options.headers['Authorization'] = 'Bearer $token';
