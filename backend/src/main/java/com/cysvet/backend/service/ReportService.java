@@ -4,6 +4,7 @@ import com.cysvet.backend.dto.visita.VisitaAnimalItemDto;
 import com.cysvet.backend.entity.Animal;
 import com.cysvet.backend.entity.EventoReprodutivo;
 import com.cysvet.backend.entity.Propriedade;
+import com.cysvet.backend.entity.StatusReprodutivoAnimal;
 import com.cysvet.backend.entity.Usuario;
 import com.cysvet.backend.entity.Visita;
 import com.cysvet.backend.repository.AnimalRepository;
@@ -26,10 +27,12 @@ import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import lombok.RequiredArgsConstructor;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.xssf.usermodel.XSSFSheet;
@@ -40,6 +43,13 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @RequiredArgsConstructor
 public class ReportService {
+
+    private static final Set<StatusReprodutivoAnimal> UNDER_PROTOCOL = EnumSet.of(
+            StatusReprodutivoAnimal.PROTOCOL,
+            StatusReprodutivoAnimal.INSEMINATED,
+            StatusReprodutivoAnimal.INSEMINATED_ST,
+            StatusReprodutivoAnimal.WAITING_DIAGNOSIS
+    );
 
     private static final DateTimeFormatter SHORT_DATE_FORMAT = DateTimeFormatter.ofPattern("dd/MM/yy");
     private static final DateTimeFormatter FULL_DATE_FORMAT = DateTimeFormatter.ofPattern("dd/MM/yyyy");
@@ -564,18 +574,27 @@ public class ReportService {
                 .toList();
     }
 
-    private int countPregnant(List<VisitaAnimalItemDto> items) {
+    // As contagens usam a situacao reprodutiva registrada pelo veterinario.
+    // Buscar palavras soltas errava: "pg" na decisao e prostaglandina, "st"
+    // aparece em "mastite" e o app calcula dias de prenhez tambem para inseminadas.
+    int countPregnant(List<VisitaAnimalItemDto> items) {
         return (int) items.stream()
-                .filter(item -> item.diasPrenhez() != null || containsKeyword(item.diagnostico(), "pg"))
+                .filter(item -> reproductiveStatus(item) == StatusReprodutivoAnimal.PREGNANT)
                 .count();
     }
 
-    private int countUnderProtocol(List<VisitaAnimalItemDto> items) {
+    int countUnderProtocol(List<VisitaAnimalItemDto> items) {
         return (int) items.stream()
-                .filter(item -> containsKeyword(item.situacaoReprodutiva(), "insemin")
-                        || containsKeyword(item.decisao(), "st")
-                        || containsKeyword(item.decisao(), "iatf"))
+                .filter(item -> UNDER_PROTOCOL.contains(reproductiveStatus(item)))
                 .count();
+    }
+
+    private StatusReprodutivoAnimal reproductiveStatus(VisitaAnimalItemDto item) {
+        try {
+            return StatusReprodutivoAnimal.fromValue(item.situacaoReprodutiva());
+        } catch (IllegalArgumentException exception) {
+            return null;
+        }
     }
 
     private int countWithCalvingForecast(List<VisitaAnimalItemDto> items) {
@@ -588,10 +607,6 @@ public class ReportService {
                 || item.previsaoSecagem() != null
                 || item.previsaoParto() != null
                 || (item.diagnostico() != null && !item.diagnostico().isBlank());
-    }
-
-    private boolean containsKeyword(String value, String token) {
-        return value != null && value.toLowerCase(Locale.ROOT).contains(token);
     }
 
     private void createRow(XSSFSheet sheet, int rowIndex, String... values) {
