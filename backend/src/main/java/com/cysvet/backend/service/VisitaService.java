@@ -61,6 +61,11 @@ public class VisitaService {
                 .orElseThrow(() -> new ResourceNotFoundException("Visita nao encontrada"));
     }
 
+    @Transactional(readOnly = true)
+    public boolean existsByExternalId(String idExterno) {
+        return visitRepository.findByIdExterno(idExterno).isPresent();
+    }
+
     @Transactional
     public VisitaResponse create(VisitaRequest request) {
         Usuario user = authenticatedUserProvider.getCurrentUser();

@@ -177,6 +177,9 @@ public class SyncService {
             if (item.operationType() == TipoOperacaoSincronizacao.DELETE) {
                 return deleteVisit(item, user);
             }
+            if (item.operationType() == TipoOperacaoSincronizacao.UPDATE && isVisitDeletedOnServer(item)) {
+                return discardUpdateOfDeletedVisit(item, user);
+            }
             SyncUpsertResult<Visita> visit = handleVisit(item, user);
             idempotencyService.register(item.chaveMutacao(), entity, user.getId(), visit.entity().getId());
             return buildUpsertResponse(item, visit.entity(), visit.applied(), visit.entity().getIdExterno());
@@ -208,6 +211,27 @@ public class SyncService {
     private SyncUpsertResult<Visita> handleVisit(SyncItemRequest item, Usuario user) {
         VisitaRequest request = convertAndValidate(item.payload(), VisitaRequest.class);
         return visitService.upsertForSync(request, resolveClientTimestamp(item.dataAtualizacaoCliente(), request.dataAtualizacaoCliente()), user);
+    }
+
+    // Visita excluida no servidor e editada offline: o upsert a recriaria.
+    // Servidor vence; o pull seguinte remove a visita do aparelho.
+    private boolean isVisitDeletedOnServer(SyncItemRequest item) {
+        String idExterno = extractExternalId(item);
+        return idExterno != null
+                && !visitService.existsByExternalId(idExterno)
+                && deletedRecordService.reannounceDeletion(SyncEntityNames.VISIT, idExterno);
+    }
+
+    private SyncItemResponse discardUpdateOfDeletedVisit(SyncItemRequest item, Usuario user) {
+        idempotencyService.register(item.chaveMutacao(), SyncEntityNames.VISIT, user.getId(), 0L);
+        return new SyncItemResponse(
+                item.chaveMutacao(),
+                SyncItemStatus.CONFLICT_SERVER_WINS,
+                null,
+                extractExternalId(item),
+                null,
+                "Visita excluida no servidor; a alteracao feita no aparelho foi descartada"
+        );
     }
 
     private SyncItemResponse deleteProperty(SyncItemRequest item, Usuario user) {

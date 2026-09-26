@@ -28,6 +28,18 @@ public class RegistroExcluidoService {
         deletedRecordRepository.save(deletedRecord);
     }
 
+    // Atualiza o marcador para ele voltar no proximo pull: o aparelho que editou
+    // offline um registro ja excluido pode estar com checkpoint posterior a exclusao.
+    @Transactional
+    public boolean reannounceDeletion(String nomeEntidade, String idExterno) {
+        return deletedRecordRepository.findByNomeEntidadeAndIdExterno(nomeEntidade, idExterno)
+                .map(deletedRecord -> {
+                    deletedRecord.setDataAtualizacao(Instant.now());
+                    return true;
+                })
+                .orElse(false);
+    }
+
     @Transactional
     public void clearDeletionMarker(String nomeEntidade, String idExterno) {
         deletedRecordRepository.deleteAllByNomeEntidadeAndIdExterno(nomeEntidade, idExterno);

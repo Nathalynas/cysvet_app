@@ -135,6 +135,55 @@ class SyncIntegrationTest {
     }
 
     @Test
+    void offlineUpdateOfVisitDeletedOnServerDoesNotRecreateIt() throws Exception {
+        AuthContext auth = registerAndAuthenticate("sync.deleted.visit@example.com", "Admin Deleted Visit", "123456");
+        long propertyId = createProperty(auth, """
+                { "idExterno": "prop-deleted-visit-1", "nome": "Fazenda Exclusao", "nomeProprietario": "Bia" }
+                """).path("id").asLong();
+        long visitId = createVisit(auth, """
+                { "idExterno": "visit-deleted-1", "idPropriedade": %d, "dataVisita": "2026-05-20", "animais": [] }
+                """.formatted(propertyId)).path("id").asLong();
+
+        mockMvc.perform(delete("/api/visits/{id}", visitId)
+                        .header("Authorization", auth.authorization())
+                        .header("empresaid", auth.tenantId()))
+                .andExpect(status().isNoContent());
+
+        // Aparelho cujo ultimo pull ja passou do horario da exclusao.
+        String deviceCheckpoint = Instant.now().toString();
+        Thread.sleep(20);
+        mockMvc.perform(post("/api/sync")
+                        .header("Authorization", auth.authorization())
+                        .header("empresaid", auth.tenantId())
+                        .contentType(APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "items": [
+                                    {
+                                      "chaveMutacao": "mut-visit-deleted-update",
+                                      "operationType": "UPDATE",
+                                      "entity": "visit",
+                                      "payload": {
+                                        "idExterno": "visit-deleted-1",
+                                        "idPropriedade": %d,
+                                        "dataVisita": "2026-05-20",
+                                        "observacoes": "Editada offline",
+                                        "animais": []
+                                      }
+                                    }
+                                  ]
+                                }
+                                """.formatted(propertyId)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items[0].status").value("CONFLICT_SERVER_WINS"));
+
+        JsonNode pull = pullSnapshot(auth, deviceCheckpoint);
+        assertFalse(containsExternalId(pull.path("visits"), "visit-deleted-1"));
+        assertTrue(hasDeletedRecord(pull.path("deletedRecords"), "visit", "visit-deleted-1"));
+        assertFalse(containsExternalId(pullSnapshot(auth, null).path("visits"), "visit-deleted-1"));
+    }
+
+    @Test
     void syncShouldValidatePayloadAndReplayIdempotentlyWithExternalId() throws Exception {
         AuthContext auth = registerAndAuthenticate("sync.validation@example.com", "Admin Validation", "123456");
 
@@ -626,6 +675,15 @@ class SyncIntegrationTest {
                 .getResponse()
                 .getContentAsString());
         return findByExternalId(animals, idExterno);
+    }
+
+    private boolean containsExternalId(JsonNode items, String idExterno) {
+        for (JsonNode item : items) {
+            if (idExterno.equals(item.path("idExterno").asText())) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private JsonNode findByExternalId(JsonNode items, String idExterno) {
