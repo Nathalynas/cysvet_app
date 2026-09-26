@@ -1,0 +1,11 @@
+target/
+data/
+*.log
+.settings/
+.classpath
+.project
+.factorypath
+.idea/
+# Segredos nunca entram na imagem.
+.env
+*.env
