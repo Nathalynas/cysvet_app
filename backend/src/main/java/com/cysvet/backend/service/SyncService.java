@@ -1,5 +1,6 @@
 package com.cysvet.backend.service;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 
@@ -44,6 +45,8 @@ import lombok.RequiredArgsConstructor;
 @Service
 @RequiredArgsConstructor
 public class SyncService {
+
+    static final Duration PULL_CHECKPOINT_MARGIN = Duration.ofMinutes(5);
 
     private final UsuarioAutenticadoProvider authenticatedUserProvider;
     private final IdempotencyService idempotencyService;
@@ -99,9 +102,15 @@ public class SyncService {
     public PullSyncResponse pull(Instant since) {
         Usuario user = authenticatedUserProvider.getCurrentUser();
         Instant baseInstant = since == null ? Instant.EPOCH : since;
+        // data_atualizacao e gravada no flush, antes do commit. Um registro de uma
+        // transacao ainda aberta (importacao, visita grande) fica com horario anterior
+        // ao deste pull e so aparece depois; sem margem ele ficaria antes do proximo
+        // checkpoint e nunca chegaria ao aparelho. Repetir registros e seguro: o
+        // cliente aplica como upsert.
+        Instant checkpoint = Instant.now().minus(PULL_CHECKPOINT_MARGIN);
 
         return new PullSyncResponse(
-                Instant.now(),
+                checkpoint,
                 buildContract(),
                 propriedadeService.listUpdatedSince(baseInstant),
                 loteService.listUpdatedSince(baseInstant),

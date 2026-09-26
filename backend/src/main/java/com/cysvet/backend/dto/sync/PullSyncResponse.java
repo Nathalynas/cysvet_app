@@ -11,7 +11,7 @@ import java.util.List;
 
 @Schema(description = "Snapshot minimo disponibilizado pelo servidor para reidratar o cliente local.")
 public record PullSyncResponse(
-        @Schema(description = "Horario atual do servidor.", example = "2026-05-12T18:30:00Z")
+        @Schema(description = "Checkpoint para o proximo pull (parametro since). Fica alguns minutos antes do horario atual do servidor; registros recentes podem vir de novo e devem ser aplicados como upsert.", example = "2026-05-12T18:25:00Z")
         Instant serverTime,
         @Schema(description = "Metadados oficiais do contrato offline-first.")
         SyncContractResponse contract,

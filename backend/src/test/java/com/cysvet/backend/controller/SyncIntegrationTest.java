@@ -118,6 +118,23 @@ class SyncIntegrationTest {
     }
 
     @Test
+    void pullCheckpointOverlapsRecentChanges() throws Exception {
+        AuthContext auth = registerAndAuthenticate("sync.checkpoint@example.com", "Admin Checkpoint", "123456");
+        createProperty(auth, """
+                { "idExterno": "prop-checkpoint-1", "nome": "Fazenda Checkpoint", "nomeProprietario": "Ana" }
+                """);
+
+        JsonNode first = pullSnapshot(auth, null);
+        Instant checkpoint = Instant.parse(first.path("serverTime").asText());
+        assertTrue(checkpoint.isBefore(Instant.now().minusSeconds(60)));
+
+        // O registro gravado logo antes do pull volta no seguinte: uma transacao
+        // ainda aberta durante o primeiro pull nao fica para tras.
+        JsonNode next = pullSnapshot(auth, checkpoint.toString());
+        assertEquals("prop-checkpoint-1", findByExternalId(next.path("properties"), "prop-checkpoint-1").path("idExterno").asText());
+    }
+
+    @Test
     void syncShouldValidatePayloadAndReplayIdempotentlyWithExternalId() throws Exception {
         AuthContext auth = registerAndAuthenticate("sync.validation@example.com", "Admin Validation", "123456");
 
