@@ -3,6 +3,7 @@ package com.cysvet.backend.dto.visita;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.Size;
 import java.time.LocalDate;
+import lombok.With;
 
 @Schema(description = "Dados coletados para um animal durante a visita.")
 public record VisitaAnimalItemDto(
@@ -43,7 +44,7 @@ public record VisitaAnimalItemDto(
         @Schema(description = "Data da quinta IA registrada.", example = "2025-11-03")
         LocalDate dataQuintaIa,
         @Schema(description = "Data da ultima IA.", example = "2025-11-10")
-        LocalDate dataUltimaIa,
+        @With LocalDate dataUltimaIa,
         @Schema(description = "Numero de IAs recebidas.", example = "1")
         Integer numeroIaRecebida,
         @Schema(description = "Data em que a secagem ocorreu de fato.", example = "2026-05-01")
