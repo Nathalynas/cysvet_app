@@ -33,6 +33,9 @@ public class Visita extends TenantAwareEntity {
     @Column(name = "observacoes", length = 2000)
     private String observacoes;
 
+    // A coluna e MEDIUMTEXT desde a V15 (visitas com o rebanho inteiro passam do
+    // limite do TEXT). O length abaixo so mantem a validacao de schema do
+    // Hibernate compativel; nao limita o tamanho gravado.
     @Column(name = "animais_json", length = 65535)
     private String animaisJson;
 }
