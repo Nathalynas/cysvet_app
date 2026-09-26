@@ -137,6 +137,25 @@
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
+                <executions>
+                    <!-- H2 fica disponivel para testes e spring-boot:run local, mas
+                         nao entra no jar de producao; Lombok so e usado na compilacao. -->
+                    <execution>
+                        <id>repackage</id>
+                        <configuration>
+                            <excludes>
+                                <exclude>
+                                    <groupId>com.h2database</groupId>
+                                    <artifactId>h2</artifactId>
+                                </exclude>
+                                <exclude>
+                                    <groupId>org.projectlombok</groupId>
+                                    <artifactId>lombok</artifactId>
+                                </exclude>
+                            </excludes>
+                        </configuration>
+                    </execution>
+                </executions>
             </plugin>
         </plugins>
     </build>
