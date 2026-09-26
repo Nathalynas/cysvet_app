@@ -1,0 +1,6 @@
+# O Caddy obtem e renova o certificado HTTPS (Let's Encrypt) para o dominio
+# sozinho; o Android bloqueia HTTP sem TLS por padrao.
+{$DOMAIN} {
+	encode gzip
+	reverse_proxy backend:8080
+}

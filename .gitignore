@@ -16,3 +16,7 @@ backend/validation-app.pid
 .metadata/
 backend/.settings/
 .vscode/
+
+# Deploy: segredos e backups ficam so no servidor.
+deploy/**/.env
+deploy/**/backups/
