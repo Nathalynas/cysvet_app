@@ -5,8 +5,10 @@ import com.cysvet.backend.entity.StatusReprodutivoAnimal;
 import com.fasterxml.jackson.annotation.JsonAlias;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.validation.constraints.Size;
 import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -16,7 +18,7 @@ import java.time.LocalDate;
 public record AnimalRequest(
         @Schema(description = "Identificador externo do animal no sistema cliente.", example = "animal-001")
         @JsonAlias("id_externo")
-        @NotBlank String idExterno,
+        @Size(max = 64, message = "idExterno deve ter no maximo 64 caracteres") @NotBlank String idExterno,
         @Schema(description = "Identificador interno da propriedade vinculada.", example = "10")
         @JsonAlias("id_propriedade")
         Long idPropriedade,
@@ -30,13 +32,13 @@ public record AnimalRequest(
         @JsonAlias("id_externo_lote")
         String idExternoLote,
         @Schema(description = "Codigo do animal.", example = "BR-001")
-        @NotBlank String codigo,
+        @Size(max = 255, message = "codigo deve ter no maximo 255 caracteres") @NotBlank String codigo,
         @Schema(description = "Data de nascimento do animal.", example = "2024-01-15")
         @JsonAlias("data_nascimento")
         LocalDate dataNascimento,
         @Schema(description = "Numero de lactacoes registradas.", example = "2")
         @JsonAlias("numero_lactacao")
-        @NotNull Integer numeroLactacao,
+        @NotNull @Min(value = 0, message = "numeroLactacao nao pode ser negativo") Integer numeroLactacao,
         @Schema(description = "Data do ultimo parto.", example = "2025-03-10")
         @JsonAlias("data_ultimo_parto")
         LocalDate dataUltimoParto,
@@ -45,10 +47,10 @@ public record AnimalRequest(
         LocalDate dataInseminacao,
         @Schema(description = "Identificacao do touro utilizado na inseminacao artificial.", example = "Touro-123")
         @JsonAlias("touro_ia")
-        String touroIa,
+        @Size(max = 255, message = "touroIa deve ter no maximo 255 caracteres") String touroIa,
         @Schema(description = "Historico reprodutivo resumido do animal.")
         @JsonAlias("historico_reprodutivo")
-        String historicoReprodutivo,
+        @Size(max = 2000, message = "historicoReprodutivo deve ter no maximo 2000 caracteres") String historicoReprodutivo,
         @Schema(description = "Status reprodutivo atual do animal.")
         @JsonAlias("status_reprodutivo")
         StatusReprodutivoAnimal statusReprodutivo,

@@ -3,6 +3,7 @@ package com.cysvet.backend.service;
 import java.time.Instant;
 import java.util.List;
 
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.TransactionDefinition;
@@ -32,6 +33,7 @@ import com.cysvet.backend.entity.TipoOperacaoSincronizacao;
 import com.cysvet.backend.entity.Usuario;
 import com.cysvet.backend.entity.Visita;
 import com.cysvet.backend.entity.BaseEntity;
+import com.cysvet.backend.exception.GlobalExceptionHandler;
 import com.cysvet.backend.exception.ResourceNotFoundException;
 
 import jakarta.validation.ConstraintViolation;
@@ -74,15 +76,23 @@ public class SyncService {
             return itemTransaction.execute(status -> process(item, authenticatedUserProvider.getCurrentUser()));
         } catch (IllegalArgumentException | ResourceNotFoundException exception) {
             // A chave de mutacao nao e registrada: o cliente pode corrigir e reenviar o mesmo item.
-            return new SyncItemResponse(
-                    item.chaveMutacao(),
-                    SyncItemStatus.REJECTED,
-                    null,
-                    extractExternalId(item),
-                    null,
-                    exception.getMessage()
-            );
+            return rejected(item, exception.getMessage());
+        } catch (DataIntegrityViolationException exception) {
+            // Dado que o banco recusa nunca vai passar num reenvio; sem isso o
+            // item voltaria como erro e o app o reenviaria indefinidamente.
+            return rejected(item, GlobalExceptionHandler.DATA_INTEGRITY_MESSAGE);
         }
+    }
+
+    private SyncItemResponse rejected(SyncItemRequest item, String message) {
+        return new SyncItemResponse(
+                item.chaveMutacao(),
+                SyncItemStatus.REJECTED,
+                null,
+                extractExternalId(item),
+                null,
+                message
+        );
     }
 
     @Transactional(readOnly = true)

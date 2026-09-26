@@ -1,6 +1,7 @@
 package com.cysvet.backend.dto.visita;
 
 import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.validation.constraints.Size;
 import java.time.LocalDate;
 
 @Schema(description = "Dados coletados para um animal durante a visita.")
@@ -22,7 +23,7 @@ public record VisitaAnimalItemDto(
         @Schema(description = "Situacao reprodutiva observada.", example = "inseminada")
         String situacaoReprodutiva,
         @Schema(description = "Decisao ou conduta definida.", example = "ST cef+pg")
-        String decisao,
+        @Size(max = 2000, message = "decisao deve ter no maximo 2000 caracteres") String decisao,
         @Schema(description = "Data do primeiro parto.", example = "2022-06-20")
         LocalDate dataPrimeiroParto,
         @Schema(description = "Data do ultimo parto.", example = "2026-03-01")

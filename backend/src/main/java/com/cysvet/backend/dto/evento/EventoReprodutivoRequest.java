@@ -3,6 +3,7 @@ package com.cysvet.backend.dto.evento;
 import com.cysvet.backend.entity.TipoEventoReprodutivo;
 import com.fasterxml.jackson.annotation.JsonAlias;
 import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.validation.constraints.Size;
 import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -14,7 +15,7 @@ import java.util.Map;
 public record EventoReprodutivoRequest(
         @Schema(description = "Identificador externo do evento.", example = "evt-001")
         @JsonAlias("id_externo")
-        @NotBlank String idExterno,
+        @Size(max = 64, message = "idExterno deve ter no maximo 64 caracteres") @NotBlank String idExterno,
         @Schema(description = "Identificador interno da propriedade.", example = "10")
         @JsonAlias("id_propriedade")
         Long idPropriedade,
@@ -36,7 +37,7 @@ public record EventoReprodutivoRequest(
         @JsonAlias("prenhez_confirmada")
         Boolean prenhezConfirmada,
         @Schema(description = "Observacoes adicionais do evento.")
-        String observacoes,
+        @Size(max = 2000, message = "observacoes deve ter no maximo 2000 caracteres") String observacoes,
         @Schema(description = "Detalhes estruturados e especificos do tipo de evento. Ex.: touro, inseminador, protocolo, diagnostico, crias, tratamento ou controle leiteiro.")
         Map<String, Object> detalhes,
         @Schema(description = "Data da ultima atualizacao enviada pelo cliente.", example = "2026-05-12T18:30:00Z")

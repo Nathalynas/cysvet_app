@@ -10,9 +10,9 @@ import jakarta.validation.constraints.Size;
 public record CreateUserRequest(
         @Schema(description = "Nome do usuario.", example = "Maria Veterinaria")
         @JsonAlias("nome")
-        @NotBlank String name,
+        @Size(max = 255, message = "name deve ter no maximo 255 caracteres") @NotBlank String name,
         @Schema(description = "E-mail do usuario.", example = "maria.vet@cysvet.com")
-        @Email @NotBlank String email,
+        @Size(max = 255, message = "email deve ter no maximo 255 caracteres") @Email @NotBlank String email,
         @Schema(description = "Senha de acesso do usuario.", example = "senha123")
         @NotBlank @Size(min = 6) String password
 ) {

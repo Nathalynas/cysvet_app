@@ -3,6 +3,7 @@ package com.cysvet.backend.dto.lote;
 import com.cysvet.backend.entity.StatusLote;
 import com.fasterxml.jackson.annotation.JsonAlias;
 import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.validation.constraints.Size;
 import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.NotBlank;
 import java.time.Instant;
@@ -11,7 +12,7 @@ import java.time.Instant;
 public record LoteRequest(
         @Schema(description = "Identificador externo do lote no sistema cliente.", example = "lote-001")
         @JsonAlias("id_externo")
-        @NotBlank String idExterno,
+        @Size(max = 64, message = "idExterno deve ter no maximo 64 caracteres") @NotBlank String idExterno,
         @Schema(description = "Identificador interno da propriedade vinculada.", example = "10")
         @JsonAlias("id_propriedade")
         Long idPropriedade,
@@ -19,9 +20,9 @@ public record LoteRequest(
         @JsonAlias("id_externo_propriedade")
         String idExternoPropriedade,
         @Schema(description = "Nome do lote.", example = "Lote Pre-Parto")
-        @NotBlank String nome,
+        @Size(max = 255, message = "nome deve ter no maximo 255 caracteres") @NotBlank String nome,
         @Schema(description = "Descricao resumida do lote.")
-        String descricao,
+        @Size(max = 1000, message = "descricao deve ter no maximo 1000 caracteres") String descricao,
         @Schema(description = "Status atual do lote.")
         StatusLote status,
         @Schema(description = "Data da ultima atualizacao enviada pelo cliente.", example = "2026-05-12T18:30:00Z")

@@ -4,6 +4,7 @@ import com.cysvet.backend.entity.TipoOperacaoSincronizacao;
 import com.fasterxml.jackson.annotation.JsonAlias;
 import com.fasterxml.jackson.databind.JsonNode;
 import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.validation.constraints.Size;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import java.time.Instant;
@@ -12,7 +13,7 @@ import java.time.Instant;
 public record SyncItemRequest(
         @Schema(description = "Chave unica da mutacao no cliente.", example = "mut-001")
         @JsonAlias("chave_mutacao")
-        @NotBlank String chaveMutacao,
+        @Size(max = 128, message = "chaveMutacao deve ter no maximo 128 caracteres") @NotBlank String chaveMutacao,
         @Schema(description = "Tipo de operacao realizada pelo cliente.")
         @JsonAlias("operation_type")
         @NotNull TipoOperacaoSincronizacao operationType,

@@ -3,6 +3,7 @@ package com.cysvet.backend.dto.visita;
 import com.fasterxml.jackson.annotation.JsonAlias;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Size;
 import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -14,7 +15,7 @@ import java.util.List;
 public record VisitaRequest(
         @Schema(description = "Identificador externo da visita.", example = "visit-001")
         @JsonAlias("id_externo")
-        @NotBlank String idExterno,
+        @Size(max = 64, message = "idExterno deve ter no maximo 64 caracteres") @NotBlank String idExterno,
         @Schema(description = "Identificador interno da propriedade.", example = "10")
         @JsonAlias("id_propriedade")
         Long idPropriedade,
@@ -25,7 +26,7 @@ public record VisitaRequest(
         @JsonAlias("data_visita")
         @NotNull LocalDate dataVisita,
         @Schema(description = "Observacoes da visita.")
-        String observacoes,
+        @Size(max = 2000, message = "observacoes deve ter no maximo 2000 caracteres") String observacoes,
         @Schema(description = "Lista de animais avaliados na visita.")
         @Valid List<VisitaAnimalItemDto> animais,
         @Schema(description = "Data da ultima atualizacao enviada pelo cliente.", example = "2026-05-12T18:30:00Z")

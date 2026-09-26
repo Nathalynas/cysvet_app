@@ -23,6 +23,8 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
+import jakarta.validation.ConstraintViolation;
+import jakarta.validation.Validator;
 import lombok.RequiredArgsConstructor;
 import org.apache.poi.openxml4j.opc.OPCPackage;
 import org.apache.poi.openxml4j.opc.PackageAccess;
@@ -47,6 +49,7 @@ public class AnimalSpreadsheetImportService {
     private static final List<String> REQUIRED = List.of("codigo");
     private final PropriedadeRepository propriedadeRepository;
     private final AnimalService animalService;
+    private final Validator validator;
 
     public List<String> inspect(MultipartFile file) {
         try (OPCPackage pkg = open(file)) {
@@ -151,6 +154,11 @@ public class AnimalSpreadsheetImportService {
             if (!code.isEmpty() && !importedCodes.add(code)) issues.add(new AnimalSpreadsheetIssueResponse(columnFor("codigo"),"Animal duplicado na planilha"));
             AnimalRequest request=null;
             if (issues.isEmpty() && missingRequired.isEmpty()) { try { request=toRequest(values); } catch (IllegalArgumentException ex) { String[] error=ex.getMessage().split("\\|",2); issues.add(new AnimalSpreadsheetIssueResponse(columnFor(error[0]),error.length > 1 ? error[1] : ex.getMessage())); } }
+            if (request != null) {
+                // Mesmas regras da API (tamanho dos campos): um valor longo demais derrubaria a importacao inteira no banco.
+                for (ConstraintViolation<AnimalRequest> violation : validator.validate(request)) issues.add(new AnimalSpreadsheetIssueResponse(columnFor(violation.getPropertyPath().toString()), violation.getMessage()));
+                if (!issues.isEmpty()) request=null;
+            }
             String status;
             if (!issues.isEmpty()) { invalid++; status="invalid"; } else if (!missingRequired.isEmpty()) { pending++; status="pending"; } else { valid++; status="valid"; if (save) { animalService.createOrUpdateFromImport(request); imported++; } }
             if (previewRows.size()<PREVIEW_LIMIT) { List<AnimalSpreadsheetCellResponse> responseCells=new ArrayList<>(); for(int i=0;i<columns.size();i++) responseCells.add(new AnimalSpreadsheetCellResponse(i<cells.size()?cells.get(i):"", false)); previewRows.add(new AnimalSpreadsheetRowResponse(rowNumber+1,responseCells,status,issues)); }

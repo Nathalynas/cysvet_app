@@ -9,6 +9,7 @@ import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.TypeMismatchException;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
@@ -33,6 +34,8 @@ public class GlobalExceptionHandler {
     private static final String GENERIC_SERVER_ERROR_MESSAGE = "Erro interno no servidor";
     private static final String GENERIC_BAD_REQUEST_MESSAGE = "Dados invalidos";
     private static final String INVALID_CREDENTIALS_MESSAGE = "E-mail ou senha invalidos";
+    public static final String DATA_INTEGRITY_MESSAGE =
+            "Dados invalidos ou em conflito com registros existentes";
 
     private final AppProperties appProperties;
 
@@ -74,6 +77,14 @@ public class GlobalExceptionHandler {
                     errorResponse.getBody().getDetail());
         }
         return buildResponse(HttpStatus.BAD_REQUEST, GENERIC_BAD_REQUEST_MESSAGE);
+    }
+
+    // Restricao do banco violada (valor longo demais, chave duplicada). A
+    // validacao dos DTOs deve pegar antes; aqui so evita 500 com SQL na mensagem.
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public ResponseEntity<Map<String, Object>> handleDataIntegrity(DataIntegrityViolationException exception) {
+        log.warn("Restricao do banco violada: {}", exception.getMostSpecificCause().getMessage());
+        return buildResponse(HttpStatus.CONFLICT, DATA_INTEGRITY_MESSAGE);
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
