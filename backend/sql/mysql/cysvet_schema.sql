@@ -83,6 +83,7 @@ CREATE TABLE propriedade (
     UNIQUE KEY uk_propriedade_tenant_id_externo (tenant_id, id_externo),
     KEY idx_propriedade_tenant_id (tenant_id),
     KEY idx_propriedade_tenant_status (tenant_id, status),
+    KEY idx_propriedade_tenant_data_atualizacao (tenant_id, data_atualizacao),
     CONSTRAINT fk_propriedade_empresa
         FOREIGN KEY (tenant_id) REFERENCES empresa (id),
     CONSTRAINT fk_propriedade_usuario
@@ -132,6 +133,12 @@ CREATE TABLE animal (
     touro_ia VARCHAR(255) NULL,
     historico_reprodutivo VARCHAR(2000) NULL,
     status_reprodutivo VARCHAR(32) NULL,
+    base_numero_lactacao INT NOT NULL,
+    base_data_ultimo_parto DATE NULL,
+    base_data_inseminacao DATE NULL,
+    base_touro_ia VARCHAR(255) NULL,
+    base_status_reprodutivo VARCHAR(32) NULL,
+    base_status_reprodutivo_em DATETIME(6) NULL,
     id_propriedade BIGINT NOT NULL,
     id_lote BIGINT NULL,
     id_usuario BIGINT NOT NULL,
@@ -141,6 +148,7 @@ CREATE TABLE animal (
     KEY idx_animal_tenant_status (tenant_id, status),
     KEY idx_animal_tenant_status_reprodutivo (tenant_id, status_reprodutivo),
     KEY idx_animal_id_lote (id_lote),
+    KEY idx_animal_tenant_data_atualizacao (tenant_id, data_atualizacao),
     CONSTRAINT fk_animal_empresa
         FOREIGN KEY (tenant_id) REFERENCES empresa (id),
     CONSTRAINT fk_animal_propriedade
@@ -183,10 +191,11 @@ CREATE TABLE visita (
     id_usuario BIGINT NOT NULL,
     data_visita DATE NOT NULL,
     observacoes VARCHAR(2000) NULL,
-    animais_json TEXT NULL,
+    animais_json MEDIUMTEXT NULL,
     PRIMARY KEY (id),
     UNIQUE KEY uk_visita_tenant_id_externo (tenant_id, id_externo),
     KEY idx_visita_tenant_id (tenant_id),
+    KEY idx_visita_tenant_data_atualizacao (tenant_id, data_atualizacao),
     CONSTRAINT fk_visita_empresa
         FOREIGN KEY (tenant_id) REFERENCES empresa (id),
     CONSTRAINT fk_visita_propriedade
@@ -211,9 +220,13 @@ CREATE TABLE evento_reprodutivo (
     id_animal BIGINT NOT NULL,
     id_propriedade BIGINT NOT NULL,
     id_usuario BIGINT NOT NULL,
+    id_visita BIGINT NULL,
     PRIMARY KEY (id),
     UNIQUE KEY uk_evento_reprodutivo_tenant_id_externo (tenant_id, id_externo),
     KEY idx_evento_reprodutivo_tenant_id (tenant_id),
+    KEY idx_evento_reprodutivo_id_visita (id_visita),
+    KEY idx_evento_reprodutivo_animal_data (id_animal, data_evento),
+    KEY idx_evento_reprodutivo_tenant_data_atualizacao (tenant_id, data_atualizacao),
     CONSTRAINT fk_evento_reprodutivo_empresa
         FOREIGN KEY (tenant_id) REFERENCES empresa (id),
     CONSTRAINT fk_evento_reprodutivo_animal
@@ -221,7 +234,9 @@ CREATE TABLE evento_reprodutivo (
     CONSTRAINT fk_evento_reprodutivo_propriedade
         FOREIGN KEY (id_propriedade) REFERENCES propriedade (id),
     CONSTRAINT fk_evento_reprodutivo_usuario
-        FOREIGN KEY (id_usuario) REFERENCES usuario (id)
+        FOREIGN KEY (id_usuario) REFERENCES usuario (id),
+    CONSTRAINT fk_evento_reprodutivo_visita
+        FOREIGN KEY (id_visita) REFERENCES visita (id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE token_atualizacao (
@@ -269,6 +284,7 @@ CREATE TABLE registro_excluido (
     PRIMARY KEY (id),
     UNIQUE KEY uk_registro_excluido_tenant_entidade_id_externo (tenant_id, nome_entidade, id_externo),
     KEY idx_registro_excluido_tenant_id (tenant_id),
+    KEY idx_registro_excluido_tenant_data_atualizacao (tenant_id, data_atualizacao),
     CONSTRAINT fk_registro_excluido_empresa
         FOREIGN KEY (tenant_id) REFERENCES empresa (id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
