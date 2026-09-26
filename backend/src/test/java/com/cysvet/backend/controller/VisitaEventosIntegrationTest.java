@@ -183,6 +183,47 @@ class VisitaEventosIntegrationTest {
     }
 
     @Test
+    void iaRemovidaDeUmaVisitaPassaParaAOutraSemReprocessarOsDemaisAnimais() throws Exception {
+        AuthContext auth = registerAndAuthenticate("visita.fato.unico@example.com");
+        long propertyId = createProperty(auth, "prop-ve-7");
+        createAnimal(auth, propertyId, "animal-ve-7a", "VE-07A", "pev");
+        createAnimal(auth, propertyId, "animal-ve-7b", "VE-07B", "pev");
+        LocalDate ia = HOJE.plusDays(2);
+        String iaDo7a = """
+                { "animalIdExterno": "animal-ve-7a", "situacaoReprodutiva": "inseminada", "dataUltimaIa": "%s" }
+                """.formatted(ia);
+        String situacaoDo7b = """
+                { "animalIdExterno": "animal-ve-7b", "situacaoReprodutiva": "vazia" }
+                """;
+
+        long firstVisitId = createVisit(auth, visitPayload("visit-ve-7a", "prop-ve-7", ia, iaDo7a, situacaoDo7b))
+                .path("id").asLong();
+        createVisit(auth, visitPayload("visit-ve-7b", "prop-ve-7", HOJE.plusDays(5), iaDo7a));
+        long animal7a = animal(auth, "animal-ve-7a").path("id").asLong();
+        long animal7b = animal(auth, "animal-ve-7b").path("id").asLong();
+        assertEquals("visit-ve-7a", eventOfType(listEvents(auth, animal7a), "INSEMINATION").path("idExternoVisita").asText());
+        long versaoDo7bAntes = eventOfType(listEvents(auth, animal7b), "REPRODUCTIVE_STATUS_CHECK").path("versao").asLong();
+
+        String semIa = """
+                { "animalIdExterno": "animal-ve-7a", "situacaoReprodutiva": "inseminada" }
+                """;
+        mockMvc.perform(put("/api/visits/" + firstVisitId)
+                        .header("Authorization", auth.authorization())
+                        .header("empresaid", auth.tenantId())
+                        .contentType(APPLICATION_JSON)
+                        .content(visitPayload("visit-ve-7a", "prop-ve-7", ia, semIa, situacaoDo7b)))
+                .andExpect(status().isOk());
+
+        JsonNode insemination = eventOfType(listEvents(auth, animal7a), "INSEMINATION");
+        assertEquals("visit-ve-7b", insemination.path("idExternoVisita").asText());
+        assertEquals(ia.toString(), insemination.path("dataEvento").asText());
+        assertEquals(1, countOfType(listEvents(auth, animal7a), "INSEMINATION"));
+        assertEquals(ia.toString(), animal(auth, "animal-ve-7a").path("dataInseminacao").asText());
+        assertEquals(versaoDo7bAntes,
+                eventOfType(listEvents(auth, animal7b), "REPRODUCTIVE_STATUS_CHECK").path("versao").asLong());
+    }
+
+    @Test
     void correcaoManualPrevaleceSobreEventosAnterioresMasNaoSobreOsPosteriores() throws Exception {
         AuthContext auth = registerAndAuthenticate("visita.correcao@example.com");
         long propertyId = createProperty(auth, "prop-ve-5");

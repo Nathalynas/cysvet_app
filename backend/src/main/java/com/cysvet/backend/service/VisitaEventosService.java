@@ -22,6 +22,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -59,29 +60,25 @@ public class VisitaEventosService {
     @Transactional
     public void regenerar(Visita visita) {
         Map<Long, Animal> afetados = new LinkedHashMap<>();
-        boolean removeuFatoUnico = regenerarSemPropagar(visita, afetados);
-        if (removeuFatoUnico) {
-            regenerarOutrasVisitasDaPropriedade(visita, afetados);
-        }
+        Set<FatoUnico> removidos = regenerarSemPropagar(visita, afetados);
+        recriarEmOutrasVisitas(visita, removidos, afetados);
         recalcular(afetados);
     }
 
     @Transactional
     public void removerDaVisita(Visita visita, Long idUsuario) {
         Map<Long, Animal> afetados = new LinkedHashMap<>();
-        boolean removeuFatoUnico = false;
+        Set<FatoUnico> removidos = new HashSet<>();
         for (EventoReprodutivo evento : eventoReprodutivoRepository.findAllByVisitaId(visita.getId())) {
-            removeuFatoUnico |= FATOS_UNICOS.contains(evento.getTipo());
+            FatoUnico.de(evento).ifPresent(removidos::add);
             remover(evento, idUsuario, afetados);
         }
         eventoReprodutivoRepository.flush();
-        if (removeuFatoUnico) {
-            regenerarOutrasVisitasDaPropriedade(visita, afetados);
-        }
+        recriarEmOutrasVisitas(visita, removidos, afetados);
         recalcular(afetados);
     }
 
-    private boolean regenerarSemPropagar(Visita visita, Map<Long, Animal> afetados) {
+    private Set<FatoUnico> regenerarSemPropagar(Visita visita, Map<Long, Animal> afetados) {
         Map<String, EventoReprodutivo> existentes = new LinkedHashMap<>();
         for (EventoReprodutivo evento : eventoReprodutivoRepository.findAllByVisitaId(visita.getId())) {
             existentes.put(evento.getIdExterno(), evento);
@@ -119,22 +116,53 @@ public class VisitaEventosService {
             }
         }
 
-        boolean removeuFatoUnico = false;
+        Set<FatoUnico> removidos = new HashSet<>();
         for (EventoReprodutivo sobra : existentes.values()) {
-            removeuFatoUnico |= FATOS_UNICOS.contains(sobra.getTipo());
+            FatoUnico.de(sobra).ifPresent(removidos::add);
             remover(sobra, visita.getUsuario().getId(), afetados);
         }
         eventoReprodutivoRepository.flush();
-        return removeuFatoUnico;
+        return removidos;
     }
 
     // Um fato unico (ex.: a IA de 10/05) informado por varias visitas fica com a
-    // primeira que o registrou. Quando ele e removido, as demais visitas que o
-    // informam precisam recria-lo.
-    private void regenerarOutrasVisitasDaPropriedade(Visita visita, Map<Long, Animal> afetados) {
+    // primeira que o registrou. Quando ele e removido, a visita mais recente que
+    // tambem o informa passa a ser a dona. So esses eventos sao recriados e so
+    // os animais deles recalculados; regenerar as visitas inteiras recalculava o
+    // rebanho todo para recriar um ou dois eventos.
+    private void recriarEmOutrasVisitas(Visita visita, Set<FatoUnico> removidos, Map<Long, Animal> afetados) {
+        if (removidos.isEmpty()) {
+            return;
+        }
+        Set<Long> animaisDosFatos = new HashSet<>();
+        removidos.forEach(fato -> animaisDosFatos.add(fato.idAnimal()));
+        IndiceDeAnimais animais = new IndiceDeAnimais(
+                animalRepository.findAllByPropriedadeIdOrderByCodigoAsc(visita.getPropriedade().getId()));
+
         for (Visita outra : visitaRepository.findAllByPropriedadeIdOrderByDataVisitaDesc(visita.getPropriedade().getId())) {
-            if (!outra.getId().equals(visita.getId())) {
-                regenerarSemPropagar(outra, afetados);
+            if (outra.getId().equals(visita.getId())) {
+                continue;
+            }
+            for (VisitaAnimalItemDto item : lerItens(outra)) {
+                Animal animal = animais.resolver(item);
+                if (animal == null || !animaisDosFatos.contains(animal.getId())) {
+                    continue;
+                }
+                for (EventoGerado gerado : gerar(outra, item, animal)) {
+                    if (!removidos.contains(new FatoUnico(animal.getId(), gerado.tipo(), gerado.data()))
+                            || eventoReprodutivoRepository.existsByAnimalIdAndTipoAndDataEvento(
+                                    animal.getId(), gerado.tipo(), gerado.data())) {
+                        continue;
+                    }
+                    EventoReprodutivo evento = eventoReprodutivoRepository.findByIdExterno(gerado.idExterno())
+                            .orElseGet(EventoReprodutivo::new);
+                    evento.setIdExterno(gerado.idExterno());
+                    evento.setVisita(outra);
+                    preencher(evento, outra, animal, gerado);
+                    eventoReprodutivoRepository.save(evento);
+                    deletedRecordService.clearDeletionMarker(SyncEntityNames.EVENT, evento.getIdExterno());
+                    afetados.put(animal.getId(), animal);
+                }
             }
         }
     }
@@ -246,6 +274,14 @@ public class VisitaEventosService {
         }
         String texto = valor.trim();
         return texto.length() > LIMITE_OBSERVACOES ? texto.substring(0, LIMITE_OBSERVACOES) : texto;
+    }
+
+    private record FatoUnico(Long idAnimal, TipoEventoReprodutivo tipo, LocalDate data) {
+        static Optional<FatoUnico> de(EventoReprodutivo evento) {
+            return FATOS_UNICOS.contains(evento.getTipo())
+                    ? Optional.of(new FatoUnico(evento.getAnimal().getId(), evento.getTipo(), evento.getDataEvento()))
+                    : Optional.empty();
+        }
     }
 
     private record EventoGerado(
