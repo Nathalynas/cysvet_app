@@ -12,8 +12,10 @@ import java.io.IOException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpHeaders;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
@@ -22,9 +24,19 @@ import org.springframework.web.filter.OncePerRequestFilter;
 @RequiredArgsConstructor
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
+    static final String INVALID_SESSION_MESSAGE = "Sessao expirada ou token invalido";
+
     private final JwtService jwtService;
     private final CustomUserDetailService userDetailsService;
     private final TenantAccessService tenantAccessService;
+    private final JsonErrorResponder errorResponder;
+
+    // Login, registro, refresh e logout sao publicos. O cliente pode reenviar o
+    // access token expirado junto; valida-lo aqui bloquearia justamente o refresh.
+    @Override
+    protected boolean shouldNotFilter(HttpServletRequest request) {
+        return path(request).startsWith("/api/auth/");
+    }
 
     @Override
     protected void doFilterInternal(
@@ -54,15 +66,20 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 }
             }
 
+            AuthenticatedUserPrincipal principal = authenticatedPrincipal();
+            if (principal == null) {
+                rejectInvalidSession(response);
+                return;
+            }
+
             if (requiresTenantValidation(request)) {
-                AuthenticatedUserPrincipal principal = extractPrincipal();
                 Long tenantId = extractTenantId(request, response);
                 if (tenantId == null) {
                     return;
                 }
 
                 if (!tenantAccessService.userHasAccessToTenant(principal.getUserId(), tenantId)) {
-                    response.sendError(HttpServletResponse.SC_FORBIDDEN, "Usuario sem acesso a empresa informada");
+                    errorResponder.write(response, HttpServletResponse.SC_FORBIDDEN, "Usuario sem acesso a empresa informada");
                     return;
                 }
 
@@ -71,42 +88,49 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             }
 
             filterChain.doFilter(request, response);
-        } catch (JwtException | IllegalArgumentException exception) {
-            SecurityContextHolder.clearContext();
-            response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Token JWT invalido");
+        } catch (JwtException | IllegalArgumentException | UsernameNotFoundException exception) {
+            rejectInvalidSession(response);
         } finally {
             TenantContext.clear();
         }
     }
 
+    private void rejectInvalidSession(HttpServletResponse response) throws IOException {
+        SecurityContextHolder.clearContext();
+        errorResponder.write(response, HttpServletResponse.SC_UNAUTHORIZED, INVALID_SESSION_MESSAGE);
+    }
+
     private boolean requiresTenantValidation(HttpServletRequest request) {
-        String path = request.getServletPath();
-        return !path.startsWith("/api/auth/")
-                && !path.startsWith("/swagger-ui")
+        String path = path(request);
+        return !path.startsWith("/swagger-ui")
                 && !path.startsWith("/v3/api-docs")
                 && !path.startsWith("/h2-console")
                 && !path.startsWith("/actuator");
     }
 
-    private AuthenticatedUserPrincipal extractPrincipal() {
-        Object principal = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-        if (principal instanceof AuthenticatedUserPrincipal authenticatedUserPrincipal) {
-            return authenticatedUserPrincipal;
-        }
+    // URI sem o context path: igual no Tomcat e no MockMvc (que nao preenche o servletPath).
+    private static String path(HttpServletRequest request) {
+        return request.getRequestURI().substring(request.getContextPath().length());
+    }
 
-        throw new IllegalStateException("Principal autenticado invalido");
+    private AuthenticatedUserPrincipal authenticatedPrincipal() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication != null && authentication.getPrincipal() instanceof AuthenticatedUserPrincipal principal) {
+            return principal;
+        }
+        return null;
     }
 
     private Long extractTenantId(HttpServletRequest request, HttpServletResponse response) throws IOException {
         String tenantId = request.getHeader(TenantConstants.HEADER_NAME);
         if (tenantId == null || tenantId.isBlank()) {
-            response.sendError(HttpServletResponse.SC_BAD_REQUEST, "Header empresaid e obrigatorio");
+            errorResponder.write(response, HttpServletResponse.SC_BAD_REQUEST, "Header empresaid e obrigatorio");
             return null;
         }
         try {
             return Long.valueOf(tenantId.trim());
         } catch (NumberFormatException exception) {
-            response.sendError(HttpServletResponse.SC_BAD_REQUEST, "Header empresaid deve ser numerico");
+            errorResponder.write(response, HttpServletResponse.SC_BAD_REQUEST, "Header empresaid deve ser numerico");
             return null;
         }
     }

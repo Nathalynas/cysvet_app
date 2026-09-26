@@ -207,7 +207,7 @@ class UserTeamIntegrationTest {
                         .content("""
                                 { "email": "eva.vet@example.com", "password": "senha-do-outro-admin" }
                                 """))
-                .andExpect(status().isBadRequest());
+                .andExpect(status().isUnauthorized());
     }
 
     @Test

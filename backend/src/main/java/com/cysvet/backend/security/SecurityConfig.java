@@ -2,6 +2,7 @@ package com.cysvet.backend.security;
 
 import com.cysvet.backend.config.AppProperties;
 import com.cysvet.backend.logging.RequestObservabilityFilter;
+import jakarta.servlet.http.HttpServletResponse;
 import java.util.ArrayList;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
@@ -33,6 +34,7 @@ public class SecurityConfig {
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
     private final RequestObservabilityFilter requestObservabilityFilter;
     private final CustomUserDetailService customUserDetailsService;
+    private final JsonErrorResponder errorResponder;
     @Value("${spring.h2.console.enabled:false}")
     private boolean h2ConsoleEnabled;
     @Value("${app.docs.enabled:true}")
@@ -42,6 +44,8 @@ public class SecurityConfig {
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         List<String> publicMatchers = new ArrayList<>();
         publicMatchers.add("/api/auth/**");
+        // Sem isto, qualquer erro encaminhado para /error virava 403.
+        publicMatchers.add("/error");
         if (h2ConsoleEnabled) {
             publicMatchers.add("/h2-console/**");
         }
@@ -64,6 +68,14 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/actuator/tenant-policy").permitAll()
                         .requestMatchers(HttpMethod.GET, "/actuator/observability-policy").permitAll()
                         .anyRequest().authenticated()
+                )
+                // 401 = sem sessao valida (o app renova o token ou volta ao login);
+                // 403 = autenticado, mas sem permissao.
+                .exceptionHandling(exceptions -> exceptions
+                        .authenticationEntryPoint((request, response, exception) -> errorResponder.write(
+                                response, HttpServletResponse.SC_UNAUTHORIZED, "Autenticacao necessaria"))
+                        .accessDeniedHandler((request, response, exception) -> errorResponder.write(
+                                response, HttpServletResponse.SC_FORBIDDEN, "Acesso negado"))
                 )
                 .authenticationProvider(authenticationProvider())
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
