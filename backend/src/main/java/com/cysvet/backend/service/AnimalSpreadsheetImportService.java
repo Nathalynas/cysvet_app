@@ -12,6 +12,8 @@ import com.cysvet.backend.entity.Propriedade;
 import com.cysvet.backend.repository.PropriedadeRepository;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.text.Normalizer;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
@@ -52,11 +54,14 @@ public class AnimalSpreadsheetImportService {
     private final Validator validator;
 
     public List<String> inspect(MultipartFile file) {
-        try (OPCPackage pkg = open(file)) {
-            XSSFReader.SheetIterator sheets = (XSSFReader.SheetIterator) new XSSFReader(pkg).getSheetsData();
-            List<String> names = new ArrayList<>();
-            while (sheets.hasNext()) { try (InputStream ignored = sheets.next()) { names.add(sheets.getSheetName()); } }
-            return names;
+        try {
+            return withPackage(file, pkg -> {
+                XSSFReader.SheetIterator sheets = (XSSFReader.SheetIterator) new XSSFReader(pkg).getSheetsData();
+                List<String> names = new ArrayList<>();
+                while (sheets.hasNext()) { try (InputStream ignored = sheets.next()) { names.add(sheets.getSheetName()); } }
+                return names;
+            });
+        } catch (IllegalArgumentException e) { throw e;
         } catch (Exception e) { throw new IllegalArgumentException("Não foi possível ler o arquivo .xlsx", e); }
     }
 
@@ -76,41 +81,59 @@ public class AnimalSpreadsheetImportService {
 
     private SheetResult read(MultipartFile file, String selectedSheet, Map<Integer, String> requestedMappings,
                              Propriedade property, boolean save) {
-        try (OPCPackage pkg = open(file)) {
-            XSSFReader reader = new XSSFReader(pkg);
-            StylesTable styles = reader.getStylesTable();
-            ReadOnlySharedStringsTable strings = new ReadOnlySharedStringsTable(pkg);
-            XSSFReader.SheetIterator sheets = (XSSFReader.SheetIterator) reader.getSheetsData();
-            SheetResult combined = null;
-            while (sheets.hasNext()) {
-                try (InputStream stream = sheets.next()) {
-                    String sheetName = sheets.getSheetName();
-                    if (!sheetName.equals(selectedSheet)) {
-                        continue;
-                    }
-                    SheetResult result = new SheetResult(sheetName, requestedMappings, property, save);
-                    var parser = SAXHelper.newXMLReader();
-                    parser.setContentHandler(new XSSFSheetXMLHandler(styles, null, strings, result, new FormatadorDeCelulas(), false));
-                    parser.parse(new InputSource(stream));
-                    result.finish();
-                    if (combined == null) combined = result;
-                    else combined.merge(result);
-                }
-            }
-            if (combined == null) throw new IllegalArgumentException("Aba selecionada nao encontrada na planilha");
-            return combined;
+        try {
+            return withPackage(file, pkg -> readSheet(pkg, selectedSheet, requestedMappings, property, save));
         } catch (Exception e) {
             if (e instanceof IllegalArgumentException) throw (IllegalArgumentException) e;
             throw new IllegalArgumentException("Não foi possível processar a aba selecionada", e);
         }
     }
 
-    private OPCPackage open(MultipartFile file) throws Exception {
+    private SheetResult readSheet(OPCPackage pkg, String selectedSheet, Map<Integer, String> requestedMappings,
+                                  Propriedade property, boolean save) throws Exception {
+        XSSFReader reader = new XSSFReader(pkg);
+        StylesTable styles = reader.getStylesTable();
+        ReadOnlySharedStringsTable strings = new ReadOnlySharedStringsTable(pkg);
+        XSSFReader.SheetIterator sheets = (XSSFReader.SheetIterator) reader.getSheetsData();
+        SheetResult combined = null;
+        while (sheets.hasNext()) {
+            try (InputStream stream = sheets.next()) {
+                String sheetName = sheets.getSheetName();
+                if (!sheetName.equals(selectedSheet)) {
+                    continue;
+                }
+                SheetResult result = new SheetResult(sheetName, requestedMappings, property, save);
+                var parser = SAXHelper.newXMLReader();
+                parser.setContentHandler(new XSSFSheetXMLHandler(styles, null, strings, result, new FormatadorDeCelulas(), false));
+                parser.parse(new InputSource(stream));
+                result.finish();
+                if (combined == null) combined = result;
+                else combined.merge(result);
+            }
+        }
+        if (combined == null) throw new IllegalArgumentException("Aba selecionada nao encontrada na planilha");
+        return combined;
+    }
+
+    // A planilha e copiada para um arquivo temporario (o POI le por acesso
+    // aleatorio) e apagada ao fim de cada leitura; deleteOnExit so apagava
+    // quando a JVM encerrava e cada importacao deixava 3 copias no disco.
+    private <T> T withPackage(MultipartFile file, PackageReader<T> action) throws Exception {
         if (file == null || file.isEmpty()) throw new IllegalArgumentException("Envie uma planilha .xlsx");
-        java.io.File temp = java.io.File.createTempFile("cysvet-animal-import-", ".xlsx");
-        file.transferTo(temp);
-        temp.deleteOnExit();
-        return OPCPackage.open(temp, PackageAccess.READ);
+        Path temp = Files.createTempFile("cysvet-animal-import-", ".xlsx");
+        try {
+            file.transferTo(temp);
+            try (OPCPackage pkg = OPCPackage.open(temp.toFile(), PackageAccess.READ)) {
+                return action.read(pkg);
+            }
+        } finally {
+            try { Files.deleteIfExists(temp); } catch (IOException e) { temp.toFile().deleteOnExit(); }
+        }
+    }
+
+    @FunctionalInterface
+    private interface PackageReader<T> {
+        T read(OPCPackage pkg) throws Exception;
     }
 
     private final class SheetResult implements XSSFSheetXMLHandler.SheetContentsHandler {

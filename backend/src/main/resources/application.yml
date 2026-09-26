@@ -19,8 +19,11 @@ spring:
       write-dates-as-timestamps: false
   servlet:
     multipart:
-      max-file-size: 250MB
-      max-request-size: 250MB
+      # So a importacao de planilha usa upload. A planilha real de uma fazenda
+      # (363 animais, 15 abas) tem ~2 MB; 50 MB deixa folga para rebanhos bem
+      # maiores. Ajustavel por ambiente sem recompilar.
+      max-file-size: ${IMPORT_MAX_FILE_SIZE:50MB}
+      max-request-size: ${IMPORT_MAX_FILE_SIZE:50MB}
 
 server:
   port: ${SERVER_PORT:8080}
