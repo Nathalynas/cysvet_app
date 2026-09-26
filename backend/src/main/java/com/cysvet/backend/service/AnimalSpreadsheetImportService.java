@@ -157,6 +157,7 @@ public class AnimalSpreadsheetImportService {
             if (request != null) {
                 // Mesmas regras da API (tamanho dos campos): um valor longo demais derrubaria a importacao inteira no banco.
                 for (ConstraintViolation<AnimalRequest> violation : validator.validate(request)) issues.add(new AnimalSpreadsheetIssueResponse(columnFor(violation.getPropertyPath().toString()), violation.getMessage()));
+                if (issues.isEmpty() && animalService.hasRepeatedCode(property.getId(), request.codigo())) issues.add(new AnimalSpreadsheetIssueResponse(columnFor("codigo"), "Mais de um animal com este código na propriedade; corrija o cadastro antes de importar"));
                 if (!issues.isEmpty()) request=null;
             }
             String status;

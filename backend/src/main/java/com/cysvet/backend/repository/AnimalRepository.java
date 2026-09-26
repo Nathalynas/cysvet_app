@@ -17,7 +17,7 @@ public interface AnimalRepository extends JpaRepository<Animal, Long> {
 
     Optional<Animal> findByIdExterno(String idExterno);
 
-    Optional<Animal> findByPropriedadeIdAndCodigoIgnoreCase(Long idPropriedade, String codigo);
+    List<Animal> findAllByPropriedadeIdAndCodigoIgnoreCaseOrderByIdAsc(Long idPropriedade, String codigo);
 
     @Query("""
             select a

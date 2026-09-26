@@ -78,7 +78,9 @@ public class AnimalService {
     public AnimalResponse createOrUpdateFromImport(AnimalRequest request) {
         Usuario user = authenticatedUserProvider.getCurrentUser();
         Animal animal = animalRepository
-                .findByPropriedadeIdAndCodigoIgnoreCase(request.idPropriedade(), request.codigo())
+                .findAllByPropriedadeIdAndCodigoIgnoreCaseOrderByIdAsc(request.idPropriedade(), request.codigo())
+                .stream()
+                .findFirst()
                 .orElseGet(Animal::new);
         AnimalSnapshot previous = animal.getId() == null ? null : AnimalSnapshot.from(animal);
         String idExterno = animal.getId() == null ? request.idExterno() : animal.getIdExterno();
@@ -146,6 +148,13 @@ public class AnimalService {
         return SyncUpsertResult.applied(saved);
     }
 
+    // Cadastros antigos podem ter o mesmo codigo repetido (a validacao veio
+    // depois); a importacao nao sabe qual atualizar e recusa a linha.
+    @Transactional(readOnly = true)
+    public boolean hasRepeatedCode(Long idPropriedade, String codigo) {
+        return animalRepository.findAllByPropriedadeIdAndCodigoIgnoreCaseOrderByIdAsc(idPropriedade, codigo).size() > 1;
+    }
+
     @Transactional
     public void deleteByExternalId(String idExterno, Usuario user) {
         Animal animal = getByExternalId(idExterno);
@@ -159,6 +168,7 @@ public class AnimalService {
         if (lote != null && !lote.getPropriedade().getId().equals(property.getId())) {
             throw new IllegalArgumentException("Lote informado nao pertence a propriedade do animal");
         }
+        ensureCodeIsUnique(animal, property, request.codigo());
 
         applyReproductiveBase(animal, request);
 
@@ -179,6 +189,19 @@ public class AnimalService {
         } else if (animal.getStatus() == null) {
             animal.setStatus(StatusAnimal.ATIVO);
         }
+    }
+
+    // Codigo (brinco) e unico por propriedade, sem diferenciar maiusculas.
+    // Animais inativos contam: reativar e o caminho, nao cadastrar de novo.
+    private void ensureCodeIsUnique(Animal animal, Propriedade property, String codigo) {
+        animalRepository.findAllByPropriedadeIdAndCodigoIgnoreCaseOrderByIdAsc(property.getId(), codigo).stream()
+                .filter(other -> !other.getId().equals(animal.getId()))
+                .findFirst()
+                .ifPresent(other -> {
+                    throw new IllegalArgumentException(other.getStatus() == StatusAnimal.INATIVO
+                            ? "Ja existe um animal inativo com o codigo %s nesta propriedade; reative-o em vez de cadastrar de novo".formatted(codigo)
+                            : "Ja existe um animal com o codigo %s nesta propriedade".formatted(codigo));
+                });
     }
 
     // So os campos alterados pelo usuario viram base. O cliente reenvia o
