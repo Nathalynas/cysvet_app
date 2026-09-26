@@ -48,166 +48,172 @@ class AnimalsPage extends ConsumerWidget {
       for (final property in propertyOptions) property.id: property,
     };
     final theme = Theme.of(context);
+    final loadedAnimals = animals.maybeWhen(
+      data: (items) => items.isEmpty ? null : items,
+      orElse: () => null,
+    );
+    final filteredItems = loadedAnimals == null
+        ? const <AnimalSummaryModel>[]
+        : _filterAnimals(
+            loadedAnimals,
+            searchQuery,
+            statusFilter,
+            reproductiveStatusFilter,
+          );
+    final activeAnimals = filteredItems.where((animal) {
+      return animal.status == AnimalStatus.active;
+    }).length;
+    final propertyContext = _propertyFilterContext(
+      selectedPropertyId: selectedPropertyId,
+      propertyById: propertyById,
+    );
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
       body: SafeArea(
         child: RefreshIndicator(
           onRefresh: () => ref.refresh(animalsProvider.future),
-          child: ListView(
-            padding: EdgeInsets.zero,
+          child: CustomScrollView(
             physics: const AlwaysScrollableScrollPhysics(),
-            children: [
-              PageTitle(
-                title: 'Animais',
-                subtitle:
-                    'Consulte e organize os animais vinculados às propriedades.',
-                headerButton: Wrap(
-                  spacing: 10,
-                  runSpacing: 8,
-                  alignment: WrapAlignment.end,
-                  children: [
-                    AppButton(
-                      text: 'Importar Excel',
-                      outlined: true,
-                      height: 40,
-                      borderRadius: 10,
-                      fontSize: 14,
-                      fontWeight: FontWeight.w700,
-                      color: theme.colorScheme.primary,
-                      backgroundColor: theme.colorScheme.surface,
-                      borderColor: theme.colorScheme.outline.withValues(
-                        alpha: 0.75,
+            slivers: [
+              SliverToBoxAdapter(
+                child: PageTitle(
+                  title: 'Animais',
+                  subtitle:
+                      'Consulte e organize os animais vinculados às propriedades.',
+                  headerButton: Wrap(
+                    spacing: 10,
+                    runSpacing: 8,
+                    alignment: WrapAlignment.end,
+                    children: [
+                      AppButton(
+                        text: 'Importar Excel',
+                        outlined: true,
+                        height: 40,
+                        borderRadius: 10,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                        color: theme.colorScheme.primary,
+                        backgroundColor: theme.colorScheme.surface,
+                        borderColor: theme.colorScheme.outline.withValues(
+                          alpha: 0.75,
+                        ),
+                        icon: const Icon(Icons.table_chart_outlined, size: 18),
+                        onPressed: () =>
+                            _importAnimalsExcel(context, ref, propertyOptions),
                       ),
-                      icon: const Icon(Icons.table_chart_outlined, size: 18),
-                      onPressed: () =>
-                          _importAnimalsExcel(context, ref, propertyOptions),
-                    ),
-                    AppButton(
-                      text: 'Novo animal',
-                      height: 40,
-                      borderRadius: 10,
-                      fontSize: 14,
-                      fontWeight: FontWeight.w700,
-                      icon: const Icon(Icons.add, size: 18),
-                      onPressed: () => AnimalDialog.show(
-                        context,
-                        properties: propertyOptions,
+                      AppButton(
+                        text: 'Novo animal',
+                        height: 40,
+                        borderRadius: 10,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                        icon: const Icon(Icons.add, size: 18),
+                        onPressed: () => AnimalDialog.show(
+                          context,
+                          properties: propertyOptions,
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
-              Padding(
+              SliverPadding(
                 padding: PageTitle.contentPadding(context),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    _AnimalsToolbar(
-                      properties: propertyOptions,
-                      searchQuery: searchQuery,
-                      selectedPropertyId: selectedPropertyId,
-                      statusFilter: statusFilter,
-                      reproductiveStatusFilter: reproductiveStatusFilter,
-                      onSearchChanged: (value) {
-                        ref.read(animalsSearchQueryProvider.notifier).state =
-                            value;
-                      },
-                      onPropertyChanged: (value) {
-                        ref
-                            .read(animalsPropertyFilterProvider.notifier)
-                            .set(value);
-                      },
-                      onStatusChanged: (value) {
-                        ref.read(animalsStatusFilterProvider.notifier).state =
-                            value ?? AnimalStatusFilter.all;
-                      },
-                      onReproductiveStatusChanged: (value) {
-                        ref
-                                .read(
-                                  animalsReproductiveStatusFilterProvider
-                                      .notifier,
-                                )
-                                .state =
-                            value;
-                      },
+                sliver: SliverMainAxisGroup(
+                  slivers: [
+                    SliverToBoxAdapter(
+                      child: _AnimalsToolbar(
+                        properties: propertyOptions,
+                        searchQuery: searchQuery,
+                        selectedPropertyId: selectedPropertyId,
+                        statusFilter: statusFilter,
+                        reproductiveStatusFilter: reproductiveStatusFilter,
+                        onSearchChanged: (value) {
+                          ref.read(animalsSearchQueryProvider.notifier).state =
+                              value;
+                        },
+                        onPropertyChanged: (value) {
+                          ref
+                              .read(animalsPropertyFilterProvider.notifier)
+                              .set(value);
+                        },
+                        onStatusChanged: (value) {
+                          ref.read(animalsStatusFilterProvider.notifier).state =
+                              value ?? AnimalStatusFilter.all;
+                        },
+                        onReproductiveStatusChanged: (value) {
+                          ref
+                                  .read(
+                                    animalsReproductiveStatusFilterProvider
+                                        .notifier,
+                                  )
+                                  .state =
+                              value;
+                        },
+                      ),
                     ),
-                    const SizedBox(height: 12),
-                    AsyncValueView<List<AnimalSummaryModel>>(
-                      value: animals,
-                      loadingMessage: 'Buscando animais...',
-                      emptyMessage: 'Nenhum animal cadastrado.',
-                      isEmpty: (items) => items.isEmpty,
-                      onRetry: () => ref.invalidate(animalsProvider),
-                      builder: (items) {
-                        final filteredItems = _filterAnimals(
-                          items,
-                          searchQuery,
-                          statusFilter,
-                          reproductiveStatusFilter,
-                        );
-
-                        final activeAnimals = filteredItems.where((animal) {
-                          return animal.status == AnimalStatus.active;
-                        }).length;
-
-                        final propertyContext = _propertyFilterContext(
-                          selectedPropertyId: selectedPropertyId,
-                          propertyById: propertyById,
-                        );
-
-                        return Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            _AnimalsCountSummary(
-                              activeAnimals: activeAnimals,
-                              propertyContext: propertyContext,
-                            ),
-                            const SizedBox(height: 8),
-                            if (filteredItems.isEmpty)
-                              Padding(
-                                padding: const EdgeInsets.only(top: 24),
-                                child: Center(
-                                  child: Text(
-                                    'Nenhum animal encontrado para os filtros atuais.',
-                                    style: theme.textTheme.bodyMedium,
-                                    textAlign: TextAlign.center,
-                                  ),
-                                ),
-                              )
-                            else
-                              _AnimalsMainContent(
-                                animals: filteredItems,
-                                propertyNameFor: (animal) {
-                                  return propertyById[animal.idPropriedade]
-                                          ?.nome ??
-                                      animal.idExternoPropriedade;
-                                },
-                                onEdit: (animal) => AnimalDialog.show(
-                                  context,
-                                  properties: propertyOptions,
-                                  animal: animal,
-                                ),
-                                onInactivate: (animal) =>
-                                    _confirmInactivate(context, ref, animal),
-                                onActivate: (animal) =>
-                                    _confirmActivate(context, ref, animal),
-                                onDelete: (animal) =>
-                                    _confirmDelete(context, ref, animal),
-                                onShowHistory: (animal) =>
-                                    AnimalHistoryDialog.show(
-                                      context: context,
-                                      animal: animal,
-                                      propertyName:
-                                          propertyById[animal.idPropriedade]
-                                              ?.nome ??
-                                          animal.idExternoPropriedade,
-                                    ),
+                    const SliverToBoxAdapter(child: SizedBox(height: 12)),
+                    if (loadedAnimals == null)
+                      // Carregando, erro ou nenhum animal cadastrado.
+                      SliverToBoxAdapter(
+                        child: AsyncValueView<List<AnimalSummaryModel>>(
+                          value: animals,
+                          loadingMessage: 'Buscando animais...',
+                          emptyMessage: 'Nenhum animal cadastrado.',
+                          isEmpty: (items) => items.isEmpty,
+                          onRetry: () => ref.invalidate(animalsProvider),
+                          builder: (_) => const SizedBox.shrink(),
+                        ),
+                      )
+                    else ...[
+                      SliverToBoxAdapter(
+                        child: _AnimalsCountSummary(
+                          activeAnimals: activeAnimals,
+                          propertyContext: propertyContext,
+                        ),
+                      ),
+                      const SliverToBoxAdapter(child: SizedBox(height: 8)),
+                      if (filteredItems.isEmpty)
+                        SliverToBoxAdapter(
+                          child: Padding(
+                            padding: const EdgeInsets.only(top: 24),
+                            child: Center(
+                              child: Text(
+                                'Nenhum animal encontrado para os filtros atuais.',
+                                style: theme.textTheme.bodyMedium,
+                                textAlign: TextAlign.center,
                               ),
-                          ],
-                        );
-                      },
-                    ),
+                            ),
+                          ),
+                        )
+                      else
+                        _AnimalsMainContent(
+                          animals: filteredItems,
+                          propertyNameFor: (animal) {
+                            return propertyById[animal.idPropriedade]?.nome ??
+                                animal.idExternoPropriedade;
+                          },
+                          onEdit: (animal) => AnimalDialog.show(
+                            context,
+                            properties: propertyOptions,
+                            animal: animal,
+                          ),
+                          onInactivate: (animal) =>
+                              _confirmInactivate(context, ref, animal),
+                          onActivate: (animal) =>
+                              _confirmActivate(context, ref, animal),
+                          onDelete: (animal) =>
+                              _confirmDelete(context, ref, animal),
+                          onShowHistory: (animal) => AnimalHistoryDialog.show(
+                            context: context,
+                            animal: animal,
+                            propertyName:
+                                propertyById[animal.idPropriedade]?.nome ??
+                                animal.idExternoPropriedade,
+                          ),
+                        ),
+                    ],
                   ],
                 ),
               ),
@@ -465,39 +471,57 @@ class _AnimalsMainContent extends StatelessWidget {
   final _AnimalCallback onDelete;
   final _AnimalCallback onShowHistory;
 
+  // Sliver: no celular os cartões entram direto na rolagem da página e só os
+  // visíveis são montados. A tabela larga (desktop/web) continua inteira.
   @override
   Widget build(BuildContext context) {
-    return LayoutBuilder(
+    return SliverLayoutBuilder(
       builder: (context, constraints) {
-        final useAnimalCards = constraints.maxWidth < _animalsTableBreakpoint;
+        final useAnimalCards =
+            constraints.crossAxisExtent < _animalsTableBreakpoint;
 
-        final animalsContent = useAnimalCards
-            ? AnimalMobileCardList(
-                animals: animals,
-                propertyNameFor: propertyNameFor,
-                onTap: onShowHistory,
-                onEdit: onEdit,
-                onInactivate: onInactivate,
-                onActivate: onActivate,
-                onDelete: onDelete,
-                footerLabel: _recordsLabel(animals.length),
-              )
-            : _AnimalsTable(
-                animals: animals,
-                propertyNameFor: propertyNameFor,
-                onEdit: onEdit,
-                onInactivate: onInactivate,
-                onActivate: onActivate,
-                onDelete: onDelete,
-                onShowHistory: onShowHistory,
-              );
+        if (!useAnimalCards) {
+          return SliverToBoxAdapter(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _HerdIndicators(animals: animals),
+                const SizedBox(height: 16),
+                _AnimalsTable(
+                  animals: animals,
+                  propertyNameFor: propertyNameFor,
+                  onEdit: onEdit,
+                  onInactivate: onInactivate,
+                  onActivate: onActivate,
+                  onDelete: onDelete,
+                  onShowHistory: onShowHistory,
+                ),
+              ],
+            ),
+          );
+        }
 
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            _HerdIndicators(animals: animals),
-            const SizedBox(height: 16),
-            animalsContent,
+        return SliverMainAxisGroup(
+          slivers: [
+            SliverToBoxAdapter(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  _HerdIndicators(animals: animals),
+                  const SizedBox(height: 16),
+                ],
+              ),
+            ),
+            AnimalMobileCardSliverList(
+              animals: animals,
+              propertyNameFor: propertyNameFor,
+              onTap: onShowHistory,
+              onEdit: onEdit,
+              onInactivate: onInactivate,
+              onActivate: onActivate,
+              onDelete: onDelete,
+              footerLabel: _recordsLabel(animals.length),
+            ),
           ],
         );
       },

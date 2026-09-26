@@ -40,6 +40,13 @@ class VisitsPage extends ConsumerWidget {
       for (final property in propertyOptions) property.id: property,
     };
     final theme = Theme.of(context);
+    final loadedVisits = visits.maybeWhen(
+      data: (items) => items,
+      orElse: () => null,
+    );
+    final filteredVisits = loadedVisits == null
+        ? const <VisitSummaryModel>[]
+        : _filterVisits(loadedVisits, searchQuery, propertyById);
 
     ref.listen<VisitSummaryModel?>(savedVisitProvider, (previous, next) {
       if (next == null) return;
@@ -70,83 +77,79 @@ class VisitsPage extends ConsumerWidget {
       body: SafeArea(
         child: RefreshIndicator(
           onRefresh: () => ref.refresh(visitsProvider.future),
-          child: ListView(
-            padding: EdgeInsets.zero,
+          child: CustomScrollView(
             physics: const AlwaysScrollableScrollPhysics(),
-            children: [
-              PageTitle(
-                title: 'Visitas',
-                subtitle:
-                    'Registre atendimentos, acompanhe visitas e gere relatórios técnicos.',
-                headerButton: AppButton(
-                  text: 'Nova visita',
-                  icon: const Icon(Icons.add, size: 18),
-                  onPressed: createVisit,
+            slivers: [
+              SliverToBoxAdapter(
+                child: PageTitle(
+                  title: 'Visitas',
+                  subtitle:
+                      'Registre atendimentos, acompanhe visitas e gere relatórios técnicos.',
+                  headerButton: AppButton(
+                    text: 'Nova visita',
+                    icon: const Icon(Icons.add, size: 18),
+                    onPressed: createVisit,
+                  ),
                 ),
               ),
-              Padding(
+              SliverPadding(
                 padding: PageTitle.contentPadding(context),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    _VisitsToolbar(
-                      searchQuery: searchQuery,
-                      properties: propertyOptions,
-                      selectedPropertyId: selectedPropertyId,
-                      onSearchChanged: (value) {
-                        ref.read(visitsSearchQueryProvider.notifier).state =
-                            value;
-                      },
-                      onPropertyChanged: (value) {
-                        ref
-                            .read(visitsPropertyFilterProvider.notifier)
-                            .set(value);
-                      },
+                sliver: SliverMainAxisGroup(
+                  slivers: [
+                    SliverToBoxAdapter(
+                      child: _VisitsToolbar(
+                        searchQuery: searchQuery,
+                        properties: propertyOptions,
+                        selectedPropertyId: selectedPropertyId,
+                        onSearchChanged: (value) {
+                          ref.read(visitsSearchQueryProvider.notifier).state =
+                              value;
+                        },
+                        onPropertyChanged: (value) {
+                          ref
+                              .read(visitsPropertyFilterProvider.notifier)
+                              .set(value);
+                        },
+                      ),
                     ),
-                    const SizedBox(height: 28),
-                    AsyncValueView<List<VisitSummaryModel>>(
-                      value: visits,
-                      loadingMessage: 'Buscando visitas...',
-                      emptyMessage:
-                          'Nenhuma visita encontrada para o filtro atual.',
-                      isEmpty: (items) => items.isEmpty,
-                      onRetry: () => ref.invalidate(visitsProvider),
-                      builder: (items) {
-                        final filteredItems = _filterVisits(
-                          items,
-                          searchQuery,
-                          propertyById,
-                        );
+                    const SliverToBoxAdapter(child: SizedBox(height: 28)),
+                    if (filteredVisits.isNotEmpty)
+                      _VisitsGrid(
+                        visits: filteredVisits,
+                        propertyById: propertyById,
+                        localRecords: localRecords,
+                        onEdit: (visit) => context.go(
+                          '/visitas/editar/${Uri.encodeComponent(visit.idExterno)}',
+                        ),
+                        onOpen: (visit) {
+                          final property = propertyById[visit.idPropriedade];
+                          final propertyName =
+                              property?.nome ?? visit.idExternoPropriedade;
 
-                        if (filteredItems.isEmpty) {
-                          return const _VisitsEmptyState();
-                        }
-
-                        return _VisitsGrid(
-                          visits: filteredItems,
-                          propertyById: propertyById,
-                          localRecords: localRecords,
-                          onEdit: (visit) => context.go(
-                            '/visitas/editar/${Uri.encodeComponent(visit.idExterno)}',
-                          ),
-                          onOpen: (visit) {
-                            final property = propertyById[visit.idPropriedade];
-                            final propertyName =
-                                property?.nome ?? visit.idExternoPropriedade;
-
-                            context.go(
-                              '/visitas/${visit.id}/detalhes',
-                              extra: VisitReportRouteData(
-                                visit: visit,
-                                propertyName: propertyName,
-                                property: property,
-                                returnRoute: '/visitas',
-                              ),
-                            );
-                          },
-                        );
-                      },
-                    ),
+                          context.go(
+                            '/visitas/${visit.id}/detalhes',
+                            extra: VisitReportRouteData(
+                              visit: visit,
+                              propertyName: propertyName,
+                              property: property,
+                              returnRoute: '/visitas',
+                            ),
+                          );
+                        },
+                      )
+                    else
+                      // Carregando, erro, nenhuma visita ou nenhuma no filtro.
+                      SliverToBoxAdapter(
+                        child: AsyncValueView<List<VisitSummaryModel>>(
+                          value: visits,
+                          loadingMessage: 'Buscando visitas...',
+                          emptyMessage:
+                              'Nenhuma visita encontrada para o filtro atual.',
+                          isEmpty: (items) => items.isEmpty,
+                          onRetry: () => ref.invalidate(visitsProvider),
+                          builder: (_) => const _VisitsEmptyState(),
+                        ),
+                      ),
                   ],
                 ),
               ),
@@ -265,20 +268,20 @@ class _VisitsGrid extends StatelessWidget {
   final ValueChanged<VisitSummaryModel> onEdit;
   final ValueChanged<VisitSummaryModel> onOpen;
 
+  // Sliver para montar só os cartões visíveis; um GridView com shrinkWrap
+  // dentro da rolagem da página montava todos (ver diagnóstico de 16/09/2026).
   @override
   Widget build(BuildContext context) {
-    return LayoutBuilder(
+    return SliverLayoutBuilder(
       builder: (context, constraints) {
-        final width = constraints.maxWidth;
+        final width = constraints.crossAxisExtent;
         final columns = width >= 1060
             ? 3
             : width >= 700
             ? 2
             : 1;
 
-        return GridView.builder(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
+        return SliverGrid.builder(
           itemCount: visits.length,
           gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
             crossAxisCount: columns,

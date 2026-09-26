@@ -64,21 +64,90 @@ class AnimalMobileCardList extends StatelessWidget {
         ],
         if (footerLabel != null) ...[
           const SizedBox(height: 12),
-          AppCard(
-            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
-            borderRadius: 16,
-            shadow: false,
-            child: Text(
-              footerLabel!,
-              textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
+          _AnimalListFooter(label: footerLabel!),
         ],
       ],
+    );
+  }
+}
+
+/// Versão sliver de [AnimalMobileCardList]: monta só os cartões visíveis.
+/// Deve ficar direto na rolagem da página (`CustomScrollView`); dentro de uma
+/// `Column`, todos os cartões seriam montados de uma vez.
+class AnimalMobileCardSliverList extends StatelessWidget {
+  const AnimalMobileCardSliverList({
+    super.key,
+    required this.animals,
+    required this.propertyNameFor,
+    required this.onTap,
+    required this.onEdit,
+    required this.onInactivate,
+    required this.onActivate,
+    required this.onDelete,
+    this.footerLabel,
+  });
+
+  final List<AnimalSummaryModel> animals;
+  final String Function(AnimalSummaryModel animal) propertyNameFor;
+  final ValueChanged<AnimalSummaryModel> onTap;
+  final ValueChanged<AnimalSummaryModel> onEdit;
+  final ValueChanged<AnimalSummaryModel> onInactivate;
+  final ValueChanged<AnimalSummaryModel> onActivate;
+  final ValueChanged<AnimalSummaryModel> onDelete;
+  final String? footerLabel;
+
+  @override
+  Widget build(BuildContext context) {
+    return SliverMainAxisGroup(
+      slivers: [
+        SliverList.separated(
+          itemCount: animals.length,
+          separatorBuilder: (_, _) => const SizedBox(height: 10),
+          itemBuilder: (context, index) {
+            final animal = animals[index];
+            return AnimalMobileCard(
+              animal: animal,
+              propertyName: propertyNameFor(animal),
+              onTap: () => onTap(animal),
+              onEdit: () => onEdit(animal),
+              onInactivate: () => onInactivate(animal),
+              onActivate: () => onActivate(animal),
+              onDelete: () => onDelete(animal),
+            );
+          },
+        ),
+        if (footerLabel != null)
+          SliverPadding(
+            padding: const EdgeInsets.only(top: 12),
+            sliver: SliverToBoxAdapter(
+              child: _AnimalListFooter(label: footerLabel!),
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+class _AnimalListFooter extends StatelessWidget {
+  const _AnimalListFooter({required this.label});
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return AppCard(
+      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+      borderRadius: 16,
+      shadow: false,
+      child: Text(
+        label,
+        textAlign: TextAlign.center,
+        style: theme.textTheme.bodySmall?.copyWith(
+          color: theme.colorScheme.onSurfaceVariant,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
     );
   }
 }
