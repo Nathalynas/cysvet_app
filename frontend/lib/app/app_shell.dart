@@ -11,6 +11,7 @@ import '../core/constants/app_constants.dart';
 import '../core/platform/offline_platform.dart';
 import '../core/widgets/sync_status_bar.dart';
 import '../core/widgets/app_button.dart';
+import '../core/widgets/pending_sync_logout_dialog.dart';
 import '../providers/auth_state.dart';
 import 'theme.dart';
 
@@ -272,6 +273,12 @@ class _MainHeader extends ConsumerWidget {
                                 onProfile: () => context.go('/configuracoes'),
                                 onCompany: () => context.go('/configuracoes'),
                                 onLogout: () async {
+                                  if (!await confirmLogoutWithPendingSync(
+                                    context,
+                                    ref,
+                                  )) {
+                                    return;
+                                  }
                                   await ref
                                       .read(authControllerProvider)
                                       .logout();
@@ -324,6 +331,12 @@ class _MainHeader extends ConsumerWidget {
                           onProfile: () => context.go('/configuracoes'),
                           onCompany: () => context.go('/configuracoes'),
                           onLogout: () async {
+                            if (!await confirmLogoutWithPendingSync(
+                              context,
+                              ref,
+                            )) {
+                              return;
+                            }
                             await ref.read(authControllerProvider).logout();
 
                             if (!context.mounted) {

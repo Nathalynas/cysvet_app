@@ -10,6 +10,7 @@ import 'package:cysvet_app/core/widgets/app_card.dart';
 import 'package:cysvet_app/core/widgets/app_dropdown.dart';
 import 'package:cysvet_app/core/widgets/app_form.dart';
 import 'package:cysvet_app/core/widgets/app_text_field.dart';
+import 'package:cysvet_app/core/widgets/pending_sync_logout_dialog.dart';
 import 'package:cysvet_app/api/auth_api.dart';
 import 'package:cysvet_app/models/auth_session_model.dart';
 import 'package:cysvet_app/providers/auth_state.dart';
@@ -415,6 +416,7 @@ class _ConfiguracoesPageState extends ConsumerState<ConfiguracoesPage> {
   }
 
   Future<void> _logout() async {
+    if (!await confirmLogoutWithPendingSync(context, ref)) return;
     await ref.read(authControllerProvider).logout();
 
     if (!mounted) {
