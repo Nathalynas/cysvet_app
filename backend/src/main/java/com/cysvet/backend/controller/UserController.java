@@ -48,7 +48,10 @@ public class UserController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    @Operation(summary = "Cria um veterinario vinculado a empresa ativa")
+    @Operation(
+            summary = "Cria um veterinario vinculado a empresa ativa",
+            description = "Se o e-mail ja pertence a um veterinario sem empresa, ele e vinculado mantendo o proprio nome e senha; o nome e a senha informados sao ignorados."
+    )
     @ApiResponses(value = {
             @ApiResponse(responseCode = "201", description = "Veterinario criado com sucesso"),
             @ApiResponse(responseCode = "400", description = "Dados invalidos"),

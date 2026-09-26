@@ -187,6 +187,30 @@ class UserTeamIntegrationTest {
     }
 
     @Test
+    void linkingVeterinarianWithoutCompanyShouldKeepTheirPasswordAndName() throws Exception {
+        AuthContext firstAdmin = registerAndAuthenticate("orfao.admin1@example.com", "Admin Um", "123456");
+        long userId = createVeterinarian(firstAdmin, "Eva Vet", "eva.vet@example.com", "senha-da-eva").path("id").asLong();
+        mockMvc.perform(delete("/api/users/{userId}", userId)
+                        .header("Authorization", firstAdmin.authorization())
+                        .header("empresaid", firstAdmin.tenantId()))
+                .andExpect(status().isNoContent());
+
+        // Outro administrador informa o mesmo e-mail com outra senha.
+        AuthContext otherAdmin = registerAndAuthenticate("orfao.admin2@example.com", "Admin Dois", "123456");
+        JsonNode linked = createVeterinarian(otherAdmin, "Nome Trocado", "eva.vet@example.com", "senha-do-outro-admin");
+
+        assertEquals(userId, linked.path("id").asLong());
+        assertEquals("Eva Vet", linked.path("name").asText());
+        login("eva.vet@example.com", "senha-da-eva");
+        mockMvc.perform(post("/api/auth/login")
+                        .contentType(APPLICATION_JSON)
+                        .content("""
+                                { "email": "eva.vet@example.com", "password": "senha-do-outro-admin" }
+                                """))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
     void veterinarianShouldNotManageTeam() throws Exception {
         AuthContext admin = registerAndAuthenticate("guard.admin@example.com", "Admin Guard", "123456");
         JsonNode createdUser = createVeterinarian(

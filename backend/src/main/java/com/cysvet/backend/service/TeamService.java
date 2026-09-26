@@ -50,7 +50,7 @@ public class TeamService {
         String normalizedEmail = request.email().trim();
 
         Usuario usuario = usuarioRepository.findByEmail(normalizedEmail)
-                .map(existingUser -> reuseOrRejectExistingUser(existingUser, tenantId, normalizedName, request.password()))
+                .map(existingUser -> reuseOrRejectExistingUser(existingUser, tenantId))
                 .orElseGet(() -> createNewVeterinarian(normalizedName, normalizedEmail, request.password()));
 
         UsuarioEmpresa membership = new UsuarioEmpresa();
@@ -127,7 +127,10 @@ public class TeamService {
         return usuarioRepository.saveAndFlush(usuario);
     }
 
-    private Usuario reuseOrRejectExistingUser(Usuario existingUser, Long tenantId, String name, String password) {
+    // Vincula um veterinario que ficou sem empresa (ex.: removido e readicionado).
+    // Nome e senha pertencem ao dono da conta e nao sao alterados: outro
+    // administrador informando o mesmo e-mail nao pode assumir a conta.
+    private Usuario reuseOrRejectExistingUser(Usuario existingUser, Long tenantId) {
         if (existingUser.getPerfil() != Perfil.VETERINARIO) {
             throw new IllegalArgumentException("Apenas usuarios com perfil VETERINARIO podem ser vinculados por este endpoint");
         }
@@ -144,10 +147,7 @@ public class TeamService {
             throw new IllegalArgumentException("E-mail ja cadastrado");
         }
 
-        existingUser.setNome(name);
-        existingUser.setSenha(passwordEncoder.encode(password));
-        existingUser.setPerfil(Perfil.VETERINARIO);
-        return usuarioRepository.saveAndFlush(existingUser);
+        return existingUser;
     }
 
     private Usuario requireCurrentAdmin() {
