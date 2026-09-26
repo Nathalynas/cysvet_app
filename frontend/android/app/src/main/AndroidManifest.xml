@@ -1,6 +1,8 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Necessaria no release para falar com o backend; debug/profile ja tinham. -->
+    <uses-permission android:name="android.permission.INTERNET"/>
     <application
-        android:label="cysvet_app"
+        android:label="CYSVET"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity
