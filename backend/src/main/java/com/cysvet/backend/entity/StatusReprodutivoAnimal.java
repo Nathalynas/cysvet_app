@@ -1,8 +1,8 @@
 package com.cysvet.backend.entity;
 
+import com.cysvet.backend.util.Textos;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonValue;
-import java.text.Normalizer;
 import java.util.Arrays;
 import java.util.Locale;
 
@@ -60,9 +60,6 @@ public enum StatusReprodutivoAnimal {
     }
 
     private static String normalize(String value) {
-        return Normalizer.normalize(value, Normalizer.Form.NFD)
-                .replaceAll("\\p{M}+", "")
-                .toLowerCase(Locale.ROOT)
-                .trim();
+        return Textos.semAcentos(value).toLowerCase(Locale.ROOT).trim();
     }
 }

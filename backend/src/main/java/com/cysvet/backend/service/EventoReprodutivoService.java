@@ -138,7 +138,7 @@ public class EventoReprodutivoService {
     }
 
     private void apply(EventoReprodutivo event, EventoReprodutivoRequest request, Usuario user) {
-        Propriedade property = resolveProperty(request.idPropriedade(), request.idExternoPropriedade());
+        Propriedade property = propriedadeService.resolve(request.idPropriedade(), request.idExternoPropriedade(), "Evento");
         Animal animal = resolveAnimal(request.idAnimal(), request.idExternoAnimal());
 
         if (!animal.getPropriedade().getId().equals(property.getId())) {
@@ -167,16 +167,6 @@ public class EventoReprodutivoService {
 
     static LocalDate previsaoDeParto(TipoEventoReprodutivo tipo, LocalDate dataEvento) {
         return tipo == TipoEventoReprodutivo.INSEMINATION ? dataEvento.plusDays(DIAS_DA_IA_ATE_O_PARTO) : null;
-    }
-
-    private Propriedade resolveProperty(Long idPropriedade, String idExternoPropriedade) {
-        if (idPropriedade != null) {
-            return propriedadeService.getEntity(idPropriedade);
-        }
-        if (idExternoPropriedade != null && !idExternoPropriedade.isBlank()) {
-            return propriedadeService.getByExternalId(idExternoPropriedade);
-        }
-        throw new IllegalArgumentException("Evento deve informar idPropriedade ou idExternoPropriedade");
     }
 
     private Animal resolveAnimal(Long idAnimal, String idExternoAnimal) {

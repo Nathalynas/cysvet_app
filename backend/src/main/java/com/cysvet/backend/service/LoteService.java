@@ -150,6 +150,8 @@ public class LoteService {
         return saved;
     }
 
+    // Nao usa PropriedadeService.resolve: aquele service depende deste (cria o
+    // lote padrao da propriedade) e a dependencia inversa formaria um ciclo.
     private Propriedade resolveProperty(Long idPropriedade, String idExternoPropriedade) {
         if (idPropriedade != null) {
             return propriedadeRepository.findById(idPropriedade)

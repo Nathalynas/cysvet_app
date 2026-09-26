@@ -112,6 +112,19 @@ public class PropriedadeService {
         return SyncUpsertResult.applied(saved);
     }
 
+    // Registros de empresa referenciam a propriedade pelo id do servidor ou,
+    // quando criados offline, pelo idExterno.
+    @Transactional(readOnly = true)
+    public Propriedade resolve(Long idPropriedade, String idExternoPropriedade, String entidade) {
+        if (idPropriedade != null) {
+            return getEntity(idPropriedade);
+        }
+        if (idExternoPropriedade != null && !idExternoPropriedade.isBlank()) {
+            return getByExternalId(idExternoPropriedade);
+        }
+        throw new IllegalArgumentException(entidade + " deve informar idPropriedade ou idExternoPropriedade");
+    }
+
     @Transactional
     public void deleteByExternalId(String idExterno, Usuario user) {
         Propriedade property = getByExternalId(idExterno);

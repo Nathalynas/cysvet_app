@@ -1,7 +1,7 @@
 package com.cysvet.backend.entity;
 
+import com.cysvet.backend.util.Textos;
 import com.fasterxml.jackson.annotation.JsonCreator;
-import java.text.Normalizer;
 import java.util.Locale;
 
 public enum StatusAnimal {
@@ -16,10 +16,7 @@ public enum StatusAnimal {
             return null;
         }
 
-        String normalized = Normalizer.normalize(value, Normalizer.Form.NFD)
-                .replaceAll("\\p{M}", "")
-                .trim()
-                .toUpperCase(Locale.ROOT);
+        String normalized = Textos.semAcentos(value).trim().toUpperCase(Locale.ROOT);
 
         return switch (normalized) {
             case "ATIVO" -> ATIVO;

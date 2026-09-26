@@ -1,5 +1,6 @@
 package com.cysvet.backend.service;
 
+import com.cysvet.backend.util.Textos;
 import com.cysvet.backend.dto.animal.AnimalRequest;
 import com.cysvet.backend.dto.animal.AnimalSpreadsheetCellResponse;
 import com.cysvet.backend.dto.animal.AnimalSpreadsheetImportResponse;
@@ -14,7 +15,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.text.Normalizer;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
@@ -252,6 +252,6 @@ public class AnimalSpreadsheetImportService {
     private static Propriedade property(List<Propriedade> properties, Long propertyId) { return properties.stream().filter(property -> property.getId().equals(propertyId)).findFirst().orElseThrow(() -> new IllegalArgumentException("Propriedade não encontrada")); }
     private static final Map<String,List<String>> ALIASES=Map.ofEntries(Map.entry("codigo",tokens("brinco","id","codigo","cod animal","animal","matriz","matriz n","matriz numero","numero","n animal")),Map.entry("dataNascimento",tokens("data de nascimento","data nascimento","data nasci","nascimento","dt nascimento","data nasc")),Map.entry("situacaoProdutiva",tokens("situacao produtiva","sit produtiva")),Map.entry("statusReprodutivo",tokens("status reprodutivo","situacao reprodutiva","sit reprodutiva")),Map.entry("numeroLactacao",tokens("numero de lactacao","n lactacao","lactacao","numero lactacao","numero de partos","n de partos","partos","del")),Map.entry("dataUltimoParto",tokens("data do parto","data ultimo parto","ultimo parto","data up","up","parto anterior")),Map.entry("dataInseminacao",tokens("data da inseminacao","data inseminacao","data ia","data ia ultima","ultima ia","inseminacao")),Map.entry("touroIa",tokens("touro ia","touro de ia","touro inseminacao","reprodutor","touro")),Map.entry("historicoReprodutivo",tokens("historico","historico reprodutivo","observacao","observacoes","obs","motivo")));
     private static List<String> tokens(String... values){return java.util.Arrays.stream(values).map(AnimalSpreadsheetImportService::normalize).toList();}
-    private static String normalize(String value){return Normalizer.normalize(value==null?"":value,Normalizer.Form.NFD).replaceAll("\\p{M}+","").toLowerCase(Locale.ROOT).replaceAll("[^a-z0-9]+"," ").trim().replaceAll("\\s+"," ");}
+    private static String normalize(String value){return Textos.semAcentos(value==null?"":value).toLowerCase(Locale.ROOT).replaceAll("[^a-z0-9]+"," ").trim().replaceAll("\\s+"," ");}
     private static String blankToNull(String value){return value==null||value.isBlank()?null:value.trim();}
 }

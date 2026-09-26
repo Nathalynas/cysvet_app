@@ -162,7 +162,7 @@ public class AnimalService {
     }
 
     private void apply(Animal animal, AnimalRequest request, Usuario user) {
-        Propriedade property = resolveProperty(request.idPropriedade(), request.idExternoPropriedade());
+        Propriedade property = propriedadeService.resolve(request.idPropriedade(), request.idExternoPropriedade(), "Animal");
         Lote lote = resolveLote(request);
 
         if (lote != null && !lote.getPropriedade().getId().equals(property.getId())) {
@@ -346,16 +346,6 @@ public class AnimalService {
                     || !Objects.equals(touroIa, animal.getTouroIa())
                     || !Objects.equals(historicoReprodutivo, animal.getHistoricoReprodutivo());
         }
-    }
-
-    private Propriedade resolveProperty(Long idPropriedade, String idExternoPropriedade) {
-        if (idPropriedade != null) {
-            return propriedadeService.getEntity(idPropriedade);
-        }
-        if (idExternoPropriedade != null && !idExternoPropriedade.isBlank()) {
-            return propriedadeService.getByExternalId(idExternoPropriedade);
-        }
-        throw new IllegalArgumentException("Animal deve informar idPropriedade ou idExternoPropriedade");
     }
 
     private StatusAnimal parseStatus(String status) {

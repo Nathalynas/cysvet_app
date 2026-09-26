@@ -139,7 +139,7 @@ public class VisitaService {
     }
 
     private void apply(Visita visit, VisitaRequest request, Usuario user) {
-        Propriedade property = resolveProperty(request.idPropriedade(), request.idExternoPropriedade());
+        Propriedade property = propriedadeService.resolve(request.idPropriedade(), request.idExternoPropriedade(), "Visita");
 
         visit.setIdExterno(request.idExterno());
         visit.setPropriedade(property);
@@ -147,16 +147,6 @@ public class VisitaService {
         visit.setDataVisita(request.dataVisita());
         visit.setObservacoes(request.observacoes());
         visit.setAnimaisJson(writeAnimalItems(request.animais()));
-    }
-
-    private Propriedade resolveProperty(Long idPropriedade, String idExternoPropriedade) {
-        if (idPropriedade != null) {
-            return propriedadeService.getEntity(idPropriedade);
-        }
-        if (idExternoPropriedade != null && !idExternoPropriedade.isBlank()) {
-            return propriedadeService.getByExternalId(idExternoPropriedade);
-        }
-        throw new IllegalArgumentException("Visita deve informar idPropriedade ou idExternoPropriedade");
     }
 
     private List<VisitaAnimalItemDto> readAnimalItems(Visita visit) {
