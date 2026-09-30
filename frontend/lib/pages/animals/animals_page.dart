@@ -1445,6 +1445,11 @@ String _animalAgeLabel(DateTime? birthDate, DateTime now) {
 }
 
 String _animalProductiveStatusLabel(AnimalSummaryModel animal) {
+  final situacao = animal.situacaoProdutiva;
+  if (situacao != null && situacao.isNotEmpty) {
+    return AnimalProductiveSituation.label(situacao);
+  }
+
   final text = [
     animal.historicoReprodutivo,
     animal.statusReprodutivo?.label,

@@ -894,6 +894,11 @@ class _VisitFormPageState extends ConsumerState<VisitFormPage> {
     AnimalSummaryModel animal, {
     required DateTime? dataUltimoParto,
   }) {
+    final situacao = animal.situacaoProdutiva;
+    if (situacao != null && situacao.isNotEmpty) {
+      return situacao;
+    }
+
     final category = _resolvedReproductiveStatus(animal).label.normalize();
 
     if (category.contains('novilha')) {
@@ -1973,8 +1978,15 @@ class _AnimalEditorFields extends StatelessWidget {
               _DateInputField(
                 label: 'Secagem efetiva',
                 value: entry.dataSecagemEfetiva,
-                onChanged: (value) =>
-                    emitChanged(entry.copyWith(dataSecagemEfetiva: value)),
+                onChanged: (value) => emitChanged(
+                  entry.copyWith(
+                    dataSecagemEfetiva: value,
+                    situacaoProdutiva: AnimalProductiveSituation.afterDryOff(
+                      entry.situacaoProdutiva,
+                      value,
+                    ),
+                  ),
+                ),
               ),
               _DateInputField(
                 label: 'Entrada pré-parto',

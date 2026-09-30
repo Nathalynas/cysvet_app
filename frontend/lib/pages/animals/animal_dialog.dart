@@ -67,6 +67,7 @@ class _AnimalFormState extends ConsumerState<_AnimalForm> {
   int? _propertyId;
   AnimalReproductiveStatus _reproductiveStatus =
       AnimalReproductiveStatus.pending;
+  String? _productiveSituation;
 
   @override
   void initState() {
@@ -83,6 +84,12 @@ class _AnimalFormState extends ConsumerState<_AnimalForm> {
     _historico.text = animal?.historicoReprodutivo ?? '';
     _propertyId = animal?.idPropriedade;
     _reproductiveStatus = _resolveReproductiveStatus(animal);
+    _productiveSituation = animal?.situacaoProdutiva;
+    // "Seca" é situação produtiva: a vaca seca continua prenha, vazia etc.
+    if (_reproductiveStatus == AnimalReproductiveStatus.dry) {
+      _reproductiveStatus = AnimalReproductiveStatus.pending;
+      _productiveSituation ??= AnimalProductiveSituation.dry;
+    }
   }
 
   @override
@@ -142,6 +149,7 @@ class _AnimalFormState extends ConsumerState<_AnimalForm> {
             touroIa: _touroIa.text.trim(),
             historicoReprodutivo: _historico.text.trim(),
             statusReprodutivo: _reproductiveStatus,
+            situacaoProdutiva: _productiveSituation,
             status: animal?.status ?? AnimalStatus.active,
           );
 
@@ -201,7 +209,22 @@ class _AnimalFormState extends ConsumerState<_AnimalForm> {
             });
           },
           options: AnimalReproductiveStatus.editableValues
+              .where((item) => item != AnimalReproductiveStatus.dry)
               .map((item) => AppDropdownOption(label: item.label, value: item))
+              .toList(growable: false),
+        ),
+        AppDropdown<String>(
+          value: _productiveSituation,
+          labelText: 'Situação produtiva',
+          required: false,
+          onChanged: (value) => setState(() => _productiveSituation = value),
+          options: AnimalProductiveSituation.values
+              .map(
+                (item) => AppDropdownOption(
+                  label: AnimalProductiveSituation.label(item),
+                  value: item,
+                ),
+              )
               .toList(growable: false),
         ),
         AppTextField(

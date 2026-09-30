@@ -193,6 +193,7 @@ class AnimalsRepository {
       'touroIa': animal.touroIa,
       'historicoReprodutivo': animal.historicoReprodutivo,
       'statusReprodutivo': animal.statusReprodutivo?.apiValue,
+      'situacaoProdutiva': animal.situacaoProdutiva,
       'status': animal.status.apiValue,
       'dataAtualizacaoCliente': DateTime.now().toUtc().toIso8601String(),
     };

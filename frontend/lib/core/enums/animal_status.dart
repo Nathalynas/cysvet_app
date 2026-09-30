@@ -118,6 +118,15 @@ class AnimalProductiveSituation {
   static const prepartum = 'pre parto';
   static const values = [lactating, dry, heifer, prepartum];
 
+  /// Situação produtiva depois de informar a data de secagem efetiva na
+  /// visita: lactante (ou vazia) passa a seca. Pré-parto e novilha ficam como
+  /// estão, e apagar a data não desfaz a troca.
+  static String? afterDryOff(String? current, DateTime? dryOffDate) {
+    if (dryOffDate == null) return current;
+    if (current == null || current.isEmpty || current == lactating) return dry;
+    return current;
+  }
+
   static String label(String value) {
     return switch (value) {
       lactating => 'Lactante',

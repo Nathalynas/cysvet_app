@@ -20,6 +20,7 @@ class AnimalSummaryModel with AnimalSummaryModelMappable {
     this.diasEmLactacao,
     this.historicoReprodutivo,
     this.statusReprodutivo,
+    this.situacaoProdutiva,
     this.status = AnimalStatus.active,
   });
 
@@ -40,6 +41,10 @@ class AnimalSummaryModel with AnimalSummaryModelMappable {
   final String? historicoReprodutivo;
   @MappableField(hook: _AnimalReproductiveStatusHook())
   final AnimalReproductiveStatus? statusReprodutivo;
+
+  /// Valor da API (`AnimalProductiveSituation`), recalculado no servidor a
+  /// partir dos eventos. Nulo em respostas de servidores antigos.
+  final String? situacaoProdutiva;
   @MappableField(hook: _AnimalStatusHook())
   final AnimalStatus status;
 }

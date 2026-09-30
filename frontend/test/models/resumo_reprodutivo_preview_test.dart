@@ -66,4 +66,37 @@ void main() {
 
     expect(preview.statusReprodutivo, AnimalReproductiveStatus.pregnant);
   });
+
+  test('secagem muda só a situação produtiva: a vaca continua prenha', () {
+    final preview = previewAnimalAfterVisit(
+      animal.copyWith(situacaoProdutiva: AnimalProductiveSituation.lactating),
+      VisitAnimalEntryModel(
+        animalId: 1,
+        dataSecagemEfetiva: DateTime(2025, 12, 16),
+      ),
+    );
+
+    expect(preview.situacaoProdutiva, AnimalProductiveSituation.dry);
+    expect(preview.statusReprodutivo, AnimalReproductiveStatus.pregnant);
+  });
+
+  test('seca na coluna reprodutiva vira situação produtiva', () {
+    final preview = previewAnimalAfterVisit(
+      animal,
+      VisitAnimalEntryModel(animalId: 1, situacaoReprodutiva: 'seca'),
+    );
+
+    expect(preview.situacaoProdutiva, AnimalProductiveSituation.dry);
+    expect(preview.statusReprodutivo, AnimalReproductiveStatus.pregnant);
+  });
+
+  test('parto volta a vaca seca para lactante', () {
+    final preview = previewAnimalAfterVisit(
+      animal.copyWith(situacaoProdutiva: AnimalProductiveSituation.dry),
+      VisitAnimalEntryModel(animalId: 1, dataUltimoParto: DateTime(2026, 2, 16)),
+    );
+
+    expect(preview.situacaoProdutiva, AnimalProductiveSituation.lactating);
+    expect(preview.statusReprodutivo, AnimalReproductiveStatus.pending);
+  });
 }

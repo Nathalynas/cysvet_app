@@ -8,7 +8,9 @@ import 'package:cysvet_app/models/visit_summary_model.dart';
 /// O resumo oficial é recalculado no servidor a partir dos eventos gerados
 /// pela visita (`ResumoReprodutivoAnimalService`) e chega pelo pull,
 /// substituindo esta prévia. Aqui só se aplicam as mesmas regras de parto,
-/// última IA e situação observada, sem considerar outras visitas pendentes.
+/// última IA, secagem e situação observada, sem considerar outras visitas
+/// pendentes. A secagem muda só a situação produtiva: a vaca seca continua
+/// prenha.
 AnimalSummaryModel previewAnimalAfterVisit(
   AnimalSummaryModel animal,
   VisitAnimalEntryModel entry,
@@ -17,12 +19,14 @@ AnimalSummaryModel previewAnimalAfterVisit(
   var ultimoParto = animal.dataUltimoParto;
   var ultimaIa = animal.dataInseminacao;
   var status = animal.statusReprodutivo;
+  var produtiva = animal.situacaoProdutiva;
 
   final parto = entry.dataUltimoParto;
   if (parto != null && (ultimoParto == null || parto.isAfter(ultimoParto))) {
     lactacoes++;
     ultimoParto = parto;
     status = AnimalReproductiveStatus.pending;
+    produtiva = AnimalProductiveSituation.lactating;
   }
 
   final ia = entry.dataUltimaIa;
@@ -38,14 +42,35 @@ AnimalSummaryModel previewAnimalAfterVisit(
     ultimaIa = null;
   }
 
-  status = _statusObservado(entry.situacaoReprodutiva) ?? status;
+  if (entry.dataSecagemEfetiva != null) {
+    produtiva = AnimalProductiveSituation.dry;
+  }
+
+  final observado = _statusObservado(entry.situacaoReprodutiva);
+  if (observado == AnimalReproductiveStatus.dry) {
+    // "Seca" na coluna reprodutiva é a situação produtiva.
+    produtiva = AnimalProductiveSituation.dry;
+  } else if (observado != null) {
+    status = observado;
+  }
+  produtiva = _situacaoProdutivaObservada(entry.situacaoProdutiva) ?? produtiva;
 
   return animal.copyWith(
     numeroLactacao: lactacoes,
     dataUltimoParto: ultimoParto,
     dataInseminacao: ultimaIa,
     statusReprodutivo: status,
+    situacaoProdutiva: produtiva,
   );
+}
+
+String? _situacaoProdutivaObservada(String? value) {
+  final normalized = value?.trim().toLowerCase().replaceAll('-', ' ');
+  if (normalized == null || normalized.isEmpty) return null;
+  for (final situacao in AnimalProductiveSituation.values) {
+    if (situacao == normalized) return situacao;
+  }
+  return null;
 }
 
 AnimalReproductiveStatus? _statusObservado(String? value) {
