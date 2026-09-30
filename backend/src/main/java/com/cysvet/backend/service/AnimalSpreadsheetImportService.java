@@ -8,6 +8,7 @@ import com.cysvet.backend.dto.animal.AnimalSpreadsheetPreviewResponse;
 import com.cysvet.backend.dto.animal.AnimalSpreadsheetRowResponse;
 import com.cysvet.backend.entity.Propriedade;
 import com.cysvet.backend.entity.StatusAnimal;
+import com.cysvet.backend.entity.SituacaoProdutivaAnimal;
 import com.cysvet.backend.entity.StatusReprodutivoAnimal;
 import com.cysvet.backend.repository.PropriedadeRepository;
 import com.cysvet.backend.util.Textos;
@@ -384,6 +385,10 @@ public class AnimalSpreadsheetImportService {
 
         AnimalRequest toRequest(Map<String, String> v) {
             boolean isHeifer = isHeifer(v.get("situacaoProdutiva"));
+            // Valor fora da lista (texto livre) nao recusa a linha: fica sem situacao produtiva.
+            SituacaoProdutivaAnimal situacaoProdutiva = isHeifer
+                    ? SituacaoProdutivaAnimal.NOVILHA
+                    : SituacaoProdutivaAnimal.fromValueOrNull(v.get("situacaoProdutiva"));
             Integer numeroLactacao = integer(v, "numeroLactacao");
             LocalDate dataInseminacao = date(v, "dataInseminacao");
             StatusReprodutivoAnimal statusReprodutivo = status(v.get("statusReprodutivo"));
@@ -408,6 +413,7 @@ public class AnimalSpreadsheetImportService {
                     blankToNull(v.get("touroIa")),
                     blankToNull(v.get("historicoReprodutivo")),
                     statusReprodutivo,
+                    situacaoProdutiva,
                     StatusAnimal.ATIVO,
                     null);
         }

@@ -2,6 +2,7 @@ package com.cysvet.backend.service;
 
 import com.cysvet.backend.entity.Animal;
 import com.cysvet.backend.entity.EventoReprodutivo;
+import com.cysvet.backend.entity.SituacaoProdutivaAnimal;
 import com.cysvet.backend.entity.StatusReprodutivoAnimal;
 import com.cysvet.backend.entity.TipoEventoReprodutivo;
 import com.cysvet.backend.repository.EventoReprodutivoRepository;
@@ -19,8 +20,11 @@ import org.springframework.transaction.annotation.Transactional;
 
 /**
  * Recalcula o resumo reprodutivo do animal (lactacoes, ultimo parto, ultima IA,
- * touro e status reprodutivo) a partir da base informada manualmente e dos
- * eventos, sempre em ordem cronologica pela data do evento.
+ * touro, status reprodutivo e situacao produtiva) a partir da base informada
+ * manualmente e dos eventos, sempre em ordem cronologica pela data do evento.
+ *
+ * <p>Situacao reprodutiva e produtiva sao independentes: a secagem muda so a
+ * produtiva (a vaca seca continua prenha) e o parto volta a vaca para lactante.
  *
  * <p>Como o resultado nao depende da ordem em que os eventos chegam ao servidor,
  * visitas feitas offline e sincronizadas fora de ordem produzem o mesmo resumo.
@@ -83,16 +87,21 @@ public class ResumoReprodutivoAnimalService {
         animal.setDataInseminacao(ultimaIa);
         animal.setTouroIa(touro);
         animal.setStatusReprodutivo(calcularStatus(animal, eventos));
+        animal.setSituacaoProdutiva(calcularSituacaoProdutiva(animal, eventos, lactacoes));
     }
 
     private StatusReprodutivoAnimal calcularStatus(Animal animal, List<EventoReprodutivo> eventos) {
         StatusReprodutivoAnimal status = null;
-        StatusReprodutivoAnimal statusBase = animal.getBaseStatusReprodutivo();
+        // "Seca" como situacao reprodutiva (dado antigo) e produtiva: nao vale como base.
+        StatusReprodutivoAnimal statusBase = animal.getBaseStatusReprodutivo() == StatusReprodutivoAnimal.DRY
+                ? null
+                : animal.getBaseStatusReprodutivo();
+        Instant baseEm = statusBase == null ? null : animal.getBaseStatusReprodutivoEm();
 
         // Eventos anteriores a correcao manual sao sobrepostos por ela; os
         // posteriores prevalecem sobre ela.
         for (EventoReprodutivo evento : eventos) {
-            if (!ocorreDepoisDaBase(evento, animal)) {
+            if (!ocorreDepoisDaBase(evento, baseEm)) {
                 status = aplicarStatus(status, evento);
             }
         }
@@ -100,16 +109,42 @@ public class ResumoReprodutivoAnimalService {
             status = statusBase;
         }
         for (EventoReprodutivo evento : eventos) {
-            if (ocorreDepoisDaBase(evento, animal)) {
+            if (ocorreDepoisDaBase(evento, baseEm)) {
                 status = aplicarStatus(status, evento);
             }
         }
         return status;
     }
 
-    private boolean ocorreDepoisDaBase(EventoReprodutivo evento, Animal animal) {
-        Instant baseEm = animal.getBaseStatusReprodutivoEm();
-        if (animal.getBaseStatusReprodutivo() == null || baseEm == null) {
+    private SituacaoProdutivaAnimal calcularSituacaoProdutiva(Animal animal, List<EventoReprodutivo> eventos,
+                                                            int lactacoes) {
+        SituacaoProdutivaAnimal situacao = null;
+        SituacaoProdutivaAnimal situacaoBase = animal.getBaseSituacaoProdutiva();
+        Instant baseEm = situacaoBase == null ? null : animal.getBaseSituacaoProdutivaEm();
+
+        // Mesma regra da situacao reprodutiva em relacao a correcao manual.
+        for (EventoReprodutivo evento : eventos) {
+            if (!ocorreDepoisDaBase(evento, baseEm)) {
+                situacao = aplicarSituacaoProdutiva(situacao, evento);
+            }
+        }
+        if (situacaoBase != null) {
+            situacao = situacaoBase;
+        }
+        for (EventoReprodutivo evento : eventos) {
+            if (ocorreDepoisDaBase(evento, baseEm)) {
+                situacao = aplicarSituacaoProdutiva(situacao, evento);
+            }
+        }
+        if (situacao == null) {
+            // Nada informado: quem ja pariu esta em lactacao; quem nao pariu e novilha.
+            situacao = lactacoes > 0 ? SituacaoProdutivaAnimal.LACTANTE : SituacaoProdutivaAnimal.NOVILHA;
+        }
+        return situacao;
+    }
+
+    private boolean ocorreDepoisDaBase(EventoReprodutivo evento, Instant baseEm) {
+        if (baseEm == null) {
             return true;
         }
         LocalDate diaDaBase = baseEm.atZone(FUSO_FAZENDA).toLocalDate();
@@ -126,7 +161,8 @@ public class ResumoReprodutivoAnimalService {
                     ? atual
                     : evento.getPrenhezConfirmada() ? StatusReprodutivoAnimal.PREGNANT : StatusReprodutivoAnimal.EMPTY;
             case CALVING -> StatusReprodutivoAnimal.PENDING;
-            case DRY_OFF -> StatusReprodutivoAnimal.DRY;
+            // Secagem e produtiva: a situacao reprodutiva (ex.: prenha) continua.
+            case DRY_OFF -> atual;
             case GESTATIONAL_LOSS -> StatusReprodutivoAnimal.EMPTY;
             case REPRODUCTIVE_STATUS_CHECK -> statusObservado(evento, atual);
             case POST_PARTUM_COMPLICATION, HEALTH_TREATMENT, MILK_CONTROL, LOT_MOVEMENT, DISCARD, DEATH -> atual;
@@ -139,10 +175,34 @@ public class ResumoReprodutivoAnimalService {
             return atual;
         }
         try {
-            return StatusReprodutivoAnimal.fromValue(valor);
+            StatusReprodutivoAnimal observado = StatusReprodutivoAnimal.fromValue(valor);
+            return observado == StatusReprodutivoAnimal.DRY ? atual : observado;
         } catch (IllegalArgumentException exception) {
             return atual;
         }
+    }
+
+    private SituacaoProdutivaAnimal aplicarSituacaoProdutiva(SituacaoProdutivaAnimal atual, EventoReprodutivo evento) {
+        return switch (evento.getTipo()) {
+            case CALVING -> SituacaoProdutivaAnimal.LACTANTE;
+            case DRY_OFF -> SituacaoProdutivaAnimal.SECA;
+            case REPRODUCTIVE_STATUS_CHECK -> situacaoProdutivaObservada(evento, atual);
+            case INSEMINATION, PREGNANCY_DIAGNOSIS, GESTATIONAL_LOSS, POST_PARTUM_COMPLICATION, HEALTH_TREATMENT,
+                 MILK_CONTROL, LOT_MOVEMENT, DISCARD, DEATH -> atual;
+        };
+    }
+
+    private SituacaoProdutivaAnimal situacaoProdutivaObservada(EventoReprodutivo evento, SituacaoProdutivaAnimal atual) {
+        SituacaoProdutivaAnimal observada =
+                SituacaoProdutivaAnimal.fromValueOrNull(detalheTexto(evento, "situacaoProdutiva"));
+        if (observada != null) {
+            return observada;
+        }
+        // Visitas antigas registravam "seca" na situacao reprodutiva.
+        String status = detalheTexto(evento, "status");
+        return status != null && SituacaoProdutivaAnimal.fromValueOrNull(status) == SituacaoProdutivaAnimal.SECA
+                ? SituacaoProdutivaAnimal.SECA
+                : atual;
     }
 
     // No mesmo dia: o parto encerra o ciclo anterior, a IA vem depois e a

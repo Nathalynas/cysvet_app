@@ -1,5 +1,6 @@
 package com.cysvet.backend.dto.animal;
 
+import com.cysvet.backend.entity.SituacaoProdutivaAnimal;
 import com.cysvet.backend.entity.StatusAnimal;
 import com.cysvet.backend.entity.StatusReprodutivoAnimal;
 import com.fasterxml.jackson.annotation.JsonAlias;
@@ -54,6 +55,10 @@ public record AnimalRequest(
         @Schema(description = "Status reprodutivo atual do animal.")
         @JsonAlias("status_reprodutivo")
         StatusReprodutivoAnimal statusReprodutivo,
+        @Schema(description = "Situacao produtiva atual (lactante, seca, novilha, pre parto). Ausente = mantem a atual.",
+                example = "lactante")
+        @JsonAlias("situacao_produtiva")
+        SituacaoProdutivaAnimal situacaoProdutiva,
         @Schema(description = "Status atual do animal.")
         StatusAnimal status,
         @Schema(description = "Data da ultima atualizacao enviada pelo cliente.", example = "2026-05-12T18:30:00Z")

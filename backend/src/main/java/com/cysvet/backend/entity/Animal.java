@@ -48,6 +48,10 @@ public class Animal extends TenantAwareEntity {
     private StatusReprodutivoAnimal statusReprodutivo;
 
     @Enumerated(EnumType.STRING)
+    @Column(name = "situacao_produtiva", length = 32)
+    private SituacaoProdutivaAnimal situacaoProdutiva;
+
+    @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false, length = 32)
     private StatusAnimal status = StatusAnimal.ATIVO;
 
@@ -71,6 +75,13 @@ public class Animal extends TenantAwareEntity {
 
     @Column(name = "base_status_reprodutivo_em")
     private Instant baseStatusReprodutivoEm;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "base_situacao_produtiva", length = 32)
+    private SituacaoProdutivaAnimal baseSituacaoProdutiva;
+
+    @Column(name = "base_situacao_produtiva_em")
+    private Instant baseSituacaoProdutivaEm;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "id_propriedade", nullable = false)

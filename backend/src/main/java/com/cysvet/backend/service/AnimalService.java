@@ -17,6 +17,7 @@ import com.cysvet.backend.entity.AnimalHistorico;
 import com.cysvet.backend.entity.Lote;
 import com.cysvet.backend.entity.Propriedade;
 import com.cysvet.backend.entity.StatusAnimal;
+import com.cysvet.backend.entity.SituacaoProdutivaAnimal;
 import com.cysvet.backend.entity.StatusReprodutivoAnimal;
 import com.cysvet.backend.entity.TipoHistoricoAnimal;
 import com.cysvet.backend.entity.Usuario;
@@ -69,6 +70,7 @@ public class AnimalService {
         Animal animal = new Animal();
         apply(animal, request, user);
         Animal saved = animalRepository.save(animal);
+        resumoReprodutivoAnimalService.recalcular(saved);
         registerHistory(saved, user, TipoHistoricoAnimal.CADASTRO, "Animal cadastrado.");
         deletedRecordService.clearDeletionMarker(SyncEntityNames.ANIMAL, saved.getIdExterno());
         return toResponse(saved);
@@ -170,7 +172,18 @@ public class AnimalService {
         }
         ensureCodeIsUnique(animal, property, request.codigo());
 
-        applyReproductiveBase(animal, request);
+        // "Seca" escolhida como situacao reprodutiva (app antigo, planilha) e a
+        // situacao produtiva; a reprodutiva fica como estava.
+        StatusReprodutivoAnimal statusReprodutivo = request.statusReprodutivo();
+        SituacaoProdutivaAnimal situacaoProdutiva = request.situacaoProdutiva();
+        if (statusReprodutivo == StatusReprodutivoAnimal.DRY) {
+            statusReprodutivo = animal.getStatusReprodutivo();
+            if (situacaoProdutiva == null) {
+                situacaoProdutiva = SituacaoProdutivaAnimal.SECA;
+            }
+        }
+
+        applyReproductiveBase(animal, request, statusReprodutivo, situacaoProdutiva);
 
         animal.setIdExterno(request.idExterno());
         animal.setPropriedade(property);
@@ -183,7 +196,10 @@ public class AnimalService {
         animal.setDataInseminacao(request.dataInseminacao());
         animal.setTouroIa(request.touroIa());
         animal.setHistoricoReprodutivo(request.historicoReprodutivo());
-        animal.setStatusReprodutivo(request.statusReprodutivo());
+        animal.setStatusReprodutivo(statusReprodutivo);
+        if (situacaoProdutiva != null) {
+            animal.setSituacaoProdutiva(situacaoProdutiva);
+        }
         if (request.status() != null) {
             animal.setStatus(request.status());
         } else if (animal.getStatus() == null) {
@@ -207,7 +223,9 @@ public class AnimalService {
     // So os campos alterados pelo usuario viram base. O cliente reenvia o
     // resumo inteiro a cada edicao; tratar valores inalterados como correcao
     // faria a base sobrepor eventos que ainda estao chegando pelo sync.
-    private void applyReproductiveBase(Animal animal, AnimalRequest request) {
+    private void applyReproductiveBase(Animal animal, AnimalRequest request,
+                                       StatusReprodutivoAnimal statusReprodutivo,
+                                       SituacaoProdutivaAnimal situacaoProdutiva) {
         boolean isNew = animal.getId() == null;
 
         if (isNew
@@ -222,9 +240,14 @@ public class AnimalService {
             animal.setBaseDataInseminacao(request.dataInseminacao());
             animal.setBaseTouroIa(request.touroIa());
         }
-        if (isNew || animal.getStatusReprodutivo() != request.statusReprodutivo()) {
-            animal.setBaseStatusReprodutivo(request.statusReprodutivo());
+        if (isNew || animal.getStatusReprodutivo() != statusReprodutivo) {
+            animal.setBaseStatusReprodutivo(statusReprodutivo);
             animal.setBaseStatusReprodutivoEm(Instant.now());
+        }
+        // Clientes que nao enviam a situacao produtiva mantem a atual.
+        if (situacaoProdutiva != null && (isNew || animal.getSituacaoProdutiva() != situacaoProdutiva)) {
+            animal.setBaseSituacaoProdutiva(situacaoProdutiva);
+            animal.setBaseSituacaoProdutivaEm(Instant.now());
         }
     }
 
@@ -276,6 +299,12 @@ public class AnimalService {
                             reproductiveStatusLabel(previous.statusReprodutivo()),
                             reproductiveStatusLabel(animal.getStatusReprodutivo())));
         }
+        if (!Objects.equals(previous.situacaoProdutiva(), animal.getSituacaoProdutiva())) {
+            registerHistory(animal, user, TipoHistoricoAnimal.ATUALIZACAO,
+                    "Situação produtiva alterada de %s para %s.".formatted(
+                            productiveSituationLabel(previous.situacaoProdutiva()),
+                            productiveSituationLabel(animal.getSituacaoProdutiva())));
+        }
         if (previous.hasOtherChanges(animal)) {
             registerHistory(animal, user, TipoHistoricoAnimal.ATUALIZACAO,
                     "Dados do animal atualizados pela %s.".formatted(source));
@@ -307,6 +336,10 @@ public class AnimalService {
         return status == null ? "Não informado" : status.getValue();
     }
 
+    private String productiveSituationLabel(SituacaoProdutivaAnimal situacao) {
+        return situacao == null ? "Não informada" : situacao.getValue();
+    }
+
     private record AnimalSnapshot(
             Long propriedadeId,
             Long loteId,
@@ -319,6 +352,7 @@ public class AnimalService {
             String touroIa,
             String historicoReprodutivo,
             StatusReprodutivoAnimal statusReprodutivo,
+            SituacaoProdutivaAnimal situacaoProdutiva,
             StatusAnimal status
     ) {
         private static AnimalSnapshot from(Animal animal) {
@@ -334,6 +368,7 @@ public class AnimalService {
                     animal.getTouroIa(),
                     animal.getHistoricoReprodutivo(),
                     animal.getStatusReprodutivo(),
+                    animal.getSituacaoProdutiva(),
                     animal.getStatus());
         }
 
@@ -384,6 +419,7 @@ public class AnimalService {
                 diasEmLactacao,
                 animal.getHistoricoReprodutivo(),
                 animal.getStatusReprodutivo(),
+                animal.getSituacaoProdutiva(),
                 animal.getStatus(),
                 animal.getDataCriacao(),
                 animal.getDataAtualizacao(),

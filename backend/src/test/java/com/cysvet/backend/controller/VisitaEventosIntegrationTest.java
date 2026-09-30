@@ -277,6 +277,92 @@ class VisitaEventosIntegrationTest {
         assertEquals("prenha", animal.path("statusReprodutivo").asText());
     }
 
+    @Test
+    void secagemMudaSoASituacaoProdutivaEAVacaContinuaPrenha() throws Exception {
+        AuthContext auth = registerAndAuthenticate("visita.secagem@example.com");
+        long propertyId = createProperty(auth, "prop-ve-sp");
+        createAnimal(auth, propertyId, "animal-ve-sp", "VE-SP", "pev");
+        assertEquals("lactante", animal(auth, "animal-ve-sp").path("situacaoProdutiva").asText());
+        LocalDate ia = HOJE.plusDays(1);
+
+        createVisit(auth, visitPayload("visit-ve-sp1", "prop-ve-sp", ia, """
+                { "animalIdExterno": "animal-ve-sp", "situacaoProdutiva": "lactante",
+                  "situacaoReprodutiva": "inseminada st", "dataUltimaIa": "%s" }
+                """.formatted(ia)));
+        createVisit(auth, visitPayload("visit-ve-sp2", "prop-ve-sp", HOJE.plusDays(40), """
+                { "animalIdExterno": "animal-ve-sp", "situacaoReprodutiva": "prenha" }
+                """));
+        // So a secagem efetiva, sem situacao informada: gera apenas DRY_OFF.
+        createVisit(auth, visitPayload("visit-ve-sp3", "prop-ve-sp", HOJE.plusDays(221), """
+                { "animalIdExterno": "animal-ve-sp", "dataSecagemEfetiva": "%s" }
+                """.formatted(ia.plusDays(220))));
+
+        JsonNode seca = animal(auth, "animal-ve-sp");
+        assertEquals("prenha", seca.path("statusReprodutivo").asText());
+        assertEquals("seca", seca.path("situacaoProdutiva").asText());
+
+        LocalDate parto = ia.plusDays(282);
+        createVisit(auth, visitPayload("visit-ve-sp4", "prop-ve-sp", parto, """
+                { "animalIdExterno": "animal-ve-sp", "dataUltimoParto": "%s" }
+                """.formatted(parto)));
+
+        JsonNode pariu = animal(auth, "animal-ve-sp");
+        assertEquals("lactante", pariu.path("situacaoProdutiva").asText());
+        assertEquals("pending", pariu.path("statusReprodutivo").asText());
+        assertEquals(2, pariu.path("numeroLactacao").asInt());
+    }
+
+    @Test
+    void secaInformadaComoSituacaoReprodutivaViraSituacaoProdutiva() throws Exception {
+        AuthContext auth = registerAndAuthenticate("visita.seca.reprodutiva@example.com");
+        long propertyId = createProperty(auth, "prop-ve-sr");
+
+        // Cadastro vindo do app antigo, que oferecia "seca" na lista reprodutiva.
+        JsonNode cadastrada = createAnimal(auth, propertyId, "animal-ve-sr1", "VE-SR1", "seca");
+        assertTrue(cadastrada.path("statusReprodutivo").isNull());
+        assertEquals("seca", cadastrada.path("situacaoProdutiva").asText());
+
+        createAnimal(auth, propertyId, "animal-ve-sr2", "VE-SR2", "prenha");
+        createVisit(auth, visitPayload("visit-ve-sr", "prop-ve-sr", HOJE.plusDays(1), """
+                { "animalIdExterno": "animal-ve-sr2", "situacaoReprodutiva": "seca" }
+                """));
+
+        JsonNode animal = animal(auth, "animal-ve-sr2");
+        assertEquals("prenha", animal.path("statusReprodutivo").asText());
+        assertEquals("seca", animal.path("situacaoProdutiva").asText());
+        JsonNode check = eventOfType(listEvents(auth, animal.path("id").asLong()), "REPRODUCTIVE_STATUS_CHECK");
+        assertTrue(check.path("detalhes").path("status").isMissingNode());
+        assertEquals("seca", check.path("detalhes").path("situacaoProdutiva").asText());
+    }
+
+    @Test
+    void correcaoManualDaSituacaoProdutivaViraBaseMasPartoPosteriorPrevalece() throws Exception {
+        AuthContext auth = registerAndAuthenticate("visita.produtiva.manual@example.com");
+        long propertyId = createProperty(auth, "prop-ve-pm");
+        createAnimal(auth, propertyId, "animal-ve-pm", "VE-PM", "prenha");
+
+        ObjectNode payload = (ObjectNode) animal(auth, "animal-ve-pm").deepCopy();
+        payload.put("situacaoProdutiva", "seca");
+        mockMvc.perform(put("/api/animals/" + payload.path("id").asLong())
+                        .header("Authorization", auth.authorization())
+                        .header("empresaid", auth.tenantId())
+                        .contentType(APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(payload)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.situacaoProdutiva").value("seca"))
+                .andExpect(jsonPath("$.statusReprodutivo").value("prenha"));
+
+        // Reenviar o animal sem mudar nada (como o app faz) nao mexe na base.
+        updateAnimalReproductiveStatus(auth, "animal-ve-pm", "prenha");
+        assertEquals("seca", animal(auth, "animal-ve-pm").path("situacaoProdutiva").asText());
+
+        LocalDate parto = HOJE.plusDays(10);
+        createVisit(auth, visitPayload("visit-ve-pm", "prop-ve-pm", parto, """
+                { "animalIdExterno": "animal-ve-pm", "dataUltimoParto": "%s" }
+                """.formatted(parto)));
+        assertEquals("lactante", animal(auth, "animal-ve-pm").path("situacaoProdutiva").asText());
+    }
+
     private long createProperty(AuthContext auth, String idExterno) throws Exception {
         return readResponse(mockMvc.perform(post("/api/properties")
                         .header("Authorization", auth.authorization())

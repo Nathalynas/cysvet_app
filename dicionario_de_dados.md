@@ -1,6 +1,6 @@
 # Dicionario de Dados
 
-Schema apos a migration **V16** (MySQL 8). O Hibernate roda com `ddl-auto: validate`: o schema e definido
+Schema apos a migration **V17** (MySQL 8). O Hibernate roda com `ddl-auto: validate`: o schema e definido
 somente pelas migrations Flyway em `backend/src/main/resources/db/migration`.
 
 **Colunas comuns** (`BaseEntity`, presentes em todas as tabelas):
@@ -118,6 +118,7 @@ em ordem cronologica (`ResumoReprodutivoAnimalService`).
 | `data_inseminacao` | DATE | Resumo: ultima IA |
 | `touro_ia` | VARCHAR(255) | Resumo: touro da ultima IA |
 | `status_reprodutivo` | VARCHAR(32) | Resumo: situacao reprodutiva (nome do enum `StatusReprodutivoAnimal`, ex.: `PREGNANT`) |
+| `situacao_produtiva` | VARCHAR(32) | Resumo: situacao produtiva (`LACTANTE`, `SECA`, `NOVILHA`, `PRE_PARTO`), independente da reprodutiva (V17) |
 | `historico_reprodutivo` | VARCHAR(2000) | Decisao/observacao livre |
 | `base_numero_lactacao` | INT, NN | Base: lactacoes informadas no cadastro, importacao ou correcao |
 | `base_data_ultimo_parto` | DATE | Base: ultimo parto informado |
@@ -125,6 +126,8 @@ em ordem cronologica (`ResumoReprodutivoAnimalService`).
 | `base_touro_ia` | VARCHAR(255) | Base: touro informado |
 | `base_status_reprodutivo` | VARCHAR(32) | Base: situacao informada |
 | `base_status_reprodutivo_em` | DATETIME(6) | Quando a situacao da base foi informada (eventos anteriores sao sobrepostos, posteriores prevalecem) |
+| `base_situacao_produtiva` | VARCHAR(32) | Base: situacao produtiva informada (V17) |
+| `base_situacao_produtiva_em` | DATETIME(6) | Quando a situacao produtiva da base foi informada (V17) |
 | `id_usuario` | BIGINT, NN, FK `usuario` | Quem cadastrou |
 
 Unico: `(tenant_id, id_externo)`.

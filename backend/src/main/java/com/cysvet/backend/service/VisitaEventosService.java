@@ -4,6 +4,7 @@ import com.cysvet.backend.dto.sync.SyncEntityNames;
 import com.cysvet.backend.dto.visita.VisitaAnimalItemDto;
 import com.cysvet.backend.entity.Animal;
 import com.cysvet.backend.entity.EventoReprodutivo;
+import com.cysvet.backend.entity.SituacaoProdutivaAnimal;
 import com.cysvet.backend.entity.StatusReprodutivoAnimal;
 import com.cysvet.backend.entity.TipoEventoReprodutivo;
 import com.cysvet.backend.entity.Visita;
@@ -185,10 +186,22 @@ public class VisitaEventosService {
         }
 
         StatusReprodutivoAnimal status = statusInformado(item.situacaoReprodutiva());
-        if (status != null) {
+        SituacaoProdutivaAnimal situacaoProdutiva = SituacaoProdutivaAnimal.fromValueOrNull(item.situacaoProdutiva());
+        if (status == StatusReprodutivoAnimal.DRY) {
+            // "Seca" na coluna reprodutiva e a situacao produtiva.
+            status = null;
+            if (situacaoProdutiva == null) {
+                situacaoProdutiva = SituacaoProdutivaAnimal.SECA;
+            }
+        }
+        if (status != null || situacaoProdutiva != null) {
             Map<String, Object> detalhes = new LinkedHashMap<>();
-            detalhes.put("status", status.getValue());
-            putIfPresent(detalhes, "situacaoProdutiva", item.situacaoProdutiva());
+            if (status != null) {
+                detalhes.put("status", status.getValue());
+            }
+            if (situacaoProdutiva != null) {
+                detalhes.put("situacaoProdutiva", situacaoProdutiva.getValue());
+            }
             putIfPresent(detalhes, "diagnostico", item.diagnostico());
             eventos.add(evento(visita, animal, TipoEventoReprodutivo.REPRODUCTIVE_STATUS_CHECK,
                     visita.getDataVisita(), detalhes, textoOuNulo(item.decisao())));
