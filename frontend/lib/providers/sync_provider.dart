@@ -234,7 +234,7 @@ class SyncController extends Notifier<SyncState> {
   Future<int> _pushBatch(List<SyncMutation> batch) async {
     try {
       final results = await ref.read(syncRepositoryProvider).push(batch);
-      return _applyResults(batch, results);
+      return await _applyResults(batch, results);
     } on DioException catch (error) {
       final statusCode = error.response?.statusCode;
       final rejectedByServer =
