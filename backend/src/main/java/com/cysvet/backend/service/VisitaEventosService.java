@@ -17,6 +17,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -69,16 +70,18 @@ public class VisitaEventosService {
     @Transactional
     public void removerDaVisita(Visita visita, Long idUsuario) {
         Map<Long, Animal> afetados = new LinkedHashMap<>();
+        List<EventoReprodutivo> eventos = eventoReprodutivoRepository.findAllByVisitaId(visita.getId());
         Set<FatoUnico> removidos = new HashSet<>();
-        for (EventoReprodutivo evento : eventoReprodutivoRepository.findAllByVisitaId(visita.getId())) {
-            FatoUnico.de(evento).ifPresent(removidos::add);
-            remover(evento, idUsuario, afetados);
-        }
+        eventos.forEach(evento -> FatoUnico.de(evento).ifPresent(removidos::add));
+        remover(eventos, idUsuario, afetados);
         eventoReprodutivoRepository.flush();
         recriarEmOutrasVisitas(visita, removidos, afetados);
         recalcular(afetados);
     }
 
+    // As consultas por animal e por evento (fato ja existe? marcador de exclusao?)
+    // sao feitas uma vez para a visita inteira: com ~300 animais e 3 eventos cada,
+    // consultar dentro do laco eram ~3 mil queries por visita sincronizada.
     private Set<FatoUnico> regenerarSemPropagar(Visita visita, Map<Long, Animal> afetados) {
         Map<String, EventoReprodutivo> existentes = new LinkedHashMap<>();
         for (EventoReprodutivo evento : eventoReprodutivoRepository.findAllByVisitaId(visita.getId())) {
@@ -88,22 +91,28 @@ public class VisitaEventosService {
 
         IndiceDeAnimais animais = new IndiceDeAnimais(
                 animalRepository.findAllByPropriedadeIdOrderByCodigoAsc(visita.getPropriedade().getId()));
-        Set<String> processados = new HashSet<>();
-
+        List<ItemDoAnimal> itens = new ArrayList<>();
         for (VisitaAnimalItemDto item : lerItens(visita)) {
             Animal animal = animais.resolver(item);
-            if (animal == null) {
-                continue;
+            if (animal != null) {
+                itens.add(new ItemDoAnimal(item, animal));
             }
-            for (EventoGerado gerado : gerar(visita, item, animal)) {
+        }
+
+        Set<FatoUnico> fatosGravados = fatosDosAnimais(itens.stream().map(i -> i.animal().getId()).toList());
+        Set<String> processados = new HashSet<>();
+        List<String> gravados = new ArrayList<>();
+
+        for (ItemDoAnimal itemDoAnimal : itens) {
+            Animal animal = itemDoAnimal.animal();
+            for (EventoGerado gerado : gerar(visita, itemDoAnimal.item(), animal)) {
                 if (!processados.add(gerado.idExterno())) {
                     continue;
                 }
+                FatoUnico fato = new FatoUnico(animal.getId(), gerado.tipo(), gerado.data());
                 EventoReprodutivo evento = existentes.remove(gerado.idExterno());
                 if (evento == null) {
-                    if (FATOS_UNICOS.contains(gerado.tipo())
-                            && eventoReprodutivoRepository.existsByAnimalIdAndTipoAndDataEvento(
-                                    animal.getId(), gerado.tipo(), gerado.data())) {
+                    if (FATOS_UNICOS.contains(gerado.tipo()) && fatosGravados.contains(fato)) {
                         continue;
                     }
                     evento = new EventoReprodutivo();
@@ -112,16 +121,18 @@ public class VisitaEventosService {
                 }
                 preencher(evento, visita, animal, gerado);
                 eventoReprodutivoRepository.save(evento);
-                deletedRecordService.clearDeletionMarker(SyncEntityNames.EVENT, evento.getIdExterno());
+                if (FATOS_UNICOS.contains(gerado.tipo())) {
+                    fatosGravados.add(fato);
+                }
+                gravados.add(evento.getIdExterno());
                 afetados.put(animal.getId(), animal);
             }
         }
+        deletedRecordService.clearDeletionMarkers(SyncEntityNames.EVENT, gravados);
 
         Set<FatoUnico> removidos = new HashSet<>();
-        for (EventoReprodutivo sobra : existentes.values()) {
-            FatoUnico.de(sobra).ifPresent(removidos::add);
-            remover(sobra, visita.getUsuario().getId(), afetados);
-        }
+        existentes.values().forEach(sobra -> FatoUnico.de(sobra).ifPresent(removidos::add));
+        remover(existentes.values(), visita.getUsuario().getId(), afetados);
         eventoReprodutivoRepository.flush();
         return removidos;
     }
@@ -140,6 +151,8 @@ public class VisitaEventosService {
         IndiceDeAnimais animais = new IndiceDeAnimais(
                 animalRepository.findAllByPropriedadeIdOrderByCodigoAsc(visita.getPropriedade().getId()));
 
+        // Candidatos na ordem de preferencia (visita mais recente primeiro).
+        List<Candidato> candidatos = new ArrayList<>();
         for (Visita outra : visitaRepository.findAllByPropriedadeIdOrderByDataVisitaDesc(visita.getPropriedade().getId())) {
             if (outra.getId().equals(visita.getId())) {
                 continue;
@@ -150,22 +163,48 @@ public class VisitaEventosService {
                     continue;
                 }
                 for (EventoGerado gerado : gerar(outra, item, animal)) {
-                    if (!removidos.contains(new FatoUnico(animal.getId(), gerado.tipo(), gerado.data()))
-                            || eventoReprodutivoRepository.existsByAnimalIdAndTipoAndDataEvento(
-                                    animal.getId(), gerado.tipo(), gerado.data())) {
-                        continue;
+                    FatoUnico fato = new FatoUnico(animal.getId(), gerado.tipo(), gerado.data());
+                    if (removidos.contains(fato)) {
+                        candidatos.add(new Candidato(outra, animal, gerado, fato));
                     }
-                    EventoReprodutivo evento = eventoReprodutivoRepository.findByIdExterno(gerado.idExterno())
-                            .orElseGet(EventoReprodutivo::new);
-                    evento.setIdExterno(gerado.idExterno());
-                    evento.setVisita(outra);
-                    preencher(evento, outra, animal, gerado);
-                    eventoReprodutivoRepository.save(evento);
-                    deletedRecordService.clearDeletionMarker(SyncEntityNames.EVENT, evento.getIdExterno());
-                    afetados.put(animal.getId(), animal);
                 }
             }
         }
+        if (candidatos.isEmpty()) {
+            return;
+        }
+
+        Set<FatoUnico> fatosGravados = fatosDosAnimais(animaisDosFatos);
+        Map<String, EventoReprodutivo> porIdExterno = new HashMap<>();
+        eventoReprodutivoRepository.findAllByIdExternoIn(
+                        candidatos.stream().map(candidato -> candidato.gerado().idExterno()).distinct().toList())
+                .forEach(evento -> porIdExterno.put(evento.getIdExterno(), evento));
+        List<String> gravados = new ArrayList<>();
+
+        for (Candidato candidato : candidatos) {
+            if (fatosGravados.contains(candidato.fato())) {
+                continue;
+            }
+            EventoGerado gerado = candidato.gerado();
+            EventoReprodutivo evento = porIdExterno.computeIfAbsent(gerado.idExterno(), id -> new EventoReprodutivo());
+            evento.setIdExterno(gerado.idExterno());
+            evento.setVisita(candidato.visita());
+            preencher(evento, candidato.visita(), candidato.animal(), gerado);
+            eventoReprodutivoRepository.save(evento);
+            fatosGravados.add(candidato.fato());
+            gravados.add(evento.getIdExterno());
+            afetados.put(candidato.animal().getId(), candidato.animal());
+        }
+        deletedRecordService.clearDeletionMarkers(SyncEntityNames.EVENT, gravados);
+    }
+
+    private Set<FatoUnico> fatosDosAnimais(Collection<Long> idsAnimais) {
+        Set<FatoUnico> fatos = new HashSet<>();
+        if (!idsAnimais.isEmpty()) {
+            eventoReprodutivoRepository.findAllByAnimalIdIn(idsAnimais)
+                    .forEach(evento -> FatoUnico.de(evento).ifPresent(fatos::add));
+        }
+        return fatos;
     }
 
     private List<EventoGerado> gerar(Visita visita, VisitaAnimalItemDto item, Animal animal) {
@@ -228,14 +267,18 @@ public class VisitaEventosService {
         evento.setDetalhesJson(escreverDetalhes(gerado.detalhes()));
     }
 
-    private void remover(EventoReprodutivo evento, Long idUsuario, Map<Long, Animal> afetados) {
-        afetados.put(evento.getAnimal().getId(), evento.getAnimal());
-        eventoReprodutivoRepository.delete(evento);
-        deletedRecordService.registerDeletion(SyncEntityNames.EVENT, evento.getIdExterno(), idUsuario);
+    private void remover(Collection<EventoReprodutivo> eventos, Long idUsuario, Map<Long, Animal> afetados) {
+        List<String> removidos = new ArrayList<>();
+        for (EventoReprodutivo evento : eventos) {
+            afetados.put(evento.getAnimal().getId(), evento.getAnimal());
+            eventoReprodutivoRepository.delete(evento);
+            removidos.add(evento.getIdExterno());
+        }
+        deletedRecordService.registerDeletions(SyncEntityNames.EVENT, removidos, idUsuario);
     }
 
     private void recalcular(Map<Long, Animal> afetados) {
-        afetados.values().forEach(resumoReprodutivoAnimalService::recalcular);
+        resumoReprodutivoAnimalService.recalcularTodos(afetados.values());
     }
 
     private StatusReprodutivoAnimal statusInformado(String situacaoReprodutiva) {
@@ -295,6 +338,12 @@ public class VisitaEventosService {
                     ? Optional.of(new FatoUnico(evento.getAnimal().getId(), evento.getTipo(), evento.getDataEvento()))
                     : Optional.empty();
         }
+    }
+
+    private record ItemDoAnimal(VisitaAnimalItemDto item, Animal animal) {
+    }
+
+    private record Candidato(Visita visita, Animal animal, EventoGerado gerado, FatoUnico fato) {
     }
 
     private record EventoGerado(

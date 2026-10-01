@@ -4,7 +4,11 @@ import com.cysvet.backend.dto.sync.RegistroExcluidoResponse;
 import com.cysvet.backend.entity.RegistroExcluido;
 import com.cysvet.backend.repository.RegistroExcluidoRepository;
 import java.time.Instant;
+import java.util.Collection;
 import java.util.List;
+import java.util.Map;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -17,15 +21,28 @@ public class RegistroExcluidoService {
 
     @Transactional
     public void registerDeletion(String nomeEntidade, String idExterno, Long idUsuario) {
-        RegistroExcluido deletedRecord = deletedRecordRepository
-                .findByNomeEntidadeAndIdExterno(nomeEntidade, idExterno)
-                .orElseGet(RegistroExcluido::new);
+        registerDeletions(nomeEntidade, List.of(idExterno), idUsuario);
+    }
 
-        deletedRecord.setNomeEntidade(nomeEntidade);
-        deletedRecord.setIdExterno(idExterno);
-        deletedRecord.setIdUsuario(idUsuario);
-        deletedRecord.setDataExclusao(Instant.now());
-        deletedRecordRepository.save(deletedRecord);
+    // Uma visita remove centenas de eventos de uma vez: os marcadores existentes
+    // sao lidos numa consulta so, em vez de uma por evento.
+    @Transactional
+    public void registerDeletions(String nomeEntidade, Collection<String> idsExternos, Long idUsuario) {
+        if (idsExternos.isEmpty()) {
+            return;
+        }
+        Map<String, RegistroExcluido> existentes = deletedRecordRepository
+                .findAllByNomeEntidadeAndIdExternoIn(nomeEntidade, idsExternos).stream()
+                .collect(Collectors.toMap(RegistroExcluido::getIdExterno, Function.identity(), (a, b) -> a));
+
+        for (String idExterno : idsExternos) {
+            RegistroExcluido deletedRecord = existentes.computeIfAbsent(idExterno, id -> new RegistroExcluido());
+            deletedRecord.setNomeEntidade(nomeEntidade);
+            deletedRecord.setIdExterno(idExterno);
+            deletedRecord.setIdUsuario(idUsuario);
+            deletedRecord.setDataExclusao(Instant.now());
+            deletedRecordRepository.save(deletedRecord);
+        }
     }
 
     // Atualiza o marcador para ele voltar no proximo pull: o aparelho que editou
@@ -42,7 +59,14 @@ public class RegistroExcluidoService {
 
     @Transactional
     public void clearDeletionMarker(String nomeEntidade, String idExterno) {
-        deletedRecordRepository.deleteAllByNomeEntidadeAndIdExterno(nomeEntidade, idExterno);
+        clearDeletionMarkers(nomeEntidade, List.of(idExterno));
+    }
+
+    @Transactional
+    public void clearDeletionMarkers(String nomeEntidade, Collection<String> idsExternos) {
+        if (!idsExternos.isEmpty()) {
+            deletedRecordRepository.deleteAllByNomeEntidadeAndIdExternoIn(nomeEntidade, idsExternos);
+        }
     }
 
     @Transactional(readOnly = true)

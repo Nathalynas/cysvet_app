@@ -12,8 +12,11 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
+import java.util.Collection;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -49,8 +52,25 @@ public class ResumoReprodutivoAnimalService {
         if (animal.getId() == null) {
             return;
         }
+        recalcular(animal, eventoReprodutivoRepository.findAllByAnimalId(animal.getId()));
+    }
 
-        List<EventoReprodutivo> eventos = eventoReprodutivoRepository.findAllByAnimalId(animal.getId()).stream()
+    // Uma visita afeta o rebanho inteiro: os eventos de todos os animais vem numa
+    // consulta so, em vez de uma por animal.
+    @Transactional
+    public void recalcularTodos(Collection<Animal> animais) {
+        List<Animal> comId = animais.stream().filter(animal -> animal.getId() != null).toList();
+        if (comId.isEmpty()) {
+            return;
+        }
+        Map<Long, List<EventoReprodutivo>> eventosPorAnimal = eventoReprodutivoRepository
+                .findAllByAnimalIdIn(comId.stream().map(Animal::getId).toList()).stream()
+                .collect(Collectors.groupingBy(evento -> evento.getAnimal().getId()));
+        comId.forEach(animal -> recalcular(animal, eventosPorAnimal.getOrDefault(animal.getId(), List.of())));
+    }
+
+    private void recalcular(Animal animal, List<EventoReprodutivo> eventosDoAnimal) {
+        List<EventoReprodutivo> eventos = eventosDoAnimal.stream()
                 .sorted(ORDEM_CRONOLOGICA)
                 .toList();
 

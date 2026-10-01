@@ -4,6 +4,7 @@ import com.cysvet.backend.entity.EventoReprodutivo;
 import com.cysvet.backend.entity.TipoEventoReprodutivo;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -23,6 +24,10 @@ public interface EventoReprodutivoRepository extends JpaRepository<EventoReprodu
     List<EventoReprodutivo> findAllByAnimalIdOrderByDataEventoDesc(Long idAnimal);
 
     List<EventoReprodutivo> findAllByAnimalId(Long idAnimal);
+
+    List<EventoReprodutivo> findAllByAnimalIdIn(Collection<Long> idsAnimais);
+
+    List<EventoReprodutivo> findAllByIdExternoIn(Collection<String> idsExternos);
 
     List<EventoReprodutivo> findAllByVisitaId(Long idVisita);
 
