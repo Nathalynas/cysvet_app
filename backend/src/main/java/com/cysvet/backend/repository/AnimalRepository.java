@@ -5,6 +5,7 @@ import com.cysvet.backend.entity.StatusAnimal;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -22,8 +23,8 @@ public interface AnimalRepository extends JpaRepository<Animal, Long> {
     @Query("""
             select a
             from Animal a
-            join a.propriedade p
-            left join a.lote l
+            join fetch a.propriedade p
+            left join fetch a.lote l
             where (:idPropriedade is null or p.id = :idPropriedade)
               and (:idLote is null or l.id = :idLote)
               and (:status is null or a.status = :status)
@@ -46,5 +47,6 @@ public interface AnimalRepository extends JpaRepository<Animal, Long> {
             @Param("status") StatusAnimal status
     );
 
+    @EntityGraph(attributePaths = {"propriedade", "lote"})
     List<Animal> findAllByDataAtualizacaoAfterOrderByDataAtualizacaoAsc(Instant dataAtualizacao);
 }
