@@ -31,7 +31,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private final TenantAccessService tenantAccessService;
     private final JsonErrorResponder errorResponder;
 
-    // Login, registro, refresh e logout sao publicos. O cliente pode reenviar o
+    // Login, refresh e logout sao publicos. O cliente pode reenviar o
     // access token expirado junto; valida-lo aqui bloquearia justamente o refresh.
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {

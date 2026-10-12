@@ -14,7 +14,6 @@ import com.cysvet.backend.entity.UsuarioEmpresa;
 import com.cysvet.backend.repository.EmpresaRepository;
 import com.cysvet.backend.repository.UsuarioEmpresaRepository;
 import com.cysvet.backend.repository.UsuarioRepository;
-import com.cysvet.backend.service.AuthService;
 import com.cysvet.backend.support.TestAccounts;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -35,9 +34,6 @@ class TenantRequestSecurityIntegrationTest {
 
     @Autowired
     private MockMvc mockMvc;
-
-    @Autowired
-    private AuthService authService;
 
     @Autowired
     private UsuarioRepository usuarioRepository;
