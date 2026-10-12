@@ -9,11 +9,11 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import com.cysvet.backend.dto.auth.RegisterRequest;
 import com.cysvet.backend.entity.Usuario;
 import com.cysvet.backend.repository.UsuarioEmpresaRepository;
 import com.cysvet.backend.repository.UsuarioRepository;
 import com.cysvet.backend.service.AuthService;
+import com.cysvet.backend.support.TestAccounts;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Instant;
@@ -28,6 +28,9 @@ import org.springframework.test.web.servlet.MvcResult;
 @SpringBootTest
 @AutoConfigureMockMvc
 class PropertyAnimalIntegrationTest {
+
+    @Autowired
+    private TestAccounts testAccounts;
 
     @Autowired
     private MockMvc mockMvc;
@@ -623,7 +626,7 @@ class PropertyAnimalIntegrationTest {
     }
 
     private AuthContext registerAndAuthenticate(String email) throws Exception {
-        authService.register(new RegisterRequest("Teste Integracao", email, "123456"));
+        testAccounts.createAdmin("Teste Integracao", email, "123456");
 
         String responseBody = mockMvc.perform(post("/api/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)

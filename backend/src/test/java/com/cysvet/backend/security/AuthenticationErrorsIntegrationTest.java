@@ -7,11 +7,11 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import com.cysvet.backend.dto.auth.RegisterRequest;
 import com.cysvet.backend.entity.Usuario;
 import com.cysvet.backend.repository.UsuarioEmpresaRepository;
 import com.cysvet.backend.repository.UsuarioRepository;
 import com.cysvet.backend.service.AuthService;
+import com.cysvet.backend.support.TestAccounts;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Duration;
@@ -34,6 +34,9 @@ import org.springframework.test.web.servlet.MockMvc;
 class AuthenticationErrorsIntegrationTest {
 
     private static int sequence = 0;
+
+    @Autowired
+    private TestAccounts testAccounts;
 
     @Autowired
     private MockMvc mockMvc;
@@ -63,7 +66,7 @@ class AuthenticationErrorsIntegrationTest {
     void authenticate() throws Exception {
         sequence++;
         email = "sessao" + sequence + "@example.com";
-        authService.register(new RegisterRequest("Sessao", email, "123456"));
+        testAccounts.createAdmin("Sessao", email, "123456");
         JsonNode login = login(email, "123456");
         accessToken = login.path("accessToken").asText();
         refreshToken = login.path("refreshToken").asText();
