@@ -4,8 +4,23 @@ import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../providers/auth_state.dart';
+import '../presentation/app_scaffold_messenger.dart';
 import 'package:cysvet_app/models/auth_session_model.dart';
 import '../config/api_config.dart';
+
+enum ForbiddenAction { none, companyDeactivated, passwordChangeRequired }
+
+ForbiddenAction classifyForbidden(int? status, Object? data) {
+  if (status != 403 || data is! Map) {
+    return ForbiddenAction.none;
+  }
+
+  return switch (data['message']) {
+    'Empresa desativada' => ForbiddenAction.companyDeactivated,
+    'Troca de senha obrigatoria' => ForbiddenAction.passwordChangeRequired,
+    _ => ForbiddenAction.none,
+  };
+}
 
 final apiClientProvider = Provider<Dio>((ref) {
   final session = ref.watch(authSessionProvider);
@@ -48,6 +63,19 @@ final apiClientProvider = Provider<Dio>((ref) {
       },
       onError: (error, handler) {
         if (error.response?.statusCode == 401) {
+          unawaited(ref.read(authSessionProvider.notifier).clearSession());
+        }
+
+        // Só a sessão é limpa: fila de sync e banco local permanecem para não
+        // perder dados offline pendentes da empresa desativada.
+        final forbidden = classifyForbidden(
+          error.response?.statusCode,
+          error.response?.data,
+        );
+        if (forbidden == ForbiddenAction.companyDeactivated) {
+          showAppWarning(
+            'Sua empresa foi desativada. Fale com o suporte do CYSVET.',
+          );
           unawaited(ref.read(authSessionProvider.notifier).clearSession());
         }
 

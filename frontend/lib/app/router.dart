@@ -5,7 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../pages/animals/animals_page.dart';
 import '../providers/auth_state.dart';
 import '../pages/auth/login_page.dart';
-import '../pages/auth/register_page.dart';
+import '../pages/auth/change_password_page.dart';
 import '../pages/auth/auth_page_shell.dart';
 import '../pages/settings/settings_page.dart';
 import '../pages/dashboard/dashboard_page.dart';
@@ -41,18 +41,14 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         pageBuilder: (context, state) => _buildAuthPage(const LoginPage()),
       ),
       GoRoute(
-        path: '/register',
-        pageBuilder: (context, state) => _buildAuthPage(const RegisterPage()),
-      ),
-      GoRoute(
         path: '/super',
         builder: (context, state) =>
             _buildPublicRoute(const _RoutePlaceholder('/super')),
       ),
       GoRoute(
         path: '/trocar-senha',
-        builder: (context, state) =>
-            _buildPublicRoute(const _RoutePlaceholder('/trocar-senha')),
+        pageBuilder: (context, state) =>
+            _buildAuthPage(const ChangePasswordPage()),
       ),
       ShellRoute(
         pageBuilder: (context, state, child) =>

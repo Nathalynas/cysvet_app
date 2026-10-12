@@ -40,22 +40,6 @@ class AuthController {
     }
   }
 
-  Future<void> register({
-    required String name,
-    required String email,
-    required String password,
-  }) async {
-    _ref.read(authBusyProvider.notifier).setBusy(true);
-    try {
-      final session = await _ref
-          .read(authRepositoryProvider)
-          .register(name: name, email: email, password: password);
-      await _ref.read(authSessionProvider.notifier).setSession(session);
-    } finally {
-      _ref.read(authBusyProvider.notifier).setBusy(false);
-    }
-  }
-
   Future<void> logout() async {
     final session = _ref.read(authSessionProvider);
     _ref.read(authBusyProvider.notifier).setBusy(true);
