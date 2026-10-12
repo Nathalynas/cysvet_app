@@ -20,3 +20,5 @@ backend/.settings/
 # Deploy: segredos e backups ficam so no servidor.
 deploy/**/.env
 deploy/**/backups/
+
+.superpowers/
