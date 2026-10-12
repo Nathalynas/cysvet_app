@@ -363,6 +363,38 @@ class VisitaEventosIntegrationTest {
         assertEquals("lactante", animal(auth, "animal-ve-pm").path("situacaoProdutiva").asText());
     }
 
+    @Test
+    void taxaDePrenhezDoDashboardContaAPrenhezObservadaNaVisitaUmaVezPorIa() throws Exception {
+        AuthContext auth = registerAndAuthenticate("visita.dashboard@example.com");
+        long propertyId = createProperty(auth, "prop-ve-dash");
+        createAnimal(auth, propertyId, "animal-ve-dash-a", "VD-A", "pev");
+        createAnimal(auth, propertyId, "animal-ve-dash-b", "VD-B", "pev");
+        LocalDate ia = HOJE.plusDays(1);
+
+        createVisit(auth, visitPayload("visit-ve-dash-1", "prop-ve-dash", ia, """
+                { "animalIdExterno": "animal-ve-dash-a", "situacaoReprodutiva": "inseminada st", "dataUltimaIa": "%s" }
+                """.formatted(ia), """
+                { "animalIdExterno": "animal-ve-dash-b", "situacaoReprodutiva": "inseminada st", "dataUltimaIa": "%s" }
+                """.formatted(ia)));
+        // A vaca A aparece prenha em duas visitas seguidas: e a mesma prenhez.
+        createVisit(auth, visitPayload("visit-ve-dash-2", "prop-ve-dash", ia.plusDays(35), """
+                { "animalIdExterno": "animal-ve-dash-a", "situacaoReprodutiva": "prenha", "dataUltimaIa": "%s" }
+                """.formatted(ia), """
+                { "animalIdExterno": "animal-ve-dash-b", "situacaoReprodutiva": "vazia", "dataUltimaIa": "%s" }
+                """.formatted(ia)));
+        createVisit(auth, visitPayload("visit-ve-dash-3", "prop-ve-dash", ia.plusDays(70), """
+                { "animalIdExterno": "animal-ve-dash-a", "situacaoReprodutiva": "prenha", "dataUltimaIa": "%s" }
+                """.formatted(ia)));
+
+        JsonNode dashboard = readResponse(mockMvc.perform(get("/api/dashboard")
+                        .header("Authorization", auth.authorization())
+                        .header("empresaid", auth.tenantId())
+                        .queryParam("idPropriedade", Long.toString(propertyId)))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString());
+        assertEquals(0.5, dashboard.path("taxaPrenhez").asDouble(), 1e-9);
+    }
+
     private long createProperty(AuthContext auth, String idExterno) throws Exception {
         return readResponse(mockMvc.perform(post("/api/properties")
                         .header("Authorization", auth.authorization())

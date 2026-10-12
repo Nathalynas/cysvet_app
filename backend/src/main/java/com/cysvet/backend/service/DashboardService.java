@@ -3,11 +3,15 @@ package com.cysvet.backend.service;
 import com.cysvet.backend.dto.dashboard.DashboardResponse;
 import com.cysvet.backend.entity.Animal;
 import com.cysvet.backend.entity.EventoReprodutivo;
+import com.cysvet.backend.entity.StatusReprodutivoAnimal;
 import com.cysvet.backend.entity.TipoEventoReprodutivo;
 import com.cysvet.backend.entity.Usuario;
 import com.cysvet.backend.repository.AnimalRepository;
 import com.cysvet.backend.repository.PropriedadeRepository;
 import com.cysvet.backend.repository.EventoReprodutivoRepository;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
@@ -27,6 +31,7 @@ public class DashboardService {
     private final PropriedadeRepository farmPropertyRepository;
     private final AnimalRepository animalRepository;
     private final EventoReprodutivoRepository reproductiveEventRepository;
+    private final ObjectMapper objectMapper;
 
     @Transactional(readOnly = true)
     public DashboardResponse getMetrics(Long idPropriedade, LocalDate dataInicio, LocalDate dataFim) {
@@ -48,9 +53,7 @@ public class DashboardService {
         }
 
         long inseminations = events.stream().filter(event -> event.getTipo() == TipoEventoReprodutivo.INSEMINATION).count();
-        long pregnancies = events.stream()
-                .filter(event -> event.getTipo() == TipoEventoReprodutivo.PREGNANCY_DIAGNOSIS && Boolean.TRUE.equals(event.getPrenhezConfirmada()))
-                .count();
+        long pregnancies = countInseminationsFollowedByPregnancy(events);
         double taxaPrenhez = inseminations == 0 ? 0.0 : (double) pregnancies / inseminations;
 
         long inseminatedAnimals = events.stream()
@@ -70,6 +73,56 @@ public class DashboardService {
                 mediaInseminacoes,
                 calculateAverageCalvingInterval(events)
         );
+    }
+
+    /**
+     * IAs seguidas de prenhez: a vaca foi vista prenha depois da IA e antes da proxima IA.
+     * A visita registra "prenha" na verificacao de status, e uma mesma prenhez costuma
+     * aparecer em varias visitas; por isso a contagem e por IA, nao por diagnostico.
+     */
+    private long countInseminationsFollowedByPregnancy(List<EventoReprodutivo> events) {
+        Map<Long, List<EventoReprodutivo>> byAnimal = events.stream()
+                .filter(event -> event.getTipo() == TipoEventoReprodutivo.INSEMINATION || isPositiveDiagnosis(event))
+                .collect(Collectors.groupingBy(event -> event.getAnimal().getId()));
+
+        long count = 0;
+        for (List<EventoReprodutivo> animalEvents : byAnimal.values()) {
+            List<LocalDate> inseminations = animalEvents.stream()
+                    .filter(event -> event.getTipo() == TipoEventoReprodutivo.INSEMINATION)
+                    .map(EventoReprodutivo::getDataEvento)
+                    .sorted()
+                    .toList();
+            List<LocalDate> diagnoses = animalEvents.stream()
+                    .filter(this::isPositiveDiagnosis)
+                    .map(EventoReprodutivo::getDataEvento)
+                    .toList();
+            for (int index = 0; index < inseminations.size(); index++) {
+                LocalDate insemination = inseminations.get(index);
+                LocalDate next = index + 1 < inseminations.size() ? inseminations.get(index + 1) : null;
+                boolean pregnant = diagnoses.stream()
+                        .anyMatch(date -> date.isAfter(insemination) && (next == null || !date.isAfter(next)));
+                if (pregnant) {
+                    count++;
+                }
+            }
+        }
+        return count;
+    }
+
+    private boolean isPositiveDiagnosis(EventoReprodutivo event) {
+        if (event.getTipo() == TipoEventoReprodutivo.PREGNANCY_DIAGNOSIS) {
+            return Boolean.TRUE.equals(event.getPrenhezConfirmada());
+        }
+        if (event.getTipo() != TipoEventoReprodutivo.REPRODUCTIVE_STATUS_CHECK
+                || event.getDetalhesJson() == null || event.getDetalhesJson().isBlank()) {
+            return false;
+        }
+        try {
+            JsonNode status = objectMapper.readTree(event.getDetalhesJson()).get("status");
+            return status != null && StatusReprodutivoAnimal.PREGNANT.getValue().equals(status.asText());
+        } catch (JsonProcessingException exception) {
+            throw new IllegalStateException("Falha ao ler detalhes do evento " + event.getIdExterno(), exception);
+        }
     }
 
     private double calculateAverageCalvingInterval(List<EventoReprodutivo> events) {
