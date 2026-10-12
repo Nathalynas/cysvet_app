@@ -12,12 +12,17 @@ public interface UsuarioEmpresaRepository extends JpaRepository<UsuarioEmpresa, 
 
     boolean existsByUsuarioIdAndEmpresaIdAndAtivoTrue(Long usuarioId, Long empresaId);
 
+    boolean existsByUsuarioIdAndEmpresaIdAndAtivoTrueAndEmpresaAtivoTrue(Long usuarioId, Long empresaId);
+
     boolean existsByUsuarioIdAndAtivoTrue(Long usuarioId);
 
     long countByUsuarioId(Long usuarioId);
 
     @EntityGraph(attributePaths = {"usuario", "empresa"})
     List<UsuarioEmpresa> findAllByUsuarioIdAndAtivoTrueOrderByEmpresaNomeAsc(Long usuarioId);
+
+    @EntityGraph(attributePaths = {"usuario", "empresa"})
+    List<UsuarioEmpresa> findAllByUsuarioIdAndAtivoTrueAndEmpresaAtivoTrueOrderByEmpresaNomeAsc(Long usuarioId);
 
     @EntityGraph(attributePaths = {"usuario", "empresa"})
     Optional<UsuarioEmpresa> findByUsuarioIdAndEmpresaId(Long usuarioId, Long empresaId);

@@ -26,7 +26,8 @@ public class CustomUserDetailService implements UserDetailsService {
                 user.getId(),
                 user.getEmail(),
                 user.getSenha(),
-                java.util.List.of(new SimpleGrantedAuthority("ROLE_" + user.getPerfil().name()))
+                java.util.List.of(new SimpleGrantedAuthority("ROLE_" + user.getPerfil().name())),
+                user.isTrocarSenha()
         );
     }
 }

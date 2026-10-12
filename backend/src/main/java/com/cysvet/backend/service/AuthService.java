@@ -113,8 +113,14 @@ public class AuthService {
         Usuario managedUser = userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalStateException("Usuario nao encontrado para emissao do token"));
 
-        List<UsuarioEmpresa> memberships = tenantAccessService.findActiveMemberships(managedUser.getId());
-        if (memberships.isEmpty()) {
+        boolean superAdmin = managedUser.getPerfil() == Perfil.SUPER_ADMIN;
+        List<UsuarioEmpresa> memberships = superAdmin
+                ? List.of()
+                : tenantAccessService.findActiveMemberships(managedUser.getId());
+        if (!superAdmin && memberships.isEmpty()) {
+            if (tenantAccessService.hasOnlyInactiveCompanies(managedUser.getId())) {
+                throw new AccessDeniedException("Empresa desativada");
+            }
             throw new AccessDeniedException("Usuario sem empresa vinculada ativa");
         }
 
@@ -138,7 +144,7 @@ public class AuthService {
                 .map(UsuarioEmpresa::getEmpresa)
                 .map(this::toCompanyResponse)
                 .toList();
-        Long empresaAtivaId = memberships.get(0).getEmpresa().getId();
+        Long empresaAtivaId = memberships.isEmpty() ? null : memberships.get(0).getEmpresa().getId();
 
         return new AuthResponse(
                 accessToken,
@@ -147,7 +153,8 @@ public class AuthService {
                         managedUser.getId(),
                         managedUser.getNome(),
                         managedUser.getEmail(),
-                        managedUser.getPerfil()
+                        managedUser.getPerfil(),
+                        managedUser.isTrocarSenha()
                 ),
                 empresaAtivaId,
                 empresas,

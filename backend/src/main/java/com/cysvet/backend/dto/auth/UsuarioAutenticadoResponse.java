@@ -12,6 +12,8 @@ public record UsuarioAutenticadoResponse(
         @Schema(description = "E-mail do usuario.", example = "joao@cysvet.com")
         String email,
         @Schema(description = "Perfil do usuario.")
-        Perfil perfil
+        Perfil perfil,
+        @Schema(description = "Indica que o usuario precisa trocar a senha antes de usar o sistema.", example = "false")
+        boolean trocarSenha
 ) {
 }

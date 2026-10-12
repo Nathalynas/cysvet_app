@@ -67,6 +67,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/actuator/liveness", "/actuator/readiness").permitAll()
                         .requestMatchers(HttpMethod.GET, "/actuator/tenant-policy").permitAll()
                         .requestMatchers(HttpMethod.GET, "/actuator/observability-policy").permitAll()
+                        .requestMatchers("/api/super/**").hasRole("SUPER_ADMIN")
                         .anyRequest().authenticated()
                 )
                 // 401 = sem sessao valida (o app renova o token ou volta ao login);

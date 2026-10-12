@@ -72,6 +72,11 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 return;
             }
 
+            if (principal.isPasswordChangeRequired() && !path(request).startsWith("/api/account/")) {
+                errorResponder.write(response, HttpServletResponse.SC_FORBIDDEN, "Troca de senha obrigatoria");
+                return;
+            }
+
             if (requiresTenantValidation(request)) {
                 Long tenantId = extractTenantId(request, response);
                 if (tenantId == null) {
@@ -79,7 +84,10 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 }
 
                 if (!tenantAccessService.userHasAccessToTenant(principal.getUserId(), tenantId)) {
-                    errorResponder.write(response, HttpServletResponse.SC_FORBIDDEN, "Usuario sem acesso a empresa informada");
+                    String message = tenantAccessService.isCompanyInactiveForUser(principal.getUserId(), tenantId)
+                            ? "Empresa desativada"
+                            : "Usuario sem acesso a empresa informada";
+                    errorResponder.write(response, HttpServletResponse.SC_FORBIDDEN, message);
                     return;
                 }
 
@@ -105,7 +113,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         return !path.startsWith("/swagger-ui")
                 && !path.startsWith("/v3/api-docs")
                 && !path.startsWith("/h2-console")
-                && !path.startsWith("/actuator");
+                && !path.startsWith("/actuator")
+                && !path.startsWith("/api/super/")
+                && !path.startsWith("/api/account/");
     }
 
     // URI sem o context path: igual no Tomcat e no MockMvc (que nao preenche o servletPath).
