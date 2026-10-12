@@ -22,6 +22,7 @@ import com.cysvet.backend.service.AccessEmailSender;
 import com.cysvet.backend.support.TestAccounts;
 import com.jayway.jsonpath.JsonPath;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -34,7 +35,9 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 @SpringBootTest
 @Transactional
@@ -42,7 +45,6 @@ import org.springframework.transaction.annotation.Transactional;
 class SuperAdminIntegrationTest {
 
     private static final String PASSWORD = "123456";
-    private static final String SUPER_EMAIL = "super.api@example.com";
 
     @Autowired
     private MockMvc mockMvc;
@@ -62,6 +64,7 @@ class SuperAdminIntegrationTest {
     @MockitoBean
     private AccessEmailSender accessEmailSender;
 
+    private final String superEmail = "super." + java.util.UUID.randomUUID() + "@example.com";
     private String superToken;
 
     @BeforeEach
@@ -112,7 +115,7 @@ class SuperAdminIntegrationTest {
         createCompany("Outra", "Ana Dois", "  ANA@x.com ")
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.message").value("E-mail ja cadastrado"));
-        createCompany("Outra", "Super Dois", " " + SUPER_EMAIL.toUpperCase() + " ")
+        createCompany("Outra", "Super Dois", " " + superEmail.toUpperCase() + " ")
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.message").value("E-mail ja cadastrado"));
 
@@ -186,9 +189,7 @@ class SuperAdminIntegrationTest {
         String newPassword = capturedPasswords(2).get(1);
         assertFalse(oldPassword.equals(newPassword));
 
-        int oldLoginStatus = mockMvc.perform(login("eva@x.com", oldPassword)).andReturn().getResponse().getStatus();
-        assertTrue(oldLoginStatus == 400 || oldLoginStatus == 401 || oldLoginStatus == 403,
-                "status do login antigo: " + oldLoginStatus);
+        mockMvc.perform(login("eva@x.com", oldPassword)).andExpect(status().isUnauthorized());
         mockMvc.perform(login("eva@x.com", newPassword))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.user.trocarSenha").value(true));
@@ -214,6 +215,48 @@ class SuperAdminIntegrationTest {
                 .andExpect(status().isNotFound());
         mockMvc.perform(authorized(post("/api/super/companies/999999/resend-access")))
                 .andExpect(status().isNotFound());
+    }
+
+    @Test
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
+    void createSendsEmailOnlyAfterCommit() throws Exception {
+        String email = "after.commit." + java.util.UUID.randomUUID() + "@x.com";
+        AtomicReference<String> observed = new AtomicReference<>();
+        when(accessEmailSender.sendTemporaryPassword(anyString(), anyString(), anyString(), anyString()))
+                .thenAnswer(invocation -> {
+                    boolean noTransaction = !TransactionSynchronizationManager.isActualTransactionActive();
+                    boolean visible = usuarioRepository.existsByEmailIgnoreCase(email);
+                    observed.set(noTransaction + "/" + visible);
+                    return true;
+                });
+
+        createCompany("Apos Commit", "Fabio", email).andExpect(status().isCreated());
+
+        assertEquals("true/true", observed.get());
+    }
+
+    @Test
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
+    void resendSendsEmailOnlyAfterCommit() throws Exception {
+        String email = "resend.commit." + java.util.UUID.randomUUID() + "@x.com";
+        long id = createdCompanyId("Reenvio Commit", "Gil", email);
+        String oldPassword = capturedPasswords(1).get(0);
+        AtomicReference<String> observed = new AtomicReference<>();
+        when(accessEmailSender.sendTemporaryPassword(anyString(), anyString(), anyString(), anyString()))
+                .thenAnswer(invocation -> {
+                    String newPassword = invocation.getArgument(3);
+                    boolean noTransaction = !TransactionSynchronizationManager.isActualTransactionActive();
+                    Usuario stored = usuarioRepository.findByEmail(email).orElseThrow();
+                    boolean committed = passwordEncoder.matches(newPassword, stored.getSenha());
+                    observed.set(noTransaction + "/" + committed);
+                    return true;
+                });
+
+        mockMvc.perform(authorized(post("/api/super/companies/" + id + "/resend-access")))
+                .andExpect(status().isOk());
+
+        assertEquals("true/true", observed.get());
+        assertFalse(oldPassword.isEmpty());
     }
 
     private void assertRefreshRejected(String refreshToken) throws Exception {
@@ -259,11 +302,11 @@ class SuperAdminIntegrationTest {
     private String loginSuperAdmin() throws Exception {
         Usuario user = new Usuario();
         user.setNome("Super");
-        user.setEmail(SUPER_EMAIL);
+        user.setEmail(superEmail);
         user.setSenha(passwordEncoder.encode(PASSWORD));
         user.setPerfil(Perfil.SUPER_ADMIN);
         usuarioRepository.saveAndFlush(user);
-        String body = mockMvc.perform(login(SUPER_EMAIL, PASSWORD))
+        String body = mockMvc.perform(login(superEmail, PASSWORD))
                 .andExpect(status().isOk())
                 .andReturn().getResponse().getContentAsString();
         return JsonPath.read(body, "$.accessToken");

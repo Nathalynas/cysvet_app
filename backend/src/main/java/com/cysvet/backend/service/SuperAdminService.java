@@ -22,6 +22,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
 @Service
 @BypassTenant
@@ -35,6 +36,7 @@ public class SuperAdminService {
     private final PasswordEncoder passwordEncoder;
     private final TemporaryPasswordGenerator temporaryPasswordGenerator;
     private final AccessEmailSender accessEmailSender;
+    private final TransactionTemplate transactionTemplate;
 
     @Transactional(readOnly = true)
     public List<ClientCompanyResponse> list() {
@@ -43,16 +45,28 @@ public class SuperAdminService {
                 .toList();
     }
 
-    @Transactional
+    // Os metodos create e resendAccess nao sao transacionais: a persistencia confirma primeiro e o e-mail
+    // so e enviado depois do commit, para nao enviar credenciais que nao existem e para nao manter
+    // conexao e locks do banco presos a uma chamada SMTP.
     public CreateClientCompanyResponse create(CreateClientCompanyRequest request) {
         String email = request.responsibleEmail().trim().toLowerCase(Locale.ROOT);
-        if (usuarioRepository.existsByEmailIgnoreCase(email)) {
-            throw new IllegalArgumentException("E-mail ja cadastrado");
-        }
-
         String companyName = request.companyName().trim();
         String responsibleName = request.responsibleName().trim();
         String temporaryPassword = temporaryPasswordGenerator.generate();
+
+        ClientCompanyResponse company = transactionTemplate.execute(status ->
+                persistCompany(email, companyName, responsibleName, temporaryPassword));
+
+        boolean emailSent = accessEmailSender.sendTemporaryPassword(
+                email, responsibleName, companyName, temporaryPassword);
+        return new CreateClientCompanyResponse(company, emailSent);
+    }
+
+    private ClientCompanyResponse persistCompany(
+            String email, String companyName, String responsibleName, String temporaryPassword) {
+        if (usuarioRepository.existsByEmailIgnoreCase(email)) {
+            throw new IllegalArgumentException("E-mail ja cadastrado");
+        }
 
         Usuario responsible = new Usuario();
         responsible.setNome(responsibleName);
@@ -76,9 +90,7 @@ public class SuperAdminService {
         membership.setAtivo(true);
         usuarioEmpresaRepository.saveAndFlush(membership);
 
-        boolean emailSent = accessEmailSender.sendTemporaryPassword(
-                email, responsibleName, companyName, temporaryPassword);
-        return new CreateClientCompanyResponse(toResponse(empresa), emailSent);
+        return toResponse(empresa);
     }
 
     @Transactional
@@ -98,23 +110,29 @@ public class SuperAdminService {
         return toResponse(empresa);
     }
 
-    @Transactional
     public ResendAccessResponse resendAccess(Long id) {
+        String temporaryPassword = temporaryPasswordGenerator.generate();
+        String[] recipient = transactionTemplate.execute(status ->
+                persistNewPassword(id, temporaryPassword));
+
+        boolean emailSent = accessEmailSender.sendTemporaryPassword(
+                recipient[0], recipient[1], recipient[2], temporaryPassword);
+        return new ResendAccessResponse(emailSent);
+    }
+
+    // Retorna {e-mail, nome do responsavel, nome da empresa}.
+    private String[] persistNewPassword(Long id, String temporaryPassword) {
         Empresa empresa = findEmpresa(id);
         Usuario responsible = empresa.getResponsavel();
         if (responsible == null) {
             throw new IllegalArgumentException("Empresa sem responsavel");
         }
 
-        String temporaryPassword = temporaryPasswordGenerator.generate();
         responsible.setSenha(passwordEncoder.encode(temporaryPassword));
         responsible.setTrocarSenha(true);
         usuarioRepository.saveAndFlush(responsible);
         tokenAtualizacaoRepository.revokeAllActiveForUsers(List.of(responsible.getId()));
-
-        boolean emailSent = accessEmailSender.sendTemporaryPassword(
-                responsible.getEmail(), responsible.getNome(), empresa.getNome(), temporaryPassword);
-        return new ResendAccessResponse(emailSent);
+        return new String[] {responsible.getEmail(), responsible.getNome(), empresa.getNome()};
     }
 
     private Empresa findEmpresa(Long id) {
