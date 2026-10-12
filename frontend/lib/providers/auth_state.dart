@@ -100,6 +100,17 @@ class AuthSessionNotifier extends Notifier<AuthSessionModel?> {
     await ref.read(authSessionStorageProvider).write(session);
   }
 
+  Future<void> markPasswordChanged() async {
+    final session = state;
+    if (session == null) {
+      return;
+    }
+
+    await setSession(
+      session.copyWith(user: session.user.copyWith(trocarSenha: false)),
+    );
+  }
+
   Future<void> switchActiveCompany(int companyId) async {
     final session = state;
     if (session == null) {
@@ -232,6 +243,10 @@ class AuthSessionNotifier extends Notifier<AuthSessionModel?> {
     AuthSessionModel session, {
     int? preferredCompanyId,
   }) {
+    if (session.user.isSuperAdmin && session.accessToken.isNotEmpty) {
+      return session;
+    }
+
     if (session.accessToken.isEmpty || session.companies.isEmpty) {
       return null;
     }

@@ -17,6 +17,7 @@ import '../pages/visits/visit_form_page.dart';
 import '../pages/visits/visit_report_page.dart';
 import '../pages/visits/visits_page.dart';
 import 'app_shell.dart';
+import 'auth_redirect.dart';
 import 'theme.dart';
 
 final appRouterProvider = Provider<GoRouter>((ref) {
@@ -25,33 +26,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
 
   return GoRouter(
     initialLocation: '/splash',
-    redirect: (context, state) {
-      final location = state.matchedLocation;
-      final isAuthenticated = session != null;
-
-      if (!bootstrapComplete && location != '/splash') {
-        return '/splash';
-      }
-
-      if (!bootstrapComplete) {
-        return null;
-      }
-
-      if (location == '/splash') {
-        return isAuthenticated ? '/dashboard' : '/login';
-      }
-
-      if (!isAuthenticated && location != '/login' && location != '/register') {
-        return '/login';
-      }
-
-      if (isAuthenticated &&
-          (location == '/login' || location == '/register')) {
-        return '/dashboard';
-      }
-
-      return null;
-    },
+    redirect: (context, state) => resolveAuthRedirect(
+      bootstrapComplete: bootstrapComplete,
+      session: session,
+      location: state.matchedLocation,
+    ),
     routes: [
       GoRoute(
         path: '/splash',
@@ -64,6 +43,16 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/register',
         pageBuilder: (context, state) => _buildAuthPage(const RegisterPage()),
+      ),
+      GoRoute(
+        path: '/super',
+        builder: (context, state) =>
+            _buildPublicRoute(const _RoutePlaceholder('/super')),
+      ),
+      GoRoute(
+        path: '/trocar-senha',
+        builder: (context, state) =>
+            _buildPublicRoute(const _RoutePlaceholder('/trocar-senha')),
       ),
       ShellRoute(
         pageBuilder: (context, state, child) =>
@@ -190,4 +179,16 @@ Page<void> _buildAuthPage(Widget form) {
 
 Widget _buildPublicRoute(Widget child) {
   return Theme(data: AppTheme.lightTheme, child: child);
+}
+
+// Substituído pelas páginas reais nas tarefas seguintes.
+class _RoutePlaceholder extends StatelessWidget {
+  const _RoutePlaceholder(this.name);
+
+  final String name;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(body: Center(child: Text(name)));
+  }
 }
