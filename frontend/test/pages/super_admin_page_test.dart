@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:cysvet_app/api/super_admin_api.dart';
 import 'package:cysvet_app/core/presentation/app_scaffold_messenger.dart';
 import 'package:cysvet_app/core/widgets/app_text_field.dart';
@@ -15,9 +17,16 @@ class _FakeSuperAdminRepository implements SuperAdminRepository {
   final bool emailSent;
   final setActiveCalls = <(int, bool)>[];
   int createCalls = 0;
+  int resendCalls = 0;
+  bool listThrows = false;
+  bool setActiveThrows = false;
+  Completer<bool>? resendGate;
 
   @override
-  Future<List<ClientCompanyModel>> list() async => companies;
+  Future<List<ClientCompanyModel>> list() async {
+    if (listThrows) throw Exception('falha ao listar');
+    return [...companies];
+  }
 
   @override
   Future<({ClientCompanyModel company, bool emailSent})> create({
@@ -26,17 +35,29 @@ class _FakeSuperAdminRepository implements SuperAdminRepository {
     required String responsibleEmail,
   }) async {
     createCalls++;
-    return (company: companies.first, emailSent: emailSent);
+    final created = ClientCompanyModel(
+      id: 100 + createCalls,
+      name: companyName,
+      responsibleName: responsibleName,
+      responsibleEmail: responsibleEmail,
+      status: ClientCompanyStatus.aguardandoPrimeiroAcesso,
+    );
+    companies.add(created);
+    return (company: created, emailSent: emailSent);
   }
 
   @override
   Future<ClientCompanyModel> setActive(int id, bool active) async {
     setActiveCalls.add((id, active));
+    if (setActiveThrows) throw Exception('falha ao alterar');
     return companies.first;
   }
 
   @override
-  Future<bool> resendAccess(int id) async => true;
+  Future<bool> resendAccess(int id) {
+    resendCalls++;
+    return resendGate?.future ?? Future.value(true);
+  }
 }
 
 const _boaVista = ClientCompanyModel(
@@ -165,5 +186,72 @@ void main() {
       ),
       findsOneWidget,
     );
+  });
+
+  Future<void> fillAndSubmitNewCompany(WidgetTester tester) async {
+    await tester.tap(find.text('+ Nova empresa'));
+    await tester.pumpAndSettle();
+    final fields = find.byType(AppTextField);
+    await tester.enterText(fields.at(0), 'Nova Vet');
+    await tester.enterText(fields.at(1), 'Maria');
+    await tester.enterText(fields.at(2), 'maria@novavet.com');
+    await tester.tap(find.text('Cadastrar'));
+    await tester.pumpAndSettle();
+  }
+
+  testWidgets('resendTwiceQuicklyCallsRepositoryOnce', (tester) async {
+    final repository = _FakeSuperAdminRepository([_boaVista])
+      ..resendGate = Completer<bool>();
+    await pumpPage(tester, repository);
+
+    await tester.tap(find.text('Reenviar senha'));
+    await tester.pump();
+    await tester.tap(find.text('Reenviar senha'), warnIfMissed: false);
+    await tester.pump();
+    expect(repository.resendCalls, 1);
+
+    repository.resendGate!.complete(true);
+    await tester.pumpAndSettle();
+    expect(
+      find.text('Nova senha provisória enviada para ana@boavista.com.'),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('setActiveErrorShowsMessageAndKeepsList', (tester) async {
+    final repository = _FakeSuperAdminRepository([_boaVista, _esperanca])
+      ..setActiveThrows = true;
+    await pumpPage(tester, repository);
+
+    await tester.tap(find.text('Reativar'));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(SnackBar), findsOneWidget);
+    expect(find.text('Clínica Boa Vista'), findsOneWidget);
+    expect(find.text('Fazenda Esperança'), findsOneWidget);
+    expect(find.text('Não foi possível carregar as empresas.'), findsNothing);
+  });
+
+  testWidgets('reloadFailureAfterCreateKeepsList', (tester) async {
+    final repository = _FakeSuperAdminRepository([_boaVista]);
+    await pumpPage(tester, repository);
+    repository.listThrows = true;
+
+    await fillAndSubmitNewCompany(tester);
+
+    expect(repository.createCalls, 1);
+    expect(find.text('Clínica Boa Vista'), findsOneWidget);
+    expect(find.text('Não foi possível carregar as empresas.'), findsNothing);
+    expect(find.textContaining('Empresa criada'), findsOneWidget);
+  });
+
+  testWidgets('createdCompanyAppearsInList', (tester) async {
+    final repository = _FakeSuperAdminRepository([_boaVista]);
+    await pumpPage(tester, repository);
+
+    await fillAndSubmitNewCompany(tester);
+
+    expect(find.text('Nova Vet'), findsOneWidget);
+    expect(find.text('Clínica Boa Vista'), findsOneWidget);
   });
 }

@@ -22,6 +22,7 @@ class SuperAdminPage extends ConsumerStatefulWidget {
 
 class _SuperAdminPageState extends ConsumerState<SuperAdminPage> {
   String _query = '';
+  final _busyIds = <int>{};
 
   List<ClientCompanyModel> _filter(List<ClientCompanyModel> items) {
     final query = _query.trim().toLowerCase();
@@ -44,18 +45,25 @@ class _SuperAdminPageState extends ConsumerState<SuperAdminPage> {
   Future<void> _create() async {
     final result = await showClientCompanyDialog(context);
     if (result == null) return;
+    const reloadNote = ' Não foi possível atualizar a lista.';
     if (result.emailSent) {
-      showAppSuccess(
-        'Empresa criada. A senha provisória foi enviada para ${result.email}.',
-      );
+      final message =
+          'Empresa criada. A senha provisória foi enviada para ${result.email}.';
+      if (result.reloadFailed) {
+        showAppWarning('$message$reloadNote');
+      } else {
+        showAppSuccess(message);
+      }
     } else {
       showAppWarning(
-        'Empresa criada, mas o e-mail não foi enviado. Use Reenviar senha.',
+        'Empresa criada, mas o e-mail não foi enviado. Use Reenviar senha.'
+        '${result.reloadFailed ? reloadNote : ''}',
       );
     }
   }
 
   Future<void> _deactivate(ClientCompanyModel company) async {
+    if (_busyIds.contains(company.id)) return;
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -83,31 +91,48 @@ class _SuperAdminPageState extends ConsumerState<SuperAdminPage> {
     await _setActive(company, false);
   }
 
-  Future<void> _setActive(ClientCompanyModel company, bool active) async {
+  Future<void> _runBusy(int id, Future<void> Function() action) async {
+    if (!_busyIds.add(id)) return;
+    setState(() {});
     try {
-      await ref
-          .read(superAdminCompaniesProvider.notifier)
-          .setActive(company.id, active);
-    } catch (error) {
-      showAppError(error);
+      await action();
+    } finally {
+      if (mounted) setState(() => _busyIds.remove(id));
     }
   }
 
-  Future<void> _resend(ClientCompanyModel company) async {
-    try {
-      final sent = await ref
-          .read(superAdminCompaniesProvider.notifier)
-          .resendAccess(company.id);
-      if (sent) {
-        showAppSuccess(
-          'Nova senha provisória enviada para ${company.responsibleEmail}.',
-        );
-      } else {
-        showAppWarning('Não foi possível enviar o e-mail. Tente novamente.');
+  Future<void> _setActive(ClientCompanyModel company, bool active) {
+    return _runBusy(company.id, () async {
+      try {
+        final reloaded = await ref
+            .read(superAdminCompaniesProvider.notifier)
+            .setActive(company.id, active);
+        if (!reloaded) {
+          showAppWarning('Situação alterada, mas a lista não foi atualizada.');
+        }
+      } catch (error) {
+        showAppError(error);
       }
-    } catch (error) {
-      showAppError(error);
-    }
+    });
+  }
+
+  Future<void> _resend(ClientCompanyModel company) {
+    return _runBusy(company.id, () async {
+      try {
+        final sent = await ref
+            .read(superAdminCompaniesProvider.notifier)
+            .resendAccess(company.id);
+        if (sent) {
+          showAppSuccess(
+            'Nova senha provisória enviada para ${company.responsibleEmail}.',
+          );
+        } else {
+          showAppWarning('Não foi possível enviar o e-mail. Tente novamente.');
+        }
+      } catch (error) {
+        showAppError(error);
+      }
+    });
   }
 
   @override
@@ -170,6 +195,7 @@ class _SuperAdminPageState extends ConsumerState<SuperAdminPage> {
                         }
                         return _CompaniesList(
                           companies: filtered,
+                          busyIds: _busyIds,
                           onResend: _resend,
                           onDeactivate: _deactivate,
                           onReactivate: (c) => _setActive(c, true),
@@ -237,18 +263,21 @@ class _ErrorView extends StatelessWidget {
 class _CompaniesList extends StatelessWidget {
   const _CompaniesList({
     required this.companies,
+    required this.busyIds,
     required this.onResend,
     required this.onDeactivate,
     required this.onReactivate,
   });
 
   final List<ClientCompanyModel> companies;
+  final Set<int> busyIds;
   final ValueChanged<ClientCompanyModel> onResend;
   final ValueChanged<ClientCompanyModel> onDeactivate;
   final ValueChanged<ClientCompanyModel> onReactivate;
 
   Widget _actions(ClientCompanyModel company) => _Actions(
     company: company,
+    busy: busyIds.contains(company.id),
     onResend: onResend,
     onDeactivate: onDeactivate,
     onReactivate: onReactivate,
@@ -426,12 +455,14 @@ class _StatusPill extends StatelessWidget {
 class _Actions extends StatelessWidget {
   const _Actions({
     required this.company,
+    required this.busy,
     required this.onResend,
     required this.onDeactivate,
     required this.onReactivate,
   });
 
   final ClientCompanyModel company;
+  final bool busy;
   final ValueChanged<ClientCompanyModel> onResend;
   final ValueChanged<ClientCompanyModel> onDeactivate;
   final ValueChanged<ClientCompanyModel> onReactivate;
@@ -446,6 +477,7 @@ class _Actions extends StatelessWidget {
         AppButton(
           text: 'Reenviar senha',
           outlined: true,
+          disabled: busy,
           onPressed: () => onResend(company),
         ),
         if (company.isActive)
@@ -453,10 +485,15 @@ class _Actions extends StatelessWidget {
             text: 'Desativar',
             outlined: true,
             color: AppTheme.dangerColor,
+            disabled: busy,
             onPressed: () => onDeactivate(company),
           )
         else
-          AppButton(text: 'Reativar', onPressed: () => onReactivate(company)),
+          AppButton(
+            text: 'Reativar',
+            disabled: busy,
+            onPressed: () => onReactivate(company),
+          ),
       ],
     );
   }

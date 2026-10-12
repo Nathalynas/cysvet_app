@@ -10,10 +10,15 @@ final _emailPattern = RegExp(r'^[^\s@]+@[^\s@]+\.[^\s@]+$');
 
 /// Resultado do cadastro: se o e-mail com a senha provisória foi enviado.
 class NewCompanyResult {
-  const NewCompanyResult({required this.email, required this.emailSent});
+  const NewCompanyResult({
+    required this.email,
+    required this.emailSent,
+    this.reloadFailed = false,
+  });
 
   final String email;
   final bool emailSent;
+  final bool reloadFailed;
 }
 
 Future<NewCompanyResult?> showClientCompanyDialog(BuildContext context) {
@@ -53,7 +58,7 @@ class _ClientCompanyDialogState extends ConsumerState<ClientCompanyDialog> {
     setState(() => _saving = true);
     final email = _emailController.text.trim();
     try {
-      final emailSent = await ref
+      final outcome = await ref
           .read(superAdminCompaniesProvider.notifier)
           .create(
             companyName: _companyController.text,
@@ -61,9 +66,13 @@ class _ClientCompanyDialogState extends ConsumerState<ClientCompanyDialog> {
             responsibleEmail: email,
           );
       if (!mounted) return;
-      Navigator.of(
-        context,
-      ).pop(NewCompanyResult(email: email, emailSent: emailSent));
+      Navigator.of(context).pop(
+        NewCompanyResult(
+          email: email,
+          emailSent: outcome.emailSent,
+          reloadFailed: outcome.reloadFailed,
+        ),
+      );
     } catch (error) {
       if (!mounted) return;
       setState(() => _saving = false);

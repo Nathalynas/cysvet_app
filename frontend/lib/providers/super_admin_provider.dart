@@ -25,8 +25,8 @@ class SuperAdminCompaniesNotifier
     state = await AsyncValue.guard(_load);
   }
 
-  /// Devolve se o e-mail com a senha provisória foi enviado.
-  Future<bool> create({
+  /// Devolve se o e-mail foi enviado e se a lista deixou de ser atualizada.
+  Future<({bool emailSent, bool reloadFailed})> create({
     required String companyName,
     required String responsibleName,
     required String responsibleEmail,
@@ -38,21 +38,28 @@ class SuperAdminCompaniesNotifier
           responsibleName: responsibleName,
           responsibleEmail: responsibleEmail,
         );
-    await _reload();
-    return result.emailSent;
+    final reloaded = await _reload();
+    return (emailSent: result.emailSent, reloadFailed: !reloaded);
   }
 
-  Future<void> setActive(int id, bool active) async {
+  /// Devolve false se a mudança foi feita mas a lista não pôde ser recarregada.
+  Future<bool> setActive(int id, bool active) async {
     await ref.read(superAdminRepositoryProvider).setActive(id, active);
-    await _reload();
+    return _reload();
   }
 
   Future<bool> resendAccess(int id) {
     return ref.read(superAdminRepositoryProvider).resendAccess(id);
   }
 
-  // Recarrega sem voltar a tabela para o estado de carregamento.
-  Future<void> _reload() async {
-    state = await AsyncValue.guard(_load);
+  // A mutação já foi feita no servidor; se só o recarregamento falhar,
+  // mantém a lista anterior em vez de trocar a tela por erro.
+  Future<bool> _reload() async {
+    try {
+      state = AsyncData(await _load());
+      return true;
+    } catch (_) {
+      return false;
+    }
   }
 }
