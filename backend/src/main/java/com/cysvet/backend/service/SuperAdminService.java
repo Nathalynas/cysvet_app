@@ -115,7 +115,7 @@ public class SuperAdminService {
         String[] recipient = transactionTemplate.execute(status ->
                 persistNewPassword(id, temporaryPassword));
 
-        boolean emailSent = accessEmailSender.sendTemporaryPassword(
+        boolean emailSent = accessEmailSender.sendNewTemporaryPassword(
                 recipient[0], recipient[1], recipient[2], temporaryPassword);
         return new ResendAccessResponse(emailSent);
     }
@@ -123,6 +123,9 @@ public class SuperAdminService {
     // Retorna {e-mail, nome do responsavel, nome da empresa}.
     private String[] persistNewPassword(Long id, String temporaryPassword) {
         Empresa empresa = findEmpresa(id);
+        if (!empresa.isAtivo()) {
+            throw new IllegalArgumentException("Empresa desativada");
+        }
         Usuario responsible = empresa.getResponsavel();
         if (responsible == null) {
             throw new IllegalArgumentException("Empresa sem responsavel");

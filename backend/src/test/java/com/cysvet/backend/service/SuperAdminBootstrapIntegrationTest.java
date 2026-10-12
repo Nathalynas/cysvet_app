@@ -15,6 +15,8 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.transaction.annotation.Transactional;
 
 @SpringBootTest(properties = {
+        // Banco proprio: o super usuario unico de outros contextos de teste impediria a criacao na subida.
+        "spring.datasource.url=jdbc:h2:mem:cysvet-bootstrap-test;MODE=MySQL;DB_CLOSE_DELAY=-1;DATABASE_TO_LOWER=TRUE",
         "app.superadmin.email=root@cysvet.test",
         "app.superadmin.password=segredo123"
 })

@@ -51,10 +51,29 @@ class AccessEmailSenderTest {
     }
 
     @Test
-    void returnsTrueWithoutSendingWhenSmtpIsNotConfigured() {
+    void resendUsesNewPasswordWording() {
+        when(provider.getIfAvailable()).thenReturn(mailSender);
+        AccessEmailSender sender = new AccessEmailSender(provider, "no-reply@cysvet.test");
+
+        boolean sent = sender.sendNewTemporaryPassword("ana@fazenda.test", "Ana", "Fazenda Boa", "Abc23456789x");
+
+        assertThat(sent).isTrue();
+        ArgumentCaptor<SimpleMailMessage> captor = ArgumentCaptor.forClass(SimpleMailMessage.class);
+        verify(mailSender).send(captor.capture());
+        assertThat(captor.getValue().getText())
+                .contains("Olá, Ana!")
+                .contains("Uma nova senha provisória foi gerada para o seu acesso à empresa Fazenda Boa no CYSVET.")
+                .doesNotContain("foi cadastrada")
+                .contains("Login: ana@fazenda.test")
+                .contains("Senha provisória: Abc23456789x");
+    }
+
+    @Test
+    void returnsFalseWithoutSendingWhenSmtpIsNotConfigured() {
         when(provider.getIfAvailable()).thenReturn(null);
         AccessEmailSender sender = new AccessEmailSender(provider, "");
 
-        assertThat(sender.sendTemporaryPassword("ana@fazenda.test", "Ana", "Fazenda Boa", "Abc23456789x")).isTrue();
+        assertThat(sender.sendTemporaryPassword("ana@fazenda.test", "Ana", "Fazenda Boa", "Abc23456789x")).isFalse();
+        assertThat(sender.sendNewTemporaryPassword("ana@fazenda.test", "Ana", "Fazenda Boa", "Abc23456789x")).isFalse();
     }
 }

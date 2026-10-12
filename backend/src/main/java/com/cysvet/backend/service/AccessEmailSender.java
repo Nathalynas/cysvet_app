@@ -24,11 +24,23 @@ public class AccessEmailSender {
     }
 
     public boolean sendTemporaryPassword(String toEmail, String userName, String companyName, String temporaryPassword) {
-        // O JavaMailSender so existe quando spring.mail.host esta configurado; em dev o envio e ignorado.
+        return send(toEmail, userName, companyName, temporaryPassword,
+                "A empresa %s foi cadastrada no CYSVET.".formatted(companyName));
+    }
+
+    public boolean sendNewTemporaryPassword(String toEmail, String userName, String companyName, String temporaryPassword) {
+        return send(toEmail, userName, companyName, temporaryPassword,
+                "Uma nova senha provisória foi gerada para o seu acesso à empresa %s no CYSVET."
+                        .formatted(companyName));
+    }
+
+    private boolean send(String toEmail, String userName, String companyName, String temporaryPassword, String intro) {
+        // O JavaMailSender so existe quando spring.mail.host esta configurado; sem ele o envio nao ocorre
+        // e o chamador e avisado para que o super usuario use "Reenviar senha" depois.
         JavaMailSender mailSender = mailSenderProvider.getIfAvailable();
         if (mailSender == null) {
             log.warn("SMTP nao configurado; e-mail de acesso para {} nao enviado", toEmail);
-            return true;
+            return false;
         }
 
         SimpleMailMessage message = new SimpleMailMessage();
@@ -40,13 +52,13 @@ public class AccessEmailSender {
         message.setText("""
                 Olá, %s!
 
-                A empresa %s foi cadastrada no CYSVET.
+                %s
 
                 Login: %s
                 Senha provisória: %s
 
                 No primeiro acesso você deverá definir uma nova senha.
-                """.formatted(userName, companyName, toEmail, temporaryPassword));
+                """.formatted(userName, intro, toEmail, temporaryPassword));
 
         try {
             mailSender.send(message);

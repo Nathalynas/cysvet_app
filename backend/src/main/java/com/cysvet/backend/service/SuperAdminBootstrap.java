@@ -15,6 +15,8 @@ import org.springframework.transaction.annotation.Transactional;
 @Component
 public class SuperAdminBootstrap implements ApplicationRunner {
 
+    private static final String DEFAULT_NAME = "Super usuario";
+
     private final UsuarioRepository usuarioRepository;
     private final PasswordEncoder passwordEncoder;
     private final String email;
@@ -26,7 +28,7 @@ public class SuperAdminBootstrap implements ApplicationRunner {
             PasswordEncoder passwordEncoder,
             @Value("${app.superadmin.email:}") String email,
             @Value("${app.superadmin.password:}") String password,
-            @Value("${app.superadmin.name:Super usuario}") String name
+            @Value("${app.superadmin.name:}") String name
     ) {
         this.usuarioRepository = usuarioRepository;
         this.passwordEncoder = passwordEncoder;
@@ -45,8 +47,14 @@ public class SuperAdminBootstrap implements ApplicationRunner {
 
         Usuario existing = usuarioRepository.findByEmail(normalizedEmail).orElse(null);
         if (existing == null) {
+            Usuario otherSuperAdmin = usuarioRepository.findFirstByPerfilOrderByIdAsc(Perfil.SUPER_ADMIN).orElse(null);
+            if (otherSuperAdmin != null) {
+                log.warn("Ja existe um super usuario ({}); SUPERADMIN_EMAIL {} ignorado",
+                        otherSuperAdmin.getEmail(), normalizedEmail);
+                return;
+            }
             Usuario user = new Usuario();
-            user.setNome(name);
+            user.setNome(name == null || name.isBlank() ? DEFAULT_NAME : name.trim());
             user.setEmail(normalizedEmail);
             user.setSenha(passwordEncoder.encode(password));
             user.setPerfil(Perfil.SUPER_ADMIN);

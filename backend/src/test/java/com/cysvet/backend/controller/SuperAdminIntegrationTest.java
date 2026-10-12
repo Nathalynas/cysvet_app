@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -70,6 +71,8 @@ class SuperAdminIntegrationTest {
     @BeforeEach
     void setUp() throws Exception {
         when(accessEmailSender.sendTemporaryPassword(anyString(), anyString(), anyString(), anyString()))
+                .thenReturn(true);
+        when(accessEmailSender.sendNewTemporaryPassword(anyString(), anyString(), anyString(), anyString()))
                 .thenReturn(true);
         superToken = loginSuperAdmin();
     }
@@ -186,7 +189,7 @@ class SuperAdminIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.emailSent").value(true));
 
-        String newPassword = capturedPasswords(2).get(1);
+        String newPassword = capturedResentPasswords(1).get(0);
         assertFalse(oldPassword.equals(newPassword));
 
         mockMvc.perform(login("eva@x.com", oldPassword)).andExpect(status().isUnauthorized());
@@ -195,6 +198,28 @@ class SuperAdminIntegrationTest {
                 .andExpect(jsonPath("$.user.trocarSenha").value(true));
 
         assertRefreshRejected(oldRefresh);
+    }
+
+    @Test
+    void resendForDeactivatedCompanyReturns400() throws Exception {
+        long id = createdCompanyId("Reenvio Inativa", "Ivo", "ivo@x.com");
+        String password = capturedPasswords(1).get(0);
+        mockMvc.perform(authorized(patch("/api/super/companies/" + id + "/status"))
+                        .contentType("application/json")
+                        .content("{\"active\": false}"))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(authorized(post("/api/super/companies/" + id + "/resend-access")))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("Empresa desativada"));
+
+        verify(accessEmailSender, never())
+                .sendNewTemporaryPassword(anyString(), anyString(), anyString(), anyString());
+        mockMvc.perform(authorized(patch("/api/super/companies/" + id + "/status"))
+                        .contentType("application/json")
+                        .content("{\"active\": true}"))
+                .andExpect(status().isOk());
+        mockMvc.perform(login("ivo@x.com", password)).andExpect(status().isOk());
     }
 
     @Test
@@ -242,7 +267,7 @@ class SuperAdminIntegrationTest {
         long id = createdCompanyId("Reenvio Commit", "Gil", email);
         String oldPassword = capturedPasswords(1).get(0);
         AtomicReference<String> observed = new AtomicReference<>();
-        when(accessEmailSender.sendTemporaryPassword(anyString(), anyString(), anyString(), anyString()))
+        when(accessEmailSender.sendNewTemporaryPassword(anyString(), anyString(), anyString(), anyString()))
                 .thenAnswer(invocation -> {
                     String newPassword = invocation.getArgument(3);
                     boolean noTransaction = !TransactionSynchronizationManager.isActualTransactionActive();
@@ -286,6 +311,13 @@ class SuperAdminIntegrationTest {
         ArgumentCaptor<String> captor = ArgumentCaptor.forClass(String.class);
         verify(accessEmailSender, times(expectedCalls))
                 .sendTemporaryPassword(anyString(), anyString(), anyString(), captor.capture());
+        return captor.getAllValues();
+    }
+
+    private List<String> capturedResentPasswords(int expectedCalls) {
+        ArgumentCaptor<String> captor = ArgumentCaptor.forClass(String.class);
+        verify(accessEmailSender, times(expectedCalls))
+                .sendNewTemporaryPassword(anyString(), anyString(), anyString(), captor.capture());
         return captor.getAllValues();
     }
 
