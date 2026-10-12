@@ -1,4 +1,5 @@
 import 'package:cysvet_app/app/theme.dart';
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -9,6 +10,16 @@ import 'package:cysvet_app/core/widgets/app_text_field.dart';
 import 'package:cysvet_app/providers/auth_state.dart';
 
 const _authPrimaryColor = AppTheme.primary1Color;
+
+/// O servidor já tem trocarSenha=false: a troca foi feita em outro momento (ou
+/// a API respondeu mas o app não gravou a sessão), então basta liberar o app.
+bool isPasswordChangeAlreadyDone(Object error) {
+  if (error is! DioException || error.response?.statusCode != 400) {
+    return false;
+  }
+  final data = error.response?.data;
+  return data is Map && data['message'] == 'Troca de senha nao solicitada';
+}
 
 class ChangePasswordPage extends ConsumerStatefulWidget {
   const ChangePasswordPage({super.key});
@@ -33,15 +44,20 @@ class _ChangePasswordPageState extends ConsumerState<ChangePasswordPage> {
   }
 
   Future<void> _submit() async {
+    if (_saving) return;
     if (!_formKey.currentState!.validate()) {
       return;
     }
 
     setState(() => _saving = true);
     try {
-      await ref
-          .read(accountRepositoryProvider)
-          .changeRequiredPassword(_passwordController.text);
+      try {
+        await ref
+            .read(accountRepositoryProvider)
+            .changeRequiredPassword(_passwordController.text);
+      } catch (error) {
+        if (!isPasswordChangeAlreadyDone(error)) rethrow;
+      }
       // O roteador redireciona para o destino assim que trocarSenha for false.
       await ref.read(authSessionProvider.notifier).markPasswordChanged();
     } catch (error) {

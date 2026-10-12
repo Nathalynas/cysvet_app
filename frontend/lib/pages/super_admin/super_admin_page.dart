@@ -474,21 +474,21 @@ class _Actions extends StatelessWidget {
       runSpacing: 8,
       alignment: WrapAlignment.end,
       children: [
-        AppButton(
-          text: 'Reenviar senha',
-          outlined: true,
-          disabled: busy,
-          onPressed: () => onResend(company),
-        ),
-        if (company.isActive)
+        if (company.isActive) ...[
+          AppButton(
+            text: 'Reenviar senha',
+            outlined: true,
+            disabled: busy,
+            onPressed: () => onResend(company),
+          ),
           AppButton(
             text: 'Desativar',
             outlined: true,
             color: AppTheme.dangerColor,
             disabled: busy,
             onPressed: () => onDeactivate(company),
-          )
-        else
+          ),
+        ] else
           AppButton(
             text: 'Reativar',
             disabled: busy,

@@ -18,12 +18,14 @@ class _FakeSuperAdminRepository implements SuperAdminRepository {
   final setActiveCalls = <(int, bool)>[];
   int createCalls = 0;
   int resendCalls = 0;
+  int listCalls = 0;
   bool listThrows = false;
   bool setActiveThrows = false;
   Completer<bool>? resendGate;
 
   @override
   Future<List<ClientCompanyModel>> list() async {
+    listCalls++;
     if (listThrows) throw Exception('falha ao listar');
     return [...companies];
   }
@@ -116,6 +118,25 @@ void main() {
     expect(find.text('Desativada'), findsOneWidget);
     expect(find.text('Reativar'), findsOneWidget);
     expect(find.text('Desativar'), findsNWidgets(2));
+    expect(find.text('Reenviar senha'), findsNWidgets(2));
+  });
+
+  testWidgets('deactivatedRowHasNoResendButton', (tester) async {
+    await pumpPage(tester, _FakeSuperAdminRepository([_esperanca]));
+
+    expect(find.text('Reativar'), findsOneWidget);
+    expect(find.text('Reenviar senha'), findsNothing);
+  });
+
+  testWidgets('resendReloadsList', (tester) async {
+    final repository = _FakeSuperAdminRepository([_boaVista]);
+    await pumpPage(tester, repository);
+    final listsBefore = repository.listCalls;
+
+    await tester.tap(find.text('Reenviar senha'));
+    await tester.pumpAndSettle();
+
+    expect(repository.listCalls, listsBefore + 1);
   });
 
   testWidgets('searchFiltersByCompanyOrEmail', (tester) async {

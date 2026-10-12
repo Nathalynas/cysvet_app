@@ -22,6 +22,32 @@ ForbiddenAction classifyForbidden(int? status, Object? data) {
   };
 }
 
+/// Aplica a reação a um 403 de bloqueio. Só age se ainda houver sessão: várias
+/// requisições em andamento falham juntas e o aviso deve aparecer uma vez.
+/// Só a sessão é limpa: fila de sync e banco local permanecem para não perder
+/// dados offline pendentes.
+void handleForbiddenAction(
+  ForbiddenAction action, {
+  required bool hasSession,
+  required void Function() clearSession,
+  required void Function(String message) warn,
+}) {
+  if (!hasSession) return;
+
+  switch (action) {
+    case ForbiddenAction.companyDeactivated:
+      warn('Sua empresa foi desativada. Fale com o suporte do CYSVET.');
+      clearSession();
+    case ForbiddenAction.passwordChangeRequired:
+      warn(
+        'Sua senha foi redefinida. Entre com a senha provisória enviada por e-mail.',
+      );
+      clearSession();
+    case ForbiddenAction.none:
+      break;
+  }
+}
+
 final apiClientProvider = Provider<Dio>((ref) {
   final session = ref.watch(authSessionProvider);
 
@@ -66,18 +92,13 @@ final apiClientProvider = Provider<Dio>((ref) {
           unawaited(ref.read(authSessionProvider.notifier).clearSession());
         }
 
-        // Só a sessão é limpa: fila de sync e banco local permanecem para não
-        // perder dados offline pendentes da empresa desativada.
-        final forbidden = classifyForbidden(
-          error.response?.statusCode,
-          error.response?.data,
+        handleForbiddenAction(
+          classifyForbidden(error.response?.statusCode, error.response?.data),
+          hasSession: ref.read(authSessionProvider) != null,
+          clearSession: () =>
+              unawaited(ref.read(authSessionProvider.notifier).clearSession()),
+          warn: showAppWarning,
         );
-        if (forbidden == ForbiddenAction.companyDeactivated) {
-          showAppWarning(
-            'Sua empresa foi desativada. Fale com o suporte do CYSVET.',
-          );
-          unawaited(ref.read(authSessionProvider.notifier).clearSession());
-        }
 
         handler.next(error);
       },

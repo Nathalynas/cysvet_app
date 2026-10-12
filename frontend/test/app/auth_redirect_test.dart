@@ -41,8 +41,8 @@ void main() {
     expect(_redirect(null, '/dashboard'), '/login');
   });
 
-  test('sem sessao em /register vai para /login', () {
-    expect(_redirect(null, '/register'), '/login');
+  test('sem sessao em rota desconhecida vai para /login', () {
+    expect(_redirect(null, '/rota-inexistente'), '/login');
   });
 
   test('sem sessao em /login permanece', () {

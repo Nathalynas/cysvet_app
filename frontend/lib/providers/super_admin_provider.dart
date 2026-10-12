@@ -48,8 +48,14 @@ class SuperAdminCompaniesNotifier
     return _reload();
   }
 
-  Future<bool> resendAccess(int id) {
-    return ref.read(superAdminRepositoryProvider).resendAccess(id);
+  /// Devolve se o e-mail foi enviado. O status passa a "Aguardando 1º acesso";
+  /// se o recarregamento falhar, a lista anterior é mantida.
+  Future<bool> resendAccess(int id) async {
+    final emailSent = await ref
+        .read(superAdminRepositoryProvider)
+        .resendAccess(id);
+    await _reload();
+    return emailSent;
   }
 
   // A mutação já foi feita no servidor; se só o recarregamento falhar,
