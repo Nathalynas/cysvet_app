@@ -31,6 +31,7 @@ CREATE TABLE empresa (
     nome VARCHAR(255) NOT NULL,
     email VARCHAR(255) NULL,
     ativo BOOLEAN NOT NULL,
+    responsavel_usuario_id BIGINT NULL,
     PRIMARY KEY (id),
     UNIQUE KEY uk_empresa_empresa_id (empresa_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -44,9 +45,13 @@ CREATE TABLE usuario (
     email VARCHAR(255) NOT NULL,
     senha VARCHAR(255) NOT NULL,
     perfil VARCHAR(255) NOT NULL,
+    trocar_senha BOOLEAN NOT NULL DEFAULT FALSE,
     PRIMARY KEY (id),
     UNIQUE KEY uk_usuario_email (email)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+ALTER TABLE empresa ADD CONSTRAINT fk_empresa_responsavel
+    FOREIGN KEY (responsavel_usuario_id) REFERENCES usuario (id);
 
 CREATE TABLE usuario_empresa (
     id BIGINT NOT NULL AUTO_INCREMENT,

@@ -1,6 +1,6 @@
 # Dicionario de Dados
 
-Schema apos a migration **V17** (MySQL 8). O Hibernate roda com `ddl-auto: validate`: o schema e definido
+Schema apos a migration **V18** (MySQL 8). O Hibernate roda com `ddl-auto: validate`: o schema e definido
 somente pelas migrations Flyway em `backend/src/main/resources/db/migration`.
 
 **Colunas comuns** (`BaseEntity`, presentes em todas as tabelas):
@@ -28,6 +28,7 @@ Clinica ou organizacao atendida. Criada no cadastro do primeiro administrador.
 | `nome` | VARCHAR(255), NN | Nome da empresa |
 | `email` | VARCHAR(255) | E-mail de contato |
 | `ativo` | BOOLEAN, NN | Empresa ativa |
+| `responsavel_usuario_id` | BIGINT, FK `usuario` | Usuario responsavel pela empresa (V18); nulo se nao houver ADMIN |
 
 ### `usuario`
 
@@ -38,7 +39,8 @@ Usuarios que acessam o sistema (global, sem `tenant_id`).
 | `nome` | VARCHAR(255), NN | Nome do veterinario ou administrador |
 | `email` | VARCHAR(255), NN, unico | Login |
 | `senha` | VARCHAR(255), NN | Hash BCrypt |
-| `perfil` | VARCHAR(255), NN | `ADMIN` ou `VETERINARIO` |
+| `perfil` | VARCHAR(255), NN | `ADMIN`, `VETERINARIO` ou `SUPER_ADMIN` (V18) |
+| `trocar_senha` | BOOLEAN, NN, padrao false | Exige troca de senha no proximo acesso (V18) |
 
 ### `usuario_empresa`
 
