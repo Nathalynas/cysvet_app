@@ -82,6 +82,12 @@ app:
       - Accept
       - empresaid
     allow-credentials: true
+  superadmin:
+    email: ${SUPERADMIN_EMAIL:}
+    password: ${SUPERADMIN_PASSWORD:}
+    name: ${SUPERADMIN_NAME:Super usuario}
+  mail:
+    from: ${APP_MAIL_FROM:}
   jwt:
     expiration-ms: ${JWT_EXPIRATION_MS:3600000}
     refresh-expiration-ms: ${JWT_REFRESH_EXPIRATION_MS:604800000}

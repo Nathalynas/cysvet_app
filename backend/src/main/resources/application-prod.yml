@@ -7,6 +7,13 @@ spring:
   h2:
     console:
       enabled: false
+  mail:
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
 
 app:
   docs:
