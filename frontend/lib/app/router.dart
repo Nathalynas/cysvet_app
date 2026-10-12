@@ -12,6 +12,7 @@ import '../pages/dashboard/dashboard_page.dart';
 import '../pages/properties/property_details_page.dart';
 import '../pages/properties/properties_page.dart';
 import '../pages/splash/splash_page.dart';
+import '../pages/super_admin/super_admin_page.dart';
 import '../pages/users/users_page.dart';
 import '../pages/visits/visit_form_page.dart';
 import '../pages/visits/visit_report_page.dart';
@@ -42,8 +43,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: '/super',
-        builder: (context, state) =>
-            _buildPublicRoute(const _RoutePlaceholder('/super')),
+        builder: (context, state) => _buildPublicRoute(const SuperAdminPage()),
       ),
       GoRoute(
         path: '/trocar-senha',
@@ -175,16 +175,4 @@ Page<void> _buildAuthPage(Widget form) {
 
 Widget _buildPublicRoute(Widget child) {
   return Theme(data: AppTheme.lightTheme, child: child);
-}
-
-// Substituído pelas páginas reais nas tarefas seguintes.
-class _RoutePlaceholder extends StatelessWidget {
-  const _RoutePlaceholder(this.name);
-
-  final String name;
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(body: Center(child: Text(name)));
-  }
 }
