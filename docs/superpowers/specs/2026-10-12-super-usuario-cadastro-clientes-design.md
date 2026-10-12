@@ -134,7 +134,8 @@ Ações por linha: "Reenviar senha" e "Desativar" quando a empresa está ativa;
 - No app, se `trocarSenha` for true depois do login, o roteador manda para uma
   tela "Defina sua senha" (nova senha + confirmação, mínimo 6 caracteres, igual
   à regra atual), e as outras rotas ficam bloqueadas até a troca.
-- Endpoint novo `POST /api/auth/change-password` (autenticado). Quando o
+- Endpoint novo `POST /api/account/password` (autenticado; fora de
+  `/api/auth/**`, que o filtro e o app tratam como rota sem token). Quando o
   usuário está com `trocarSenha = true`, recebe só a nova senha, porque o login
   com a provisória já provou quem ele é e o app pode ter reiniciado nesse meio
   tempo. Depois grava a nova senha e marca `trocarSenha = false`. Neste escopo
@@ -145,8 +146,8 @@ Ações por linha: "Reenviar senha" e "Desativar" quando a empresa está ativa;
 
 ### E-mail
 - Uso `spring-boot-starter-mail` (`JavaMailSender`) com SMTP configurado só
-  por variáveis de ambiente (`MAIL_HOST`, `MAIL_PORT`, `MAIL_USERNAME`,
-  `MAIL_PASSWORD`, `MAIL_FROM`).
+  por variáveis de ambiente (`SPRING_MAIL_HOST`, `SPRING_MAIL_PORT`,
+  `SPRING_MAIL_USERNAME`, `SPRING_MAIL_PASSWORD`, `APP_MAIL_FROM`).
 - Provedor sugerido: **Brevo**, no plano grátis, por SMTP na porta 587. O Luan
   ainda não tem conta; criar a conta e verificar o remetente é passo manual dele.
   Trocar de provedor depois exige só mudar o `.env`.
@@ -165,7 +166,7 @@ Ações por linha: "Reenviar senha" e "Desativar" quando a empresa está ativa;
 ### Ajustes técnicos já identificados
 - O `JwtAuthenticationFilter` pula toda rota `/api/auth/**` e exige o header
   `empresaid` + vínculo com a empresa nas outras. Ele precisa de exceções:
-  `/api/auth/change-password` tem que ser autenticada, e `/api/super/**` tem que
+  `/api/account/password` não exige empresa, e `/api/super/**` tem que
   aceitar `SUPER_ADMIN` sem empresa.
 - Atualizar o `AGENTS.md`, que ainda diz "a próxima é a V17".
 
