@@ -302,7 +302,9 @@ class VisitsController {
   Future<Uint8List> downloadReportPdf(int visitId) async {
     _ref.read(visitsReportBusyProvider.notifier).setBusy(true);
     try {
-      return await _ref.read(visitsRepositoryProvider).downloadReportPdf(visitId);
+      return await _ref
+          .read(visitsRepositoryProvider)
+          .downloadReportPdf(visitId);
     } finally {
       _ref.read(visitsReportBusyProvider.notifier).setBusy(false);
     }

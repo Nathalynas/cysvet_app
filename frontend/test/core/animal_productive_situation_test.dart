@@ -37,7 +37,10 @@ void main() {
 
   test('apagar a data de secagem mantém a situação escolhida', () {
     expect(
-      AnimalProductiveSituation.afterDryOff(AnimalProductiveSituation.dry, null),
+      AnimalProductiveSituation.afterDryOff(
+        AnimalProductiveSituation.dry,
+        null,
+      ),
       AnimalProductiveSituation.dry,
     );
   });

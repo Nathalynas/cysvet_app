@@ -93,7 +93,10 @@ void main() {
   test('parto volta a vaca seca para lactante', () {
     final preview = previewAnimalAfterVisit(
       animal.copyWith(situacaoProdutiva: AnimalProductiveSituation.dry),
-      VisitAnimalEntryModel(animalId: 1, dataUltimoParto: DateTime(2026, 2, 16)),
+      VisitAnimalEntryModel(
+        animalId: 1,
+        dataUltimoParto: DateTime(2026, 2, 16),
+      ),
     );
 
     expect(preview.situacaoProdutiva, AnimalProductiveSituation.lactating);
