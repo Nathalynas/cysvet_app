@@ -58,19 +58,34 @@ curl -fsSL https://get.docker.com | sudo sh
 sudo usermod -aG docker ubuntu
 exit    # entre de novo por SSH para o grupo valer
 
-git clone https://github.com/<usuario>/cysvet_app.git   # repositório privado: use um token de acesso pessoal
-cd cysvet_app/deploy/oracle
+```
+
+A VM não acessa o GitHub (o repositório é privado), então o código vai do PC para ela em um pacote. No PC,
+na pasta do repositório e na branch que vai para produção:
+
+```bash
+git archive --format=tar.gz -o cysvet_app.tar.gz HEAD
+scp cysvet_app.tar.gz ubuntu@IP_PUBLICO:/tmp/
+```
+
+Na VM:
+
+```bash
+mkdir ~/cysvet_app && tar -xzf /tmp/cysvet_app.tar.gz -C ~/cysvet_app
+cd ~/cysvet_app/deploy/oracle
 cp .env.example .env
 openssl rand -base64 24   # senhas do MySQL
 openssl rand -base64 48   # JWT_SECRET
-nano .env                  # DOMAIN, senhas, JWT_SECRET, APP_CORS_ALLOWED_ORIGINS
+nano .env                  # DOMAIN, senhas, JWT_SECRET, APP_CORS_ALLOWED_ORIGINS, super usuário e e-mail
 ```
+
+O super usuário e o envio de e-mail estão explicados no README da raiz ("Super usuário e e-mail").
 
 ## 6. Subir
 
 ```bash
-docker compose up -d --build      # o primeiro build na VM ARM leva alguns minutos
-docker compose logs -f backend    # espere "Started CysvetApplication"
+sudo docker compose up -d --build      # o primeiro build na VM ARM leva alguns minutos
+sudo docker compose logs -f backend    # espere "Started CysvetApplication"
 curl https://SEU_DOMINIO/actuator/readiness   # {"status":"UP",...}
 ```
 
@@ -89,17 +104,39 @@ Para distribuir à equipe, use o **Firebase App Distribution** (grátis): crie u
 um app Android com o pacote `com.cysvet.app`, envie o APK em *App Distribution* e convide os testadores por
 e-mail. Para uso próprio, basta copiar o APK para o celular e instalar.
 
-A primeira pessoa usa **Criar conta** no app (isso cria a empresa); os veterinários são adicionados depois
-pela tela de equipe.
+Não há cadastro público no app. O super usuário entra pela tela de login, cai no painel e cadastra cada
+cliente (empresa + responsável); o responsável recebe a senha provisória por e-mail e troca no primeiro
+acesso. Os veterinários são adicionados depois pelo responsável, na tela de equipe.
 
 ## 8. Atualizar
 
+No PC, na branch que vai para produção:
+
 ```bash
-cd cysvet_app && git pull
-cd deploy/oracle && docker compose up -d --build
+git archive --format=tar.gz -o cysvet_app.tar.gz HEAD
+scp cysvet_app.tar.gz ubuntu@IP_PUBLICO:/tmp/
 ```
 
-As migrations novas rodam sozinhas na subida do backend.
+Na VM, extraia numa pasta nova (o `tar` por cima não apaga arquivos removidos do repositório) e leve o
+`.env` e os backups:
+
+```bash
+cd ~/cysvet_app/deploy/oracle && sudo sh backup.sh
+cd ~ && rm -rf cysvet_app_antigo cysvet_app_novo
+mkdir cysvet_app_novo && tar -xzf /tmp/cysvet_app.tar.gz -C cysvet_app_novo
+cp cysvet_app/deploy/oracle/.env cysvet_app_novo/deploy/oracle/
+sudo cp -a cysvet_app/deploy/oracle/backups cysvet_app_novo/deploy/oracle/
+mv cysvet_app cysvet_app_antigo && mv cysvet_app_novo cysvet_app
+cd ~/cysvet_app/deploy/oracle && sudo docker compose up -d --build
+sudo docker compose logs -f backend    # espere "Started CysvetApplication"
+```
+
+O caminho `~/cysvet_app/deploy/oracle` não muda, então o Docker reaproveita os volumes do banco e do
+certificado. As migrations novas rodam sozinhas na subida do backend. Para voltar à versão anterior, troque
+as pastas de volta e rode `sudo docker compose up -d --build` de novo (migrations já aplicadas continuam no
+banco).
+
+Mudou só o `.env`? Basta `sudo docker compose up -d` na pasta `deploy/oracle`.
 
 ## 9. Backup
 
@@ -112,7 +149,7 @@ Os dumps ficam em `deploy/oracle/backups/` (14 dias). Copie de tempos em tempos 
 (`scp ubuntu@IP:cysvet_app/deploy/oracle/backups/*.gz .`). Restaurar:
 
 ```bash
-gunzip -c backups/ARQUIVO.sql.gz | docker compose exec -T mysql sh -c 'mysql -uroot -p"$MYSQL_ROOT_PASSWORD" cysvet'
+gunzip -c backups/ARQUIVO.sql.gz | sudo docker compose exec -T mysql sh -c 'mysql -uroot -p"$MYSQL_ROOT_PASSWORD" cysvet'
 ```
 
 ## 10. Chave de assinatura do Android
@@ -136,6 +173,6 @@ Guarde o `.jks` e as senhas em lugar seguro: sem eles não é possível publicar
 
 ## Atenção
 
-- O cadastro (`/api/auth/register`) é público: quem tiver o endereço pode criar uma conta com empresa própria
-  (os dados ficam isolados, mas a conta existe).
+- Só o super usuário cria contas; sem `SPRING_MAIL_PASSWORD` válido o painel avisa que o e-mail com a senha
+  provisória não foi enviado (use "Reenviar senha" depois de configurar).
 - O `.env` e os backups ficam só na VM (estão no `.gitignore`).
