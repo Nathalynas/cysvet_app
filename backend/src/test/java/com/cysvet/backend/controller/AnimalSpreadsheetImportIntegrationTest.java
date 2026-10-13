@@ -8,11 +8,10 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import com.cysvet.backend.dto.auth.RegisterRequest;
 import com.cysvet.backend.entity.Usuario;
 import com.cysvet.backend.repository.UsuarioEmpresaRepository;
 import com.cysvet.backend.repository.UsuarioRepository;
-import com.cysvet.backend.service.AuthService;
+import com.cysvet.backend.support.TestAccounts;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.ByteArrayOutputStream;
@@ -43,10 +42,10 @@ class AnimalSpreadsheetImportIntegrationTest {
     };
 
     @Autowired
-    private MockMvc mockMvc;
+    private TestAccounts testAccounts;
 
     @Autowired
-    private AuthService authService;
+    private MockMvc mockMvc;
 
     @Autowired
     private UsuarioRepository usuarioRepository;
@@ -194,7 +193,7 @@ class AnimalSpreadsheetImportIntegrationTest {
     }
 
     private AuthContext registerAndAuthenticate(String email) throws Exception {
-        authService.register(new RegisterRequest("Admin " + email, email, "123456"));
+        testAccounts.createAdmin("Admin " + email, email, "123456");
         JsonNode response = readResponse(mockMvc.perform(post("/api/auth/login")
                         .contentType(APPLICATION_JSON)
                         .content("""

@@ -12,12 +12,11 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import com.cysvet.backend.dto.auth.RegisterRequest;
 import com.cysvet.backend.entity.Usuario;
 import com.cysvet.backend.entity.UsuarioEmpresa;
 import com.cysvet.backend.repository.UsuarioEmpresaRepository;
 import com.cysvet.backend.repository.UsuarioRepository;
-import com.cysvet.backend.service.AuthService;
+import com.cysvet.backend.support.TestAccounts;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
@@ -33,10 +32,10 @@ import org.springframework.transaction.annotation.Transactional;
 class UserTeamIntegrationTest {
 
     @Autowired
-    private MockMvc mockMvc;
+    private TestAccounts testAccounts;
 
     @Autowired
-    private AuthService authService;
+    private MockMvc mockMvc;
 
     @Autowired
     private UsuarioRepository usuarioRepository;
@@ -303,7 +302,7 @@ class UserTeamIntegrationTest {
     }
 
     private AuthContext registerAndAuthenticate(String email, String name, String password) throws Exception {
-        authService.register(new RegisterRequest(name, email, password));
+        testAccounts.createAdmin(name, email, password);
         return login(email, password);
     }
 

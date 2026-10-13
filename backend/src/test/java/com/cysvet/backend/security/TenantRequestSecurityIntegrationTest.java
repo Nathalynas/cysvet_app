@@ -8,14 +8,13 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import com.cysvet.backend.dto.auth.RegisterRequest;
 import com.cysvet.backend.entity.Empresa;
 import com.cysvet.backend.entity.Usuario;
 import com.cysvet.backend.entity.UsuarioEmpresa;
 import com.cysvet.backend.repository.EmpresaRepository;
 import com.cysvet.backend.repository.UsuarioEmpresaRepository;
 import com.cysvet.backend.repository.UsuarioRepository;
-import com.cysvet.backend.service.AuthService;
+import com.cysvet.backend.support.TestAccounts;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
@@ -31,10 +30,10 @@ import org.springframework.transaction.annotation.Transactional;
 class TenantRequestSecurityIntegrationTest {
 
     @Autowired
-    private MockMvc mockMvc;
+    private TestAccounts testAccounts;
 
     @Autowired
-    private AuthService authService;
+    private MockMvc mockMvc;
 
     @Autowired
     private UsuarioRepository usuarioRepository;
@@ -129,7 +128,7 @@ class TenantRequestSecurityIntegrationTest {
     }
 
     private String registerAndExtractToken(String email) throws Exception {
-        authService.register(new RegisterRequest("Teste Tenant", email, "123456"));
+        testAccounts.createAdmin("Teste Tenant", email, "123456");
 
         String responseBody = mockMvc.perform(post("/api/auth/login")
                         .with(csrf())

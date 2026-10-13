@@ -6,17 +6,14 @@ import com.cysvet.backend.dto.auth.UsuarioAutenticadoResponse;
 import com.cysvet.backend.dto.auth.SessionPolicyResponse;
 import com.cysvet.backend.dto.auth.LoginRequest;
 import com.cysvet.backend.dto.auth.LogoutRequest;
-import com.cysvet.backend.dto.auth.RegisterRequest;
 import com.cysvet.backend.dto.auth.TokenRefreshRequest;
 import com.cysvet.backend.entity.Empresa;
 import com.cysvet.backend.entity.TokenAtualizacao;
 import com.cysvet.backend.entity.Perfil;
 import com.cysvet.backend.entity.Usuario;
 import com.cysvet.backend.entity.UsuarioEmpresa;
-import com.cysvet.backend.repository.EmpresaRepository;
 import com.cysvet.backend.repository.TokenAtualizacaoRepository;
 import com.cysvet.backend.repository.UsuarioRepository;
-import com.cysvet.backend.repository.UsuarioEmpresaRepository;
 import com.cysvet.backend.security.JwtService;
 import com.cysvet.backend.tenant.BypassTenant;
 import jakarta.persistence.EntityManager;
@@ -43,8 +40,6 @@ public class AuthService {
     private EntityManager entityManager;
 
     private final UsuarioRepository userRepository;
-    private final EmpresaRepository empresaRepository;
-    private final UsuarioEmpresaRepository usuarioEmpresaRepository;
     private final TokenAtualizacaoRepository refreshTokenRepository;
     private final PasswordEncoder passwordEncoder;
     private final AuthenticationManager authenticationManager;
@@ -53,23 +48,6 @@ public class AuthService {
 
     @Value("${app.jwt.refresh-expiration-ms}")
     private long refreshExpirationMs;
-
-    @Transactional
-    public AuthResponse register(RegisterRequest request) {
-        userRepository.findByEmail(request.email()).ifPresent(existing -> {
-            throw new IllegalArgumentException("E-mail ja cadastrado");
-        });
-
-        Usuario user = new Usuario();
-        user.setNome(request.name());
-        user.setEmail(request.email());
-        user.setSenha(passwordEncoder.encode(request.password()));
-        user.setPerfil(Perfil.ADMIN);
-        Usuario savedUser = userRepository.saveAndFlush(user);
-        createDefaultCompanyForUser(savedUser);
-
-        return buildAuthResponse(savedUser.getId());
-    }
 
     @Transactional
     public AuthResponse login(LoginRequest request) {
@@ -102,6 +80,18 @@ public class AuthService {
         refreshTokenRepository.save(refreshToken);
     }
 
+    @Transactional
+    public void changeRequiredPassword(Long userId, String newPassword) {
+        Usuario user = userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("Usuario nao encontrado"));
+        if (!user.isTrocarSenha()) {
+            throw new IllegalArgumentException("Troca de senha nao solicitada");
+        }
+        user.setSenha(passwordEncoder.encode(newPassword));
+        user.setTrocarSenha(false);
+        userRepository.save(user);
+    }
+
     private AuthResponse buildAuthResponse(Long userId) {
         if (userId == null) {
             throw new IllegalStateException("Usuario persistido sem identificador");
@@ -113,8 +103,14 @@ public class AuthService {
         Usuario managedUser = userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalStateException("Usuario nao encontrado para emissao do token"));
 
-        List<UsuarioEmpresa> memberships = tenantAccessService.findActiveMemberships(managedUser.getId());
-        if (memberships.isEmpty()) {
+        boolean superAdmin = managedUser.getPerfil() == Perfil.SUPER_ADMIN;
+        List<UsuarioEmpresa> memberships = superAdmin
+                ? List.of()
+                : tenantAccessService.findActiveMemberships(managedUser.getId());
+        if (!superAdmin && memberships.isEmpty()) {
+            if (tenantAccessService.hasOnlyInactiveCompanies(managedUser.getId())) {
+                throw new AccessDeniedException("Empresa desativada");
+            }
             throw new AccessDeniedException("Usuario sem empresa vinculada ativa");
         }
 
@@ -138,7 +134,7 @@ public class AuthService {
                 .map(UsuarioEmpresa::getEmpresa)
                 .map(this::toCompanyResponse)
                 .toList();
-        Long empresaAtivaId = memberships.get(0).getEmpresa().getId();
+        Long empresaAtivaId = memberships.isEmpty() ? null : memberships.get(0).getEmpresa().getId();
 
         return new AuthResponse(
                 accessToken,
@@ -147,7 +143,8 @@ public class AuthService {
                         managedUser.getId(),
                         managedUser.getNome(),
                         managedUser.getEmail(),
-                        managedUser.getPerfil()
+                        managedUser.getPerfil(),
+                        managedUser.isTrocarSenha()
                 ),
                 empresaAtivaId,
                 empresas,
@@ -166,20 +163,5 @@ public class AuthService {
                 empresa.getNome(),
                 empresa.getEmail()
         );
-    }
-
-    private void createDefaultCompanyForUser(Usuario user) {
-        Empresa empresa = new Empresa();
-        empresa.setEmpresaId(UUID.randomUUID().toString());
-        empresa.setNome("Empresa de " + user.getNome());
-        empresa.setEmail(user.getEmail());
-        empresa.setAtivo(true);
-        Empresa savedEmpresa = empresaRepository.saveAndFlush(empresa);
-
-        UsuarioEmpresa membership = new UsuarioEmpresa();
-        membership.setUsuario(user);
-        membership.setEmpresa(savedEmpresa);
-        membership.setAtivo(true);
-        usuarioEmpresaRepository.saveAndFlush(membership);
     }
 }

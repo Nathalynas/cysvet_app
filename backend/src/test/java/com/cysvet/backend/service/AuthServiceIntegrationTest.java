@@ -6,12 +6,12 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.cysvet.backend.dto.auth.AuthResponse;
-import com.cysvet.backend.dto.auth.RegisterRequest;
 import com.cysvet.backend.dto.auth.TokenRefreshRequest;
 import com.cysvet.backend.entity.TokenAtualizacao;
 import com.cysvet.backend.entity.Usuario;
 import com.cysvet.backend.repository.TokenAtualizacaoRepository;
 import com.cysvet.backend.repository.UsuarioRepository;
+import com.cysvet.backend.support.TestAccounts;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -25,16 +25,17 @@ class AuthServiceIntegrationTest {
     private AuthService authService;
 
     @Autowired
+    private TestAccounts testAccounts;
+
+    @Autowired
     private UsuarioRepository usuarioRepository;
 
     @Autowired
     private TokenAtualizacaoRepository tokenAtualizacaoRepository;
 
     @Test
-    void registerShouldPersistUserWithGeneratedIdBeforeSavingRefreshToken() {
-        AuthResponse response = authService.register(
-                new RegisterRequest("Teste", "teste.auth.service@example.com", "123456")
-        );
+    void loginShouldPersistRefreshTokenForUser() {
+        AuthResponse response = testAccounts.createAdmin("Teste", "teste.auth.service@example.com", "123456");
 
         assertNotNull(response.user());
         assertNotNull(response.user().id());
@@ -58,9 +59,7 @@ class AuthServiceIntegrationTest {
 
     @Test
     void refreshShouldRotateTokensAndExposeOfflineSessionPolicy() {
-        AuthResponse registered = authService.register(
-                new RegisterRequest("Refresh Teste", "teste.auth.refresh@example.com", "123456")
-        );
+        AuthResponse registered = testAccounts.createAdmin("Refresh Teste", "teste.auth.refresh@example.com", "123456");
 
         AuthResponse refreshed = authService.refresh(new TokenRefreshRequest(registered.refreshToken()));
 

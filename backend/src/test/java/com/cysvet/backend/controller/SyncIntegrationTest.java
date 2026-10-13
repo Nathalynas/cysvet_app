@@ -11,11 +11,10 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import com.cysvet.backend.dto.auth.RegisterRequest;
 import com.cysvet.backend.entity.Usuario;
 import com.cysvet.backend.repository.UsuarioEmpresaRepository;
 import com.cysvet.backend.repository.UsuarioRepository;
-import com.cysvet.backend.service.AuthService;
+import com.cysvet.backend.support.TestAccounts;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Instant;
@@ -31,10 +30,10 @@ import org.springframework.test.web.servlet.MockMvc;
 class SyncIntegrationTest {
 
     @Autowired
-    private MockMvc mockMvc;
+    private TestAccounts testAccounts;
 
     @Autowired
-    private AuthService authService;
+    private MockMvc mockMvc;
 
     @Autowired
     private UsuarioRepository usuarioRepository;
@@ -727,7 +726,7 @@ class SyncIntegrationTest {
     }
 
     private AuthContext registerAndAuthenticate(String email, String name, String password) throws Exception {
-        authService.register(new RegisterRequest(name, email, password));
+        testAccounts.createAdmin(name, email, password);
         return login(email, password);
     }
 

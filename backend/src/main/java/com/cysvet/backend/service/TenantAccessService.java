@@ -15,10 +15,22 @@ public class TenantAccessService {
     private final UsuarioEmpresaRepository usuarioEmpresaRepository;
 
     public boolean userHasAccessToTenant(Long userId, Long tenantId) {
-        return usuarioEmpresaRepository.existsByUsuarioIdAndEmpresaIdAndAtivoTrue(userId, tenantId);
+        return usuarioEmpresaRepository.existsByUsuarioIdAndEmpresaIdAndAtivoTrueAndEmpresaAtivoTrue(userId, tenantId);
     }
 
     public List<UsuarioEmpresa> findActiveMemberships(Long userId) {
-        return usuarioEmpresaRepository.findAllByUsuarioIdAndAtivoTrueOrderByEmpresaNomeAsc(userId);
+        return usuarioEmpresaRepository.findAllByUsuarioIdAndAtivoTrueAndEmpresaAtivoTrueOrderByEmpresaNomeAsc(userId);
+    }
+
+    // Vinculo ativo com a empresa informada, mas a empresa foi desativada.
+    public boolean isCompanyInactiveForUser(Long userId, Long tenantId) {
+        return usuarioEmpresaRepository.existsByUsuarioIdAndEmpresaIdAndAtivoTrue(userId, tenantId)
+                && !usuarioEmpresaRepository.existsByUsuarioIdAndEmpresaIdAndAtivoTrueAndEmpresaAtivoTrue(userId, tenantId);
+    }
+
+    // Tem vinculo ativo, mas todas as empresas estao desativadas.
+    public boolean hasOnlyInactiveCompanies(Long userId) {
+        return usuarioEmpresaRepository.existsByUsuarioIdAndAtivoTrue(userId)
+                && findActiveMemberships(userId).isEmpty();
     }
 }

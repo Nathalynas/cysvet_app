@@ -213,16 +213,6 @@ class _LoginPageState extends ConsumerState<LoginPage> {
             borderRadius: 9,
             onPressed: _submit,
           ),
-          const SizedBox(height: 11),
-          AppButton(
-            text: 'Criar conta',
-            outlined: true,
-            disabled: isBusy,
-            expanded: true,
-            height: 36,
-            borderRadius: 9,
-            onPressed: () => context.go('/register'),
-          ),
         ],
       ),
     );

@@ -15,19 +15,6 @@ class AuthRepository {
 
   final Dio _dio;
 
-  Future<AuthSessionModel> register({
-    required String name,
-    required String email,
-    required String password,
-  }) async {
-    final response = await _dio.post<Object?>(
-      '/api/auth/register',
-      data: {'name': name.trim(), 'email': email.trim(), 'password': password},
-    );
-
-    return AuthSessionModelMapper.fromMap(apiMap(response.data));
-  }
-
   Future<AuthSessionModel> login({
     required String email,
     required String password,

@@ -20,6 +20,12 @@ public class ProductionSettingsValidator implements InitializingBean {
     @Value("${spring.h2.console.enabled:false}")
     private boolean h2ConsoleEnabled;
 
+    @Value("${spring.mail.host:}")
+    private String mailHost;
+
+    @Value("${app.mail.from:}")
+    private String mailFrom;
+
     @Override
     public void afterPropertiesSet() {
         if (appProperties.getCors().getAllowedOrigins().isEmpty()) {
@@ -32,6 +38,10 @@ public class ProductionSettingsValidator implements InitializingBean {
 
         if (h2ConsoleEnabled) {
             throw new IllegalStateException("H2 console nao pode estar habilitado em producao");
+        }
+
+        if (mailHost.isBlank() || mailFrom.isBlank()) {
+            throw new IllegalStateException("SPRING_MAIL_HOST e APP_MAIL_FROM devem ser configurados em producao");
         }
     }
 }

@@ -7,11 +7,10 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import com.cysvet.backend.dto.auth.RegisterRequest;
 import com.cysvet.backend.entity.Usuario;
 import com.cysvet.backend.repository.UsuarioEmpresaRepository;
 import com.cysvet.backend.repository.UsuarioRepository;
-import com.cysvet.backend.service.AuthService;
+import com.cysvet.backend.support.TestAccounts;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.persistence.EntityManagerFactory;
@@ -51,10 +50,10 @@ class SyncQueryCountBenchmarkTest {
     private static final LocalDate HOJE = LocalDate.now();
 
     @Autowired
-    private MockMvc mockMvc;
+    private TestAccounts testAccounts;
 
     @Autowired
-    private AuthService authService;
+    private MockMvc mockMvc;
 
     @Autowired
     private UsuarioRepository usuarioRepository;
@@ -227,7 +226,7 @@ class SyncQueryCountBenchmarkTest {
     }
 
     private Auth registrar(String email) throws Exception {
-        authService.register(new RegisterRequest("Admin " + email, email, "123456"));
+        testAccounts.createAdmin("Admin " + email, email, "123456");
         String body = mockMvc.perform(post("/api/auth/login")
                         .contentType(APPLICATION_JSON)
                         .content("""

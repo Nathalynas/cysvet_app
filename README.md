@@ -68,3 +68,27 @@ O schema é definido **somente** pelas migrations em `backend/src/main/resources
 (Hibernate em modo `validate`). Toda mudança de tabela entra como uma nova migration `V<n>__descricao.sql`;
 migrations já aplicadas não são editadas. `backend/sql/mysql/cysvet_schema.sql` é uma cópia de referência do
 schema final — **apaga as tabelas existentes**, não use sobre um banco com dados.
+
+## Super usuário e e-mail
+
+O super usuário é a única conta que administra as empresas (clientes) pelo painel. Ele é criado
+na primeira subida do backend a partir de `SUPERADMIN_EMAIL`, `SUPERADMIN_PASSWORD` e `SUPERADMIN_NAME`;
+reiniciar o backend não altera a senha dele. Entra pela tela de login normal e cai direto no painel.
+
+Os clientes recebem a senha provisória por e-mail. No perfil de produção, o backend não sobe sem
+`SPRING_MAIL_HOST` e `APP_MAIL_FROM`. Para usar o Brevo (plano gratuito):
+
+1. Crie a conta no Brevo e gere uma chave SMTP em **SMTP & API**. O login SMTP vai em `SPRING_MAIL_USERNAME` e a chave em `SPRING_MAIL_PASSWORD`.
+2. Em **Senders**, verifique o endereço remetente e use esse mesmo endereço em `APP_MAIL_FROM`.
+3. Use `SPRING_MAIL_HOST=smtp-relay.brevo.com` e `SPRING_MAIL_PORT=587` (já são os valores do `.env.example`).
+4. Na VM, edite o `.env` com essas variáveis e rode `docker compose up -d --build` dentro de `deploy/oracle`.
+
+### Ordem do deploy
+
+1. Criar a conta no Brevo e verificar o remetente.
+2. Preencher as variáveis novas no `.env` da VM (sem `SPRING_MAIL_HOST`/`APP_MAIL_FROM` o backend em produção não sobe).
+3. Subir o backend.
+4. Publicar a versão nova do app antes de cadastrar o primeiro cliente (versões antigas não têm a tela de troca de senha).
+
+Antes do primeiro deploy, rode o `SELECT` de backfill da migration V18 em uma cópia do banco para
+confirmar qual ADMIN vira o responsável de cada empresa existente.

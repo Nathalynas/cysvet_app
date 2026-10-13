@@ -5,18 +5,20 @@ import 'package:go_router/go_router.dart';
 import '../pages/animals/animals_page.dart';
 import '../providers/auth_state.dart';
 import '../pages/auth/login_page.dart';
-import '../pages/auth/register_page.dart';
+import '../pages/auth/change_password_page.dart';
 import '../pages/auth/auth_page_shell.dart';
 import '../pages/settings/settings_page.dart';
 import '../pages/dashboard/dashboard_page.dart';
 import '../pages/properties/property_details_page.dart';
 import '../pages/properties/properties_page.dart';
 import '../pages/splash/splash_page.dart';
+import '../pages/super_admin/super_admin_page.dart';
 import '../pages/users/users_page.dart';
 import '../pages/visits/visit_form_page.dart';
 import '../pages/visits/visit_report_page.dart';
 import '../pages/visits/visits_page.dart';
 import 'app_shell.dart';
+import 'auth_redirect.dart';
 import 'theme.dart';
 
 final appRouterProvider = Provider<GoRouter>((ref) {
@@ -25,33 +27,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
 
   return GoRouter(
     initialLocation: '/splash',
-    redirect: (context, state) {
-      final location = state.matchedLocation;
-      final isAuthenticated = session != null;
-
-      if (!bootstrapComplete && location != '/splash') {
-        return '/splash';
-      }
-
-      if (!bootstrapComplete) {
-        return null;
-      }
-
-      if (location == '/splash') {
-        return isAuthenticated ? '/dashboard' : '/login';
-      }
-
-      if (!isAuthenticated && location != '/login' && location != '/register') {
-        return '/login';
-      }
-
-      if (isAuthenticated &&
-          (location == '/login' || location == '/register')) {
-        return '/dashboard';
-      }
-
-      return null;
-    },
+    redirect: (context, state) => resolveAuthRedirect(
+      bootstrapComplete: bootstrapComplete,
+      session: session,
+      location: state.matchedLocation,
+    ),
     routes: [
       GoRoute(
         path: '/splash',
@@ -62,8 +42,13 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         pageBuilder: (context, state) => _buildAuthPage(const LoginPage()),
       ),
       GoRoute(
-        path: '/register',
-        pageBuilder: (context, state) => _buildAuthPage(const RegisterPage()),
+        path: '/super',
+        builder: (context, state) => _buildPublicRoute(const SuperAdminPage()),
+      ),
+      GoRoute(
+        path: '/trocar-senha',
+        pageBuilder: (context, state) =>
+            _buildAuthPage(const ChangePasswordPage()),
       ),
       ShellRoute(
         pageBuilder: (context, state, child) =>

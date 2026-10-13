@@ -40,22 +40,6 @@ class AuthController {
     }
   }
 
-  Future<void> register({
-    required String name,
-    required String email,
-    required String password,
-  }) async {
-    _ref.read(authBusyProvider.notifier).setBusy(true);
-    try {
-      final session = await _ref
-          .read(authRepositoryProvider)
-          .register(name: name, email: email, password: password);
-      await _ref.read(authSessionProvider.notifier).setSession(session);
-    } finally {
-      _ref.read(authBusyProvider.notifier).setBusy(false);
-    }
-  }
-
   Future<void> logout() async {
     final session = _ref.read(authSessionProvider);
     _ref.read(authBusyProvider.notifier).setBusy(true);
@@ -98,6 +82,17 @@ class AuthSessionNotifier extends Notifier<AuthSessionModel?> {
     }
 
     await ref.read(authSessionStorageProvider).write(session);
+  }
+
+  Future<void> markPasswordChanged() async {
+    final session = state;
+    if (session == null) {
+      return;
+    }
+
+    await setSession(
+      session.copyWith(user: session.user.copyWith(trocarSenha: false)),
+    );
   }
 
   Future<void> switchActiveCompany(int companyId) async {
@@ -232,6 +227,10 @@ class AuthSessionNotifier extends Notifier<AuthSessionModel?> {
     AuthSessionModel session, {
     int? preferredCompanyId,
   }) {
+    if (session.user.isSuperAdmin && session.accessToken.isNotEmpty) {
+      return session;
+    }
+
     if (session.accessToken.isEmpty || session.companies.isEmpty) {
       return null;
     }

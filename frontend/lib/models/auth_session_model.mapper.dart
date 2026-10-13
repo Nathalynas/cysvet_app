@@ -269,6 +269,13 @@ class AuthenticatedUserModelMapper
     opt: true,
     def: 'VETERINARIO',
   );
+  static bool _$trocarSenha(AuthenticatedUserModel v) => v.trocarSenha;
+  static const Field<AuthenticatedUserModel, bool> _f$trocarSenha = Field(
+    'trocarSenha',
+    _$trocarSenha,
+    opt: true,
+    def: false,
+  );
 
   @override
   final MappableFields<AuthenticatedUserModel> fields = const {
@@ -276,6 +283,7 @@ class AuthenticatedUserModelMapper
     #name: _f$name,
     #email: _f$email,
     #perfil: _f$perfil,
+    #trocarSenha: _f$trocarSenha,
   };
 
   static AuthenticatedUserModel _instantiate(DecodingData data) {
@@ -284,6 +292,7 @@ class AuthenticatedUserModelMapper
       name: data.dec(_f$name),
       email: data.dec(_f$email),
       perfil: data.dec(_f$perfil),
+      trocarSenha: data.dec(_f$trocarSenha),
     );
   }
 
@@ -357,7 +366,13 @@ abstract class AuthenticatedUserModelCopyWith<
   $Out
 >
     implements ClassCopyWith<$R, $In, $Out> {
-  $R call({int? id, String? name, String? email, String? perfil});
+  $R call({
+    int? id,
+    String? name,
+    String? email,
+    String? perfil,
+    bool? trocarSenha,
+  });
   AuthenticatedUserModelCopyWith<$R2, $In, $Out2> $chain<$R2, $Out2>(
     Then<$Out2, $R2> t,
   );
@@ -373,12 +388,19 @@ class _AuthenticatedUserModelCopyWithImpl<$R, $Out>
   late final ClassMapperBase<AuthenticatedUserModel> $mapper =
       AuthenticatedUserModelMapper.ensureInitialized();
   @override
-  $R call({int? id, String? name, String? email, String? perfil}) => $apply(
+  $R call({
+    int? id,
+    String? name,
+    String? email,
+    String? perfil,
+    bool? trocarSenha,
+  }) => $apply(
     FieldCopyWithData({
       if (id != null) #id: id,
       if (name != null) #name: name,
       if (email != null) #email: email,
       if (perfil != null) #perfil: perfil,
+      if (trocarSenha != null) #trocarSenha: trocarSenha,
     }),
   );
   @override
@@ -387,6 +409,7 @@ class _AuthenticatedUserModelCopyWithImpl<$R, $Out>
     name: data.get(#name, or: $value.name),
     email: data.get(#email, or: $value.email),
     perfil: data.get(#perfil, or: $value.perfil),
+    trocarSenha: data.get(#trocarSenha, or: $value.trocarSenha),
   );
 
   @override
@@ -550,5 +573,4 @@ class _AllowedCompanyModelCopyWithImpl<$R, $Out>
   $chain<$R2, $Out2>(Then<$Out2, $R2> t) =>
       _AllowedCompanyModelCopyWithImpl<$R2, $Out2>($value, $cast, t);
 }
-
 

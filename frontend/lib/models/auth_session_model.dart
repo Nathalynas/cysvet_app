@@ -28,12 +28,14 @@ class AuthenticatedUserModel with AuthenticatedUserModelMappable {
     this.name = '',
     this.email = '',
     this.perfil = 'VETERINARIO',
+    this.trocarSenha = false,
   });
 
   final int id;
   final String name;
   final String email;
   final String perfil;
+  final bool trocarSenha;
 }
 
 @MappableClass()
@@ -49,6 +51,8 @@ class AllowedCompanyModel with AllowedCompanyModelMappable {
 extension AuthenticatedUserModelPermissions on AuthenticatedUserModel {
   bool get isAdmin => perfil.toUpperCase() == 'ADMIN';
 
+  bool get isSuperAdmin => perfil.toUpperCase() == 'SUPER_ADMIN';
+
   bool get isVeterinario => perfil.toUpperCase() == 'VETERINARIO';
 
   String get displayRole {
@@ -57,6 +61,8 @@ extension AuthenticatedUserModelPermissions on AuthenticatedUserModel {
         return 'Administrador';
       case 'VETERINARIO':
         return 'Veterinario';
+      case 'SUPER_ADMIN':
+        return 'Super usuário';
       default:
         return perfil;
     }

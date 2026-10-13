@@ -7,6 +7,16 @@ spring:
   h2:
     console:
       enabled: false
+  mail:
+    properties:
+      mail:
+        smtp:
+          auth: true
+          connectiontimeout: 10000
+          timeout: 10000
+          writetimeout: 10000
+          starttls:
+            enable: true
 
 app:
   docs:

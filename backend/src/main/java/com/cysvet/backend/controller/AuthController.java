@@ -3,7 +3,6 @@ package com.cysvet.backend.controller;
 import com.cysvet.backend.dto.auth.AuthResponse;
 import com.cysvet.backend.dto.auth.LoginRequest;
 import com.cysvet.backend.dto.auth.LogoutRequest;
-import com.cysvet.backend.dto.auth.RegisterRequest;
 import com.cysvet.backend.dto.auth.TokenRefreshRequest;
 import com.cysvet.backend.service.AuthService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -22,22 +21,10 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api/auth")
 @RequiredArgsConstructor
-@Tag(name = "Autenticacao", description = "Endpoints para cadastro, login, renovacao de token e logout.")
+@Tag(name = "Autenticacao", description = "Endpoints para login, renovacao de token e logout.")
 public class AuthController {
 
     private final AuthService authService;
-
-    @PostMapping("/register")
-    @ResponseStatus(HttpStatus.CREATED)
-    @Operation(summary = "Registra um novo usuario")
-    @ApiResponses(value = {
-            @ApiResponse(responseCode = "201", description = "Usuario registrado com sucesso"),
-            @ApiResponse(responseCode = "400", description = "Dados de cadastro invalidos"),
-            @ApiResponse(responseCode = "500", description = "Erro interno no servidor")
-    })
-    public AuthResponse register(@Valid @RequestBody RegisterRequest request) {
-        return authService.register(request);
-    }
 
     @PostMapping("/login")
     @Operation(summary = "Autentica um usuario")
