@@ -100,9 +100,18 @@ flutter build apk --release --dart-define=API_BASE_URL=https://SEU_DOMINIO
 # build/app/outputs/flutter-apk/app-release.apk
 ```
 
-Para distribuir à equipe, use o **Firebase App Distribution** (grátis): crie um projeto no Firebase, adicione
-um app Android com o pacote `com.cysvet.app`, envie o APK em *App Distribution* e convide os testadores por
-e-mail. Para uso próprio, basta copiar o APK para o celular e instalar.
+A primeira instalação é manual (copiar o APK para o celular). Depois disso o próprio app se atualiza: ao abrir,
+ele lê `https://SEU_DOMINIO/app/versao.json` e, se houver versão mais nova, oferece baixar e abre o instalador
+do Android. Para publicar uma versão, aumente o número depois do `+` em `version:` no `frontend/pubspec.yaml` e
+rode no PC (Git Bash):
+
+```bash
+deploy/oracle/publicar-apk.sh "o que mudou"                 # atualização opcional
+deploy/oracle/publicar-apk.sh --obrigatoria "o que mudou"   # versões antigas não continuam sem atualizar
+```
+
+O script gera o APK, envia para `deploy/oracle/app/` na VM (servido pelo Caddy em `/app/`) e guarda uma cópia
+em `Desktop/CYSVET-APK`. Use `--obrigatoria` quando a versão nova muda a sincronização ou o banco.
 
 Não há cadastro público no app. O super usuário entra pela tela de login, cai no painel e cadastra cada
 cliente (empresa + responsável); o responsável recebe a senha provisória por e-mail e troca no primeiro
@@ -118,7 +127,7 @@ scp cysvet_app.tar.gz ubuntu@IP_PUBLICO:/tmp/
 ```
 
 Na VM, extraia numa pasta nova (o `tar` por cima não apaga arquivos removidos do repositório) e leve o
-`.env` e os backups:
+`.env`, os backups e os APKs publicados:
 
 ```bash
 cd ~/cysvet_app/deploy/oracle && sudo sh backup.sh
@@ -126,6 +135,7 @@ cd ~ && rm -rf cysvet_app_antigo cysvet_app_novo
 mkdir cysvet_app_novo && tar -xzf /tmp/cysvet_app.tar.gz -C cysvet_app_novo
 cp cysvet_app/deploy/oracle/.env cysvet_app_novo/deploy/oracle/
 sudo cp -a cysvet_app/deploy/oracle/backups cysvet_app_novo/deploy/oracle/
+cp -a cysvet_app/deploy/oracle/app cysvet_app_novo/deploy/oracle/
 mv cysvet_app cysvet_app_antigo && mv cysvet_app_novo cysvet_app
 cd ~/cysvet_app/deploy/oracle && sudo docker compose up -d --build
 sudo docker compose logs -f backend    # espere "Started CysvetApplication"

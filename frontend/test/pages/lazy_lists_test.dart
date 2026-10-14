@@ -63,6 +63,12 @@ void main() {
   ) async {
     await pumpPage(tester, const AnimalsPage());
 
+    // O card de status do rebanho ocupa a primeira tela no celular.
+    await tester.scrollUntilVisible(
+      find.textContaining('AN-00000'),
+      300,
+      scrollable: _pageScrollable(),
+    );
     expect(find.textContaining('AN-00000'), findsOneWidget);
     expect(find.textContaining('AN-00199'), findsNothing);
 

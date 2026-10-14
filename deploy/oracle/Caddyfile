@@ -2,5 +2,15 @@
 # sozinho; o Android bloqueia HTTP sem TLS por padrao.
 {$DOMAIN} {
 	encode gzip
-	reverse_proxy backend:8080
+
+	# APK e versao.json publicados por publicar-apk.sh; o app consulta para se atualizar.
+	handle_path /app/* {
+		root * /srv/app
+		header /versao.json Cache-Control "no-cache"
+		file_server
+	}
+
+	handle {
+		reverse_proxy backend:8080
+	}
 }

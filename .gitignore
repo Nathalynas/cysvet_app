@@ -21,5 +21,6 @@ artigo-revisao/
 # Deploy: segredos e backups ficam so no servidor.
 deploy/**/.env
 deploy/**/backups/
+deploy/oracle/app/
 
 .superpowers/
