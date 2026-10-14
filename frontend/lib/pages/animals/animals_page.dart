@@ -1322,21 +1322,28 @@ class _HerdStatusCard extends StatelessWidget {
             LayoutBuilder(
               builder: (context, constraints) {
                 final statuses = AnimalReproductiveStatus.editableValues;
+                const spacing = 12.0;
+                const minTileWidth = 104.0;
+                final columns =
+                    ((constraints.maxWidth + spacing) ~/
+                            (minTileWidth + spacing))
+                        .clamp(1, statuses.length);
+                final tileWidth =
+                    (constraints.maxWidth - spacing * (columns - 1)) / columns;
 
-                return Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                return Wrap(
+                  spacing: spacing,
+                  runSpacing: 14,
                   children: [
-                    for (var index = 0; index < statuses.length; index++) ...[
-                      Expanded(
+                    for (final status in statuses)
+                      SizedBox(
+                        width: tileWidth,
                         child: _StatusCountTile(
-                          status: statuses[index],
-                          count: counts[statuses[index]] ?? 0,
+                          status: status,
+                          count: counts[status] ?? 0,
                           total: total,
                         ),
                       ),
-                      if (index < statuses.length - 1)
-                        const SizedBox(width: 12),
-                    ],
                   ],
                 );
               },
@@ -1379,7 +1386,7 @@ class _StatusCountTile extends StatelessWidget {
         const SizedBox(height: 2),
         Text(
           status.label.toUpperCase(),
-          maxLines: 1,
+          maxLines: 2,
           overflow: TextOverflow.ellipsis,
           style: theme.textTheme.labelSmall?.copyWith(
             color: colors.foreground,
