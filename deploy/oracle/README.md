@@ -131,13 +131,14 @@ Na VM, extraia numa pasta nova (o `tar` por cima não apaga arquivos removidos d
 
 ```bash
 cd ~/cysvet_app/deploy/oracle && sudo sh backup.sh
-cd ~ && rm -rf cysvet_app_antigo cysvet_app_novo
+cd ~ && sudo rm -rf cysvet_app_antigo cysvet_app_novo   # sudo: os backups sao do root
 mkdir cysvet_app_novo && tar -xzf /tmp/cysvet_app.tar.gz -C cysvet_app_novo
 cp cysvet_app/deploy/oracle/.env cysvet_app_novo/deploy/oracle/
 sudo cp -a cysvet_app/deploy/oracle/backups cysvet_app_novo/deploy/oracle/
 cp -a cysvet_app/deploy/oracle/app cysvet_app_novo/deploy/oracle/
 mv cysvet_app cysvet_app_antigo && mv cysvet_app_novo cysvet_app
 cd ~/cysvet_app/deploy/oracle && sudo docker compose up -d --build
+sudo docker compose up -d --force-recreate caddy   # senao o Caddy segue lendo a pasta antiga
 sudo docker compose logs -f backend    # espere "Started CysvetApplication"
 ```
 
