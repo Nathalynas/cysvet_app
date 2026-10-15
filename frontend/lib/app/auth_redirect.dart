@@ -5,6 +5,7 @@ const _loginRoute = '/login';
 const _superRoute = '/super';
 const _changePasswordRoute = '/trocar-senha';
 const _dashboardRoute = '/dashboard';
+const _teamRoute = '/usuarios';
 
 String? resolveAuthRedirect({
   required bool bootstrapComplete,
@@ -35,6 +36,11 @@ String? resolveAuthRedirect({
   if (location == _loginRoute ||
       location == _superRoute ||
       location == _changePasswordRoute) {
+    return _dashboardRoute;
+  }
+
+  // So o administrador da empresa cadastra a equipe.
+  if (location.startsWith(_teamRoute) && !session.user.isAdmin) {
     return _dashboardRoute;
   }
 

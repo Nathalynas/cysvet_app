@@ -22,20 +22,24 @@ class UsersRepository {
     return items.map(_fromMap).toList(growable: false);
   }
 
-  Future<UserSummaryModel> create({
-    required UserSummaryModel user,
-    required String password,
-  }) async {
+  Future<CreateUserResult> create(UserSummaryModel user) async {
     final response = await _dio.post<Object?>(
       '/api/users',
-      data: {
-        'name': user.name.trim(),
-        'email': user.email.trim(),
-        'password': password,
-      },
+      data: {'name': user.name.trim(), 'email': user.email.trim()},
     );
 
-    return _fromMap(apiMap(response.data));
+    final map = apiMap(response.data);
+    return CreateUserResult(
+      user: _fromMap(Map<String, dynamic>.from(map['user'] as Map)),
+      emailSent: map['emailSent'] == true,
+      existingAccount: map['existingAccount'] == true,
+    );
+  }
+
+  /// Gera nova senha provisoria e envia por e-mail; retorna se o e-mail saiu.
+  Future<bool> resendAccess(int id) async {
+    final response = await _dio.post<Object?>('/api/users/$id/resend-access');
+    return apiMap(response.data)['emailSent'] == true;
   }
 
   Future<UserSummaryModel> update(UserSummaryModel user) async {
@@ -71,6 +75,7 @@ class UsersRepository {
       perfil: map['perfil']?.toString() ?? 'VETERINARIO',
       companyName: map['companyName']?.toString(),
       status: UserStatus.fromApi(map['status']?.toString()),
+      awaitingFirstAccess: map['awaitingFirstAccess'] == true,
     );
   }
 }

@@ -87,6 +87,17 @@ void main() {
     expect(_redirect(_session(), '/trocar-senha'), '/dashboard');
   });
 
+  test('veterinario em /usuarios vai para /dashboard', () {
+    expect(
+      _redirect(_session(perfil: 'VETERINARIO'), '/usuarios'),
+      '/dashboard',
+    );
+  });
+
+  test('admin em /usuarios permanece', () {
+    expect(_redirect(_session(), '/usuarios'), isNull);
+  });
+
   test('splash com super usuario vai para /super', () {
     expect(_redirect(_session(perfil: 'SUPER_ADMIN'), '/splash'), '/super');
   });

@@ -18,6 +18,8 @@ public record UserResponse(
         @Schema(description = "Nome da empresa ativa.", example = "Cysvet Matriz")
         String companyName,
         @Schema(description = "Status do vinculo do usuario com a empresa ativa.")
-        UserMembershipStatus status
+        UserMembershipStatus status,
+        @Schema(description = "Ainda nao trocou a senha provisoria recebida por e-mail.")
+        boolean awaitingFirstAccess
 ) {
 }

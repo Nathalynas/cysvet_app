@@ -19,7 +19,7 @@ class UserDialog extends StatelessWidget {
   static Future<void> show(BuildContext context, {UserSummaryModel? user}) {
     return AppDialog.show<void>(
       context: context,
-      title: user == null ? 'Novo usuário' : 'Editar usuário',
+      title: user == null ? 'Novo membro da equipe' : 'Editar membro',
       width: 560,
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 14),
       fullscreenBodyPadding: const EdgeInsets.fromLTRB(16, 20, 16, 12),
@@ -48,7 +48,6 @@ class _UserForm extends ConsumerStatefulWidget {
 class _UserFormState extends ConsumerState<_UserForm> {
   final _name = TextEditingController();
   final _email = TextEditingController();
-  final _password = TextEditingController();
 
   @override
   void initState() {
@@ -62,7 +61,6 @@ class _UserFormState extends ConsumerState<_UserForm> {
   void dispose() {
     _name.dispose();
     _email.dispose();
-    _password.dispose();
     super.dispose();
   }
 
@@ -95,23 +93,23 @@ class _UserFormState extends ConsumerState<_UserForm> {
               email: _email.text.trim(),
             );
             await controller.update(payload);
-          } else {
-            final payload = UserSummaryModel(
-              name: _name.text.trim(),
-              email: _email.text.trim(),
-              perfil: 'VETERINÁRIO',
-              companyName: activeCompany?.name,
-              status: UserStatus.active,
-            );
-            await controller.save(payload, password: _password.text.trim());
+            if (mounted) {
+              await navigator.maybePop();
+              showAppSuccess('Membro atualizado com sucesso.');
+            }
+            return;
           }
+
+          final payload = UserSummaryModel(
+            name: _name.text.trim(),
+            email: _email.text.trim(),
+            companyName: activeCompany?.name,
+            status: UserStatus.active,
+          );
+          final result = await controller.save(payload);
           if (mounted) {
             await navigator.maybePop();
-            showAppSuccess(
-              isEditing
-                  ? 'Usuário atualizado com sucesso.'
-                  : 'Usuário criado com sucesso.',
-            );
+            _showCreateResult(result);
           }
         } catch (error) {
           showAppError(error);
@@ -129,22 +127,41 @@ class _UserFormState extends ConsumerState<_UserForm> {
           controller: _email,
           required: true,
           keyboardType: TextInputType.emailAddress,
-          textInputAction: isEditing
-              ? TextInputAction.done
-              : TextInputAction.next,
+          textInputAction: TextInputAction.done,
           validator: _validateEmail,
         ),
         if (!isEditing)
-          AppTextField(
-            label: 'Senha',
-            controller: _password,
-            required: true,
-            obscureText: true,
-            minChars: 6,
-            textInputAction: TextInputAction.done,
+          Text(
+            'O novo membro entra como veterinário e recebe uma senha '
+            'provisória neste e-mail. No primeiro acesso ele define a '
+            'própria senha.',
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
           ),
       ],
     );
+  }
+
+  void _showCreateResult(CreateUserResult result) {
+    if (result.existingAccount) {
+      showAppSuccess(
+        '${result.user.name} já tinha conta no CYSVET e foi adicionado à '
+        'equipe. Ele entra com a senha que já usa.',
+      );
+    } else if (result.emailSent) {
+      showAppSuccess(
+        'Membro adicionado. A senha provisória foi enviada para '
+        '${result.user.email}.',
+      );
+    } else {
+      showTypedAppSnackBar(
+        'Membro adicionado, mas o e-mail com a senha não foi enviado. '
+        'Use "Reenviar acesso" na lista da equipe.',
+        type: AppSnackBarType.warning,
+        duration: const Duration(seconds: 6),
+      );
+    }
   }
 
   String? _validateEmail(String? value) {

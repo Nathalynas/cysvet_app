@@ -708,21 +708,24 @@ class SyncIntegrationTest {
     }
 
     private JsonNode createVeterinarian(AuthContext auth, String name, String email, String password) throws Exception {
-        return readResponse(mockMvc.perform(post("/api/users")
+        JsonNode created = readResponse(mockMvc.perform(post("/api/users")
                         .header("Authorization", auth.authorization())
                         .header("empresaid", auth.tenantId())
                         .contentType(APPLICATION_JSON)
                         .content("""
                                 {
                                   "name": "%s",
-                                  "email": "%s",
-                                  "password": "%s"
+                                  "email": "%s"
                                 }
-                                """.formatted(name, email, password)))
+                                """.formatted(name, email)))
                 .andExpect(status().isCreated())
                 .andReturn()
                 .getResponse()
                 .getContentAsString());
+        if (!created.path("existingAccount").asBoolean()) {
+            testAccounts.completeFirstAccess(email, password);
+        }
+        return created.path("user");
     }
 
     private AuthContext registerAndAuthenticate(String email, String name, String password) throws Exception {

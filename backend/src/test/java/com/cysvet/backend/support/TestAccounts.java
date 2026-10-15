@@ -63,6 +63,16 @@ public class TestAccounts {
         return authService.login(new LoginRequest(email, password));
     }
 
+    // Membro cadastrado pela equipe recebe senha provisoria por e-mail; nos testes a senha e definida
+    // direto para pular o primeiro acesso.
+    @Transactional
+    public void completeFirstAccess(String email, String password) {
+        Usuario user = usuarioRepository.findByEmail(email).orElseThrow();
+        user.setSenha(passwordEncoder.encode(password));
+        user.setTrocarSenha(false);
+        usuarioRepository.saveAndFlush(user);
+    }
+
     @Transactional(readOnly = true)
     public Empresa companyOf(String email) {
         Usuario user = usuarioRepository.findByEmail(email).orElseThrow();

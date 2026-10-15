@@ -1,6 +1,8 @@
 package com.cysvet.backend.service;
 
 import com.cysvet.backend.dto.user.CreateUserRequest;
+import com.cysvet.backend.dto.user.CreateUserResponse;
+import com.cysvet.backend.dto.user.ResendUserAccessResponse;
 import com.cysvet.backend.dto.user.UpdateUserMembershipStatusRequest;
 import com.cysvet.backend.dto.user.UpdateUserRequest;
 import com.cysvet.backend.dto.user.UserMembershipStatus;
@@ -20,6 +22,7 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
 @Service
 @RequiredArgsConstructor
@@ -30,6 +33,9 @@ public class TeamService {
     private final TokenAtualizacaoRepository tokenAtualizacaoRepository;
     private final UsuarioAutenticadoProvider usuarioAutenticadoProvider;
     private final PasswordEncoder passwordEncoder;
+    private final TemporaryPasswordGenerator temporaryPasswordGenerator;
+    private final AccessEmailSender accessEmailSender;
+    private final TransactionTemplate transactionTemplate;
 
     @Transactional(readOnly = true)
     public List<UserResponse> listActiveCompanyMembers() {
@@ -41,24 +47,71 @@ public class TeamService {
                 .toList();
     }
 
-    @Transactional
-    public UserResponse createVeterinarian(CreateUserRequest request) {
+    // createVeterinarian e resendAccess nao sao transacionais: o e-mail com a senha provisoria so sai
+    // depois do commit, como no cadastro de empresas pelo super usuario.
+    public CreateUserResponse createVeterinarian(CreateUserRequest request) {
+        String temporaryPassword = temporaryPasswordGenerator.generate();
+        CreateUserResponse created = transactionTemplate.execute(status ->
+                persistVeterinarian(request, temporaryPassword));
+        if (created.existingAccount()) {
+            return created;
+        }
+
+        UserResponse user = created.user();
+        boolean emailSent = accessEmailSender.sendTeamInvite(
+                user.email(), user.name(), user.companyName(), temporaryPassword);
+        return new CreateUserResponse(user, emailSent, false);
+    }
+
+    private CreateUserResponse persistVeterinarian(CreateUserRequest request, String temporaryPassword) {
         requireCurrentAdmin();
         Long tenantId = requireTenantId();
 
         String normalizedName = request.name().trim();
         String normalizedEmail = request.email().trim();
 
-        Usuario usuario = usuarioRepository.findByEmail(normalizedEmail)
-                .map(existingUser -> reuseOrRejectExistingUser(existingUser, tenantId))
-                .orElseGet(() -> createNewVeterinarian(normalizedName, normalizedEmail, request.password()));
+        Usuario existingUser = usuarioRepository.findByEmail(normalizedEmail)
+                .map(user -> reuseOrRejectExistingUser(user, tenantId))
+                .orElse(null);
+        Usuario usuario = existingUser != null
+                ? existingUser
+                : createNewVeterinarian(normalizedName, normalizedEmail, temporaryPassword);
 
         UsuarioEmpresa membership = new UsuarioEmpresa();
         membership.setUsuario(usuario);
         membership.setEmpresa(requireActiveCompany(tenantId));
         membership.setAtivo(true);
 
-        return toResponse(usuarioEmpresaRepository.saveAndFlush(membership));
+        UserResponse user = toResponse(usuarioEmpresaRepository.saveAndFlush(membership));
+        return new CreateUserResponse(user, false, existingUser != null);
+    }
+
+    public ResendUserAccessResponse resendAccess(Long userId) {
+        String temporaryPassword = temporaryPasswordGenerator.generate();
+        UserResponse user = transactionTemplate.execute(status ->
+                persistNewTemporaryPassword(userId, temporaryPassword));
+
+        boolean emailSent = accessEmailSender.sendNewTemporaryPassword(
+                user.email(), user.name(), user.companyName(), temporaryPassword);
+        return new ResendUserAccessResponse(emailSent);
+    }
+
+    private UserResponse persistNewTemporaryPassword(Long userId, String temporaryPassword) {
+        Usuario currentUser = requireCurrentAdmin();
+        Long tenantId = requireTenantId();
+        UsuarioEmpresa membership = findMembershipOrThrow(userId, tenantId);
+
+        validateMembershipMutation(currentUser, membership);
+        if (!membership.isAtivo()) {
+            throw new IllegalArgumentException("Usuario inativo na empresa");
+        }
+
+        Usuario targetUser = membership.getUsuario();
+        targetUser.setSenha(passwordEncoder.encode(temporaryPassword));
+        targetUser.setTrocarSenha(true);
+        usuarioRepository.saveAndFlush(targetUser);
+        tokenAtualizacaoRepository.revokeAllActiveForUsers(List.of(targetUser.getId()));
+        return toResponse(membership);
     }
 
     @Transactional
@@ -118,12 +171,13 @@ public class TeamService {
         revokeRefreshTokensWhenWithoutActiveMembership(targetUserId);
     }
 
-    private Usuario createNewVeterinarian(String name, String email, String password) {
+    private Usuario createNewVeterinarian(String name, String email, String temporaryPassword) {
         Usuario usuario = new Usuario();
         usuario.setNome(name);
         usuario.setEmail(email);
-        usuario.setSenha(passwordEncoder.encode(password));
+        usuario.setSenha(passwordEncoder.encode(temporaryPassword));
         usuario.setPerfil(Perfil.VETERINARIO);
+        usuario.setTrocarSenha(true);
         return usuarioRepository.saveAndFlush(usuario);
     }
 
@@ -208,7 +262,8 @@ public class TeamService {
                 usuario.getPerfil(),
                 membership.getEmpresa().getId(),
                 membership.getEmpresa().getNome(),
-                UserMembershipStatus.from(membership.isAtivo())
+                UserMembershipStatus.from(membership.isAtivo()),
+                usuario.isTrocarSenha()
         );
     }
 }

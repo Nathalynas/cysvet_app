@@ -40,10 +40,10 @@ class UsuariosPage extends ConsumerWidget {
             physics: const AlwaysScrollableScrollPhysics(),
             children: [
               PageTitle(
-                title: 'Usuários',
-                subtitle: 'Administre os usuários com acesso ao sistema.',
+                title: 'Equipe',
+                subtitle: 'Cadastre os veterinários da sua empresa no CYSVET.',
                 headerButton: AppButton(
-                  text: 'Novo usuário',
+                  text: 'Novo membro',
                   icon: const Icon(Icons.add),
                   onPressed: () => UserDialog.show(context),
                 ),
@@ -89,6 +89,8 @@ class UsuariosPage extends ConsumerWidget {
                               _confirmActivate(context, ref, user),
                           onDelete: (user) =>
                               _confirmDelete(context, ref, user),
+                          onResendAccess: (user) =>
+                              _confirmResendAccess(context, ref, user),
                         );
                       },
                     ),
@@ -227,6 +229,7 @@ class _UsersTable extends StatelessWidget {
     required this.onInactivate,
     required this.onActivate,
     required this.onDelete,
+    required this.onResendAccess,
   });
 
   final List<UserSummaryModel> users;
@@ -234,6 +237,7 @@ class _UsersTable extends StatelessWidget {
   final _UserCallback onInactivate;
   final _UserCallback onActivate;
   final _UserCallback onDelete;
+  final _UserCallback onResendAccess;
 
   @override
   Widget build(BuildContext context) {
@@ -246,6 +250,7 @@ class _UsersTable extends StatelessWidget {
         onInactivate: onInactivate,
         onActivate: onActivate,
         onDelete: onDelete,
+        onResendAccess: onResendAccess,
       );
     }
 
@@ -294,6 +299,7 @@ class _UsersTable extends StatelessWidget {
                 onInactivate: () => onInactivate(user),
                 onActivate: () => onActivate(user),
                 onDelete: () => onDelete(user),
+                onResendAccess: () => onResendAccess(user),
               ),
             );
           },
@@ -310,6 +316,7 @@ class _UsersMobileList extends StatelessWidget {
     required this.onInactivate,
     required this.onActivate,
     required this.onDelete,
+    required this.onResendAccess,
   });
 
   final List<UserSummaryModel> users;
@@ -317,6 +324,7 @@ class _UsersMobileList extends StatelessWidget {
   final _UserCallback onInactivate;
   final _UserCallback onActivate;
   final _UserCallback onDelete;
+  final _UserCallback onResendAccess;
 
   @override
   Widget build(BuildContext context) {
@@ -342,6 +350,7 @@ class _UsersMobileList extends StatelessWidget {
             onInactivate: () => onInactivate(user),
             onActivate: () => onActivate(user),
             onDelete: () => onDelete(user),
+            onResendAccess: () => onResendAccess(user),
           ),
           const SizedBox(height: 10),
         ],
@@ -365,6 +374,7 @@ class _UserMobileCard extends StatelessWidget {
     required this.onInactivate,
     required this.onActivate,
     required this.onDelete,
+    required this.onResendAccess,
   });
 
   final UserSummaryModel user;
@@ -372,6 +382,7 @@ class _UserMobileCard extends StatelessWidget {
   final VoidCallback onInactivate;
   final VoidCallback onActivate;
   final VoidCallback onDelete;
+  final VoidCallback onResendAccess;
 
   @override
   Widget build(BuildContext context) {
@@ -458,6 +469,7 @@ class _UserMobileCard extends StatelessWidget {
                 onInactivate: onInactivate,
                 onActivate: onActivate,
                 onDelete: onDelete,
+                onResendAccess: onResendAccess,
               ),
             ],
           ),
@@ -604,6 +616,13 @@ class _UserStatusBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (user.status == UserStatus.active && user.awaitingFirstAccess) {
+      return const StatusBadge(
+        label: 'Aguardando 1º acesso',
+        type: StatusBadgeType.warning,
+      );
+    }
+
     return StatusBadge(
       label: user.status.label,
       type: user.status == UserStatus.active
@@ -631,6 +650,7 @@ class _UserActions extends StatelessWidget {
     required this.onInactivate,
     required this.onActivate,
     required this.onDelete,
+    required this.onResendAccess,
     this.alignment = WrapAlignment.end,
   });
 
@@ -639,6 +659,7 @@ class _UserActions extends StatelessWidget {
   final VoidCallback onInactivate;
   final VoidCallback onActivate;
   final VoidCallback onDelete;
+  final VoidCallback onResendAccess;
   final WrapAlignment alignment;
 
   @override
@@ -658,6 +679,12 @@ class _UserActions extends StatelessWidget {
           icon: Icons.edit_outlined,
           disabled: !canManageMembership,
           onPressed: onEdit,
+        ),
+        _UserActionIconButton(
+          tooltip: 'Reenviar acesso por e-mail',
+          icon: Icons.forward_to_inbox_outlined,
+          disabled: !canManageMembership || isInactive,
+          onPressed: onResendAccess,
         ),
         _UserActionIconButton(
           tooltip: toggleTooltip,
@@ -770,6 +797,43 @@ Future<void> _confirmActivate(
         if (context.mounted) {
           await navigator.maybePop();
           showAppSuccess('Usuário ativado com sucesso.');
+        }
+      } catch (error) {
+        showAppError(error);
+      }
+    },
+  );
+}
+
+Future<void> _confirmResendAccess(
+  BuildContext context,
+  WidgetRef ref,
+  UserSummaryModel user,
+) {
+  return AppDialog.show<void>(
+    context: context,
+    title: 'Reenviar acesso',
+    content: Text(
+      'Uma nova senha provisória será enviada para ${user.email}. '
+      'A senha atual de ${user.name} deixa de funcionar.',
+    ),
+    confirmText: 'Reenviar',
+    cancelText: 'Cancelar',
+    onConfirm: () async {
+      final navigator = Navigator.of(context, rootNavigator: true);
+      try {
+        final emailSent = await ref
+            .read(usersControllerProvider)
+            .resendAccess(user.id);
+        if (context.mounted) {
+          await navigator.maybePop();
+          if (emailSent) {
+            showAppSuccess('Nova senha provisória enviada para ${user.email}.');
+          } else {
+            showAppWarning(
+              'Não foi possível enviar o e-mail. Tente novamente.',
+            );
+          }
         }
       } catch (error) {
         showAppError(error);

@@ -34,6 +34,11 @@ public class AccessEmailSender {
                         .formatted(companyName));
     }
 
+    public boolean sendTeamInvite(String toEmail, String userName, String companyName, String temporaryPassword) {
+        return send(toEmail, userName, companyName, temporaryPassword,
+                "Você foi adicionado à equipe da empresa %s no CYSVET.".formatted(companyName));
+    }
+
     private boolean send(String toEmail, String userName, String companyName, String temporaryPassword, String intro) {
         // O JavaMailSender so existe quando spring.mail.host esta configurado; sem ele o envio nao ocorre
         // e o chamador e avisado para que o super usuario use "Reenviar senha" depois.

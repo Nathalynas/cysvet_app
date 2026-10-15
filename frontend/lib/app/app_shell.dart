@@ -12,6 +12,7 @@ import '../core/platform/offline_platform.dart';
 import '../core/widgets/sync_status_bar.dart';
 import '../core/widgets/app_button.dart';
 import '../core/widgets/pending_sync_logout_dialog.dart';
+import '../models/auth_session_model.dart';
 import '../providers/auth_state.dart';
 import 'theme.dart';
 
@@ -51,9 +52,10 @@ class AppShell extends ConsumerWidget {
     ),
     _NavigationItem(
       route: '/usuarios',
-      label: 'Usuários',
+      label: 'Equipe',
       icon: Icons.group_outlined,
       selectedIcon: Icons.group,
+      adminOnly: true,
     ),
     _NavigationItem(
       route: '/configuracoes',
@@ -176,12 +178,16 @@ class _NavigationItem {
     required this.label,
     required this.icon,
     required this.selectedIcon,
+    this.adminOnly = false,
   });
 
   final String route;
   final String label;
   final IconData icon;
   final IconData selectedIcon;
+
+  /// So o administrador da empresa ve o item (ex.: cadastro da equipe).
+  final bool adminOnly;
 }
 
 class _MainHeader extends ConsumerWidget {
@@ -706,7 +712,7 @@ class _MobileNavigationDrawer extends StatelessWidget {
   }
 }
 
-class _NavigationMenuSurface extends StatelessWidget {
+class _NavigationMenuSurface extends ConsumerWidget {
   const _NavigationMenuSurface({
     required this.currentIndex,
     required this.onDestinationSelected,
@@ -718,7 +724,8 @@ class _NavigationMenuSurface extends StatelessWidget {
   final bool isDrawer;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final isAdmin = ref.watch(authSessionProvider)?.user.isAdmin ?? false;
     final colorScheme = Theme.of(context).colorScheme;
     return Container(
       width: isDrawer
@@ -754,15 +761,16 @@ class _NavigationMenuSurface extends StatelessWidget {
                   padding: EdgeInsets.zero,
                   children: [
                     for (var index = 0; index < AppShell._items.length; index++)
-                      _NavigationTile(
-                        item: AppShell._items[index],
-                        isSelected: currentIndex == index,
-                        isCompact: false,
-                        isBottomNavigation: false,
-                        onTap: () {
-                          onDestinationSelected(index);
-                        },
-                      ),
+                      if (isAdmin || !AppShell._items[index].adminOnly)
+                        _NavigationTile(
+                          item: AppShell._items[index],
+                          isSelected: currentIndex == index,
+                          isCompact: false,
+                          isBottomNavigation: false,
+                          onTap: () {
+                            onDestinationSelected(index);
+                          },
+                        ),
                   ],
                 ),
               ),

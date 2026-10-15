@@ -30,13 +30,25 @@ class UsersController {
 
   final Ref _ref;
 
-  Future<void> save(UserSummaryModel user, {required String password}) async {
+  Future<CreateUserResult> save(UserSummaryModel user) async {
     _ref.read(usersBusyProvider.notifier).setBusy(true);
     try {
-      await _ref
-          .read(usersRepositoryProvider)
-          .create(user: user, password: password);
+      final result = await _ref.read(usersRepositoryProvider).create(user);
       _ref.invalidate(usersProvider);
+      return result;
+    } finally {
+      _ref.read(usersBusyProvider.notifier).setBusy(false);
+    }
+  }
+
+  Future<bool> resendAccess(int id) async {
+    _ref.read(usersBusyProvider.notifier).setBusy(true);
+    try {
+      final emailSent = await _ref
+          .read(usersRepositoryProvider)
+          .resendAccess(id);
+      _ref.invalidate(usersProvider);
+      return emailSent;
     } finally {
       _ref.read(usersBusyProvider.notifier).setBusy(false);
     }

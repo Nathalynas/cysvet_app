@@ -2,6 +2,8 @@ package com.cysvet.backend.controller;
 
 import com.cysvet.backend.config.SwaggerConfig;
 import com.cysvet.backend.dto.user.CreateUserRequest;
+import com.cysvet.backend.dto.user.CreateUserResponse;
+import com.cysvet.backend.dto.user.ResendUserAccessResponse;
 import com.cysvet.backend.dto.user.UpdateUserMembershipStatusRequest;
 import com.cysvet.backend.dto.user.UpdateUserRequest;
 import com.cysvet.backend.dto.user.UserResponse;
@@ -50,7 +52,7 @@ public class UserController {
     @ResponseStatus(HttpStatus.CREATED)
     @Operation(
             summary = "Cria um veterinario vinculado a empresa ativa",
-            description = "Se o e-mail ja pertence a um veterinario sem empresa, ele e vinculado mantendo o proprio nome e senha; o nome e a senha informados sao ignorados."
+            description = "O veterinario recebe uma senha provisoria por e-mail e troca no primeiro acesso. Se o e-mail ja pertence a um veterinario sem empresa, ele e vinculado mantendo o proprio nome e senha, sem envio de e-mail."
     )
     @ApiResponses(value = {
             @ApiResponse(responseCode = "201", description = "Veterinario criado com sucesso"),
@@ -58,8 +60,21 @@ public class UserController {
             @ApiResponse(responseCode = "401", description = "Nao autorizado"),
             @ApiResponse(responseCode = "403", description = "Apenas administradores podem criar membros")
     })
-    public UserResponse create(@Valid @RequestBody CreateUserRequest request) {
+    public CreateUserResponse create(@Valid @RequestBody CreateUserRequest request) {
         return teamService.createVeterinarian(request);
+    }
+
+    @PostMapping("/{userId}/resend-access")
+    @Operation(summary = "Gera nova senha provisoria para o membro e envia por e-mail")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Senha provisoria gerada"),
+            @ApiResponse(responseCode = "400", description = "Membro inativo ou nao pode ser alterado"),
+            @ApiResponse(responseCode = "401", description = "Nao autorizado"),
+            @ApiResponse(responseCode = "403", description = "Apenas administradores podem reenviar acesso"),
+            @ApiResponse(responseCode = "404", description = "Vinculo nao encontrado")
+    })
+    public ResendUserAccessResponse resendAccess(@PathVariable Long userId) {
+        return teamService.resendAccess(userId);
     }
 
     @PutMapping("/{userId}")

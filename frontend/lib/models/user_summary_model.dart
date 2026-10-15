@@ -8,6 +8,7 @@ class UserSummaryModel {
     this.perfil = 'VETERINARIO',
     this.companyName,
     this.status = UserStatus.active,
+    this.awaitingFirstAccess = false,
   });
 
   final int id;
@@ -16,6 +17,9 @@ class UserSummaryModel {
   final String perfil;
   final String? companyName;
   final UserStatus status;
+
+  /// Ainda nao trocou a senha provisoria recebida por e-mail.
+  final bool awaitingFirstAccess;
 
   bool get isAdmin => perfil.toUpperCase() == 'ADMIN';
 
@@ -37,6 +41,7 @@ class UserSummaryModel {
     String? perfil,
     String? companyName,
     UserStatus? status,
+    bool? awaitingFirstAccess,
   }) {
     return UserSummaryModel(
       id: id ?? this.id,
@@ -45,6 +50,21 @@ class UserSummaryModel {
       perfil: perfil ?? this.perfil,
       companyName: companyName ?? this.companyName,
       status: status ?? this.status,
+      awaitingFirstAccess: awaitingFirstAccess ?? this.awaitingFirstAccess,
     );
   }
+}
+
+/// Resultado do cadastro: o membro recebe a senha provisoria por e-mail,
+/// exceto quando o e-mail ja tinha conta (ela so e vinculada a empresa).
+class CreateUserResult {
+  const CreateUserResult({
+    required this.user,
+    required this.emailSent,
+    required this.existingAccount,
+  });
+
+  final UserSummaryModel user;
+  final bool emailSent;
+  final bool existingAccount;
 }
