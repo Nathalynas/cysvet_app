@@ -7,6 +7,7 @@ import 'package:cysvet_app/providers/animals_provider.dart';
 import 'package:cysvet_app/providers/properties_provider.dart';
 import 'package:cysvet_app/providers/visits_provider.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
@@ -98,7 +99,12 @@ void main() {
             (ref) => _FakeVisitsController(ref, saved),
           ),
         ],
-        child: MaterialApp.router(routerConfig: router),
+        child: MaterialApp.router(
+          routerConfig: router,
+          locale: const Locale('pt', 'BR'),
+          supportedLocales: const [Locale('pt', 'BR')],
+          localizationsDelegates: GlobalMaterialLocalizations.delegates,
+        ),
       ),
     );
     await tester.pumpAndSettle();
@@ -167,4 +173,38 @@ void main() {
       expect(saved.single.animais.single.situacaoReprodutiva, 'prenha');
     },
   );
+
+  testWidgets('"Usar hoje" preenche a data da nova IA', (tester) async {
+    final saved = await pumpForm(tester, size: const Size(1400, 1000));
+
+    await tester.tap(find.text('Usar hoje'));
+    await tester.pumpAndSettle();
+
+    final hoje = DateUtils.dateOnly(DateTime.now());
+    expect(
+      find.text(
+        '${hoje.day.toString().padLeft(2, '0')}/'
+        '${hoje.month.toString().padLeft(2, '0')}/${hoje.year}',
+      ),
+      findsWidgets,
+    );
+    expect(find.text('Usar hoje'), findsNothing);
+
+    await tester.tap(find.text('Finalizar visita'));
+    await tester.pumpAndSettle();
+
+    final entry = saved.single.animais.single;
+    expect(entry.dataUltimaIa, hoje);
+    expect(entry.numeroIaRecebida, 1);
+  });
+
+  testWidgets('o calendário da nova IA abre em português', (tester) async {
+    await pumpForm(tester, size: const Size(1400, 1000));
+
+    await tester.tap(find.byTooltip('Abrir calendário').first);
+    await tester.pumpAndSettle();
+
+    expect(find.byType(DatePickerDialog), findsOneWidget);
+    expect(find.text('Cancelar'), findsWidgets);
+  });
 }

@@ -2024,6 +2024,7 @@ class _AnimalEditorFields extends StatelessWidget {
       key: ValueKey('visit-ia-date-${entry.animalId}-$hasVisitIa-$visitIaDate'),
       label: 'Data da nova IA',
       value: visitIaDate,
+      showToday: true,
       onChanged: (value) => emitChanged(
         _entryWithVisitIaDate(entry: entry, iaHistory: iaHistory, value: value),
       ),
@@ -2283,29 +2284,101 @@ class _AnimalEditorModalContentState extends State<_AnimalEditorModalContent> {
   }
 }
 
-class _DateInputField extends StatelessWidget {
+/// Campo de data digitável, com calendário e, opcionalmente, atalho "Hoje".
+class _DateInputField extends StatefulWidget {
   const _DateInputField({
     super.key,
     required this.label,
     required this.value,
     this.onChanged,
+    this.showToday = false,
   });
 
   final String label;
   final DateTime? value;
   final ValueChanged<DateTime?>? onChanged;
+  final bool showToday;
+
+  @override
+  State<_DateInputField> createState() => _DateInputFieldState();
+}
+
+class _DateInputFieldState extends State<_DateInputField> {
+  late final TextEditingController _controller = TextEditingController(
+    text: formatDateInput(widget.value),
+  );
+
+  @override
+  void didUpdateWidget(covariant _DateInputField oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Data trocada por fora (calendário, "Hoje"); enquanto a pessoa digita,
+    // o texto incompleto e o valor (nulo) coincidem e nada é sobrescrito.
+    if (parseDateInput(_controller.text) != widget.value) {
+      _controller.text = formatDateInput(widget.value);
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _set(DateTime? value) {
+    final date = value == null ? null : DateUtils.dateOnly(value);
+    _controller.text = formatDateInput(date);
+    widget.onChanged?.call(date);
+  }
+
+  Future<void> _pickDate() async {
+    final now = DateTime.now();
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: widget.value ?? now,
+      firstDate: DateTime(now.year - 30),
+      lastDate: DateTime(now.year + 2),
+      helpText: widget.label,
+    );
+    if (picked != null) _set(picked);
+  }
 
   @override
   Widget build(BuildContext context) {
-    return AppTextField(
-      label: label,
-      hint: 'DD/MM/AAAA',
-      initialValue: formatDateInput(value),
-      keyboardType: TextInputType.number,
-      inputFormatters: const [DateInputFormatter()],
-      onChanged: onChanged == null
-          ? null
-          : (text) => onChanged!(parseDateInput(text)),
+    final enabled = widget.onChanged != null;
+    final today = DateUtils.dateOnly(DateTime.now());
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        AppTextField(
+          label: widget.label,
+          hint: 'DD/MM/AAAA',
+          controller: _controller,
+          readOnly: !enabled,
+          keyboardType: TextInputType.number,
+          inputFormatters: const [DateInputFormatter()],
+          onChanged: enabled
+              ? (text) => widget.onChanged!(parseDateInput(text))
+              : null,
+          suffixIcon: enabled
+              ? IconButton(
+                  tooltip: 'Abrir calendário',
+                  icon: const Icon(Icons.calendar_month_outlined),
+                  onPressed: _pickDate,
+                )
+              : null,
+        ),
+        if (widget.showToday && enabled && widget.value != today)
+          Align(
+            alignment: Alignment.centerLeft,
+            child: TextButton.icon(
+              onPressed: () => _set(today),
+              icon: const Icon(Icons.today_outlined, size: 18),
+              label: const Text('Usar hoje'),
+            ),
+          ),
+      ],
     );
   }
 }
