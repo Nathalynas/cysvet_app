@@ -1,0 +1,170 @@
+import 'package:cysvet_app/core/enums/animal_status.dart';
+import 'package:cysvet_app/models/animal_summary_model.dart';
+import 'package:cysvet_app/models/property_summary_model.dart';
+import 'package:cysvet_app/models/visit_summary_model.dart';
+import 'package:cysvet_app/pages/visits/visit_form_page.dart';
+import 'package:cysvet_app/providers/animals_provider.dart';
+import 'package:cysvet_app/providers/properties_provider.dart';
+import 'package:cysvet_app/providers/visits_provider.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
+import 'package:google_fonts/google_fonts.dart';
+
+class _FakeAnimalsController extends AnimalsController {
+  _FakeAnimalsController(super.ref, this.animals);
+
+  final List<AnimalSummaryModel> animals;
+
+  @override
+  Future<List<AnimalSummaryModel>> listByProperty(int propertyId) async =>
+      animals;
+}
+
+class _FakeVisitsController extends VisitsController {
+  _FakeVisitsController(super.ref, this.saved);
+
+  final List<VisitSummaryModel> saved;
+
+  @override
+  Future<List<VisitSummaryModel>> listByProperty(
+    int propertyId, {
+    String? excludeIdExterno,
+  }) async => const [];
+
+  @override
+  Future<VisitSummaryModel> save(VisitSummaryModel visit) async {
+    saved.add(visit);
+    return visit;
+  }
+}
+
+void main() {
+  setUpAll(() => GoogleFonts.config.allowRuntimeFetching = false);
+
+  final animals = [
+    AnimalSummaryModel(
+      id: 1,
+      idExterno: 'animal-1',
+      idPropriedade: 1,
+      codigo: '101',
+      statusReprodutivo: AnimalReproductiveStatus.empty,
+    ),
+    AnimalSummaryModel(
+      id: 2,
+      idExterno: 'animal-2',
+      idPropriedade: 1,
+      codigo: '102',
+      statusReprodutivo: AnimalReproductiveStatus.empty,
+    ),
+  ];
+
+  Future<List<VisitSummaryModel>> pumpForm(
+    WidgetTester tester, {
+    Size size = const Size(390, 844),
+  }) async {
+    tester.view.physicalSize = size;
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final saved = <VisitSummaryModel>[];
+    final router = GoRouter(
+      routes: [
+        GoRoute(
+          path: '/',
+          builder: (context, state) =>
+              const Scaffold(body: VisitFormPage(initialPropertyId: 1)),
+        ),
+        GoRoute(
+          path: '/visitas',
+          builder: (context, state) => const Text('lista de visitas'),
+        ),
+      ],
+    );
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          propertiesProvider.overrideWith(
+            (ref) async => const [
+              PropertySummaryModel(id: 1, nome: 'Fazenda teste'),
+            ],
+          ),
+          animalsControllerProvider.overrideWith(
+            (ref) => _FakeAnimalsController(ref, animals),
+          ),
+          visitsControllerProvider.overrideWith(
+            (ref) => _FakeVisitsController(ref, saved),
+          ),
+        ],
+        child: MaterialApp.router(routerConfig: router),
+      ),
+    );
+    await tester.pumpAndSettle();
+    return saved;
+  }
+
+  testWidgets(
+    'marcar prenha e ir ao próximo salva o animal sem confirmar à parte',
+    (tester) async {
+      final saved = await pumpForm(tester);
+
+      await tester.tap(find.text('101'));
+      await tester.pumpAndSettle();
+      expect(
+        find.text('1 de 2 · ao trocar de animal o atual é salvo.'),
+        findsOneWidget,
+      );
+
+      await tester.tap(find.widgetWithText(OutlinedButton, 'Prenha'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Próximo'));
+      await tester.pumpAndSettle();
+
+      // O modal já mostra o segundo animal; fecha sem mexer nele.
+      expect(
+        find.text('2 de 2 · ao trocar de animal o atual é salvo.'),
+        findsOneWidget,
+      );
+      await tester.tap(find.text('Concluir'));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Finalizar visita'));
+      await tester.pumpAndSettle();
+
+      expect(saved, hasLength(1));
+      final entries = saved.single.animais;
+      expect(entries.map((entry) => entry.animalCodigo), ['101', '102']);
+      expect(entries.first.situacaoReprodutiva, 'prenha');
+    },
+  );
+
+  testWidgets('busca pelo brinco e "ir" abre direto o animal', (tester) async {
+    await pumpForm(tester);
+
+    await tester.enterText(find.byType(TextField).last, '102');
+    await tester.testTextInput.receiveAction(TextInputAction.go);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Brinco 102'), findsOneWidget);
+  });
+
+  testWidgets(
+    'na tela larga, mudar a situação já conta como coleta sem confirmar',
+    (tester) async {
+      final saved = await pumpForm(tester, size: const Size(1400, 1000));
+
+      // O primeiro animal já vem aberto no editor ao lado da lista.
+      await tester.tap(find.widgetWithText(OutlinedButton, 'Prenha'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Finalizar visita'));
+      await tester.pumpAndSettle();
+
+      expect(saved, hasLength(1));
+      expect(saved.single.animais, hasLength(1));
+      expect(saved.single.animais.single.animalCodigo, '101');
+      expect(saved.single.animais.single.situacaoReprodutiva, 'prenha');
+    },
+  );
+}

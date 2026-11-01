@@ -21,6 +21,7 @@ import 'package:cysvet_app/providers/connectivity_provider.dart';
 import 'package:cysvet_app/models/indicador_reprodutivo_calculator.dart';
 import 'package:cysvet_app/providers/properties_provider.dart';
 import 'package:cysvet_app/models/property_summary_model.dart';
+import 'package:cysvet_app/models/visit_action_hint.dart';
 import 'package:cysvet_app/providers/visits_provider.dart';
 import 'package:cysvet_app/models/visit_summary_model.dart';
 
@@ -87,19 +88,6 @@ class _AnimalLastBirthSnapshot {
 
   final DateTime lastBirthDate;
   final DateTime? visitDate;
-}
-
-String _animalIdentifier(VisitAnimalEntryModel entry) {
-  final code = entry.animalCodigo.trim();
-  if (code.isNotEmpty) {
-    return code;
-  }
-
-  if (entry.animalId != 0) {
-    return 'Animal ${entry.animalId}';
-  }
-
-  return 'Animal sem identificação';
 }
 
 bool _hasVisitIa(VisitAnimalEntryModel entry, _AnimalIaHistory iaHistory) {
@@ -340,7 +328,8 @@ class _VisitFormPageState extends ConsumerState<VisitFormPage> {
                             ),
                             const SizedBox(height: 6),
                             Text(
-                              'Vincule a propriedade, selecione o animal e preencha os dados da visita.',
+                              'Escolha a propriedade e toque nos animais. '
+                              'Quem precisa de ação aparece primeiro.',
                               style: theme.textTheme.bodyMedium?.copyWith(
                                 color: colorScheme.onSurfaceVariant,
                               ),
@@ -381,6 +370,11 @@ class _VisitFormPageState extends ConsumerState<VisitFormPage> {
                                   icon: Icons.fact_check_outlined,
                                   label: '$collectedCount com coleta',
                                 ),
+                                if (_actionCount > 0)
+                                  _SummaryChip(
+                                    icon: Icons.priority_high_rounded,
+                                    label: '$_actionCount precisam de ação',
+                                  ),
                               ],
                             ),
                           ],
@@ -406,7 +400,8 @@ class _VisitFormPageState extends ConsumerState<VisitFormPage> {
                         )
                       else
                         _AnimalCollectionLayout(
-                          entries: _animalEntries,
+                          entries: _orderedEntries,
+                          hintsByAnimalId: _hintsByAnimalId,
                           iaHistoryByAnimalId: _iaHistoryByAnimalId,
                           reviewedAnimalIds: _reviewedAnimalIds,
                           selectedAnimalId: _selectedAnimalId,
@@ -419,7 +414,7 @@ class _VisitFormPageState extends ConsumerState<VisitFormPage> {
                           onChanged: _updateAnimalEntry,
                           applyAutomaticCalculations:
                               _applyAutomaticCalculations,
-                          onConfirmAnimal: _confirmAnimal,
+                          onConfirmAnimal: _confirmAndSelectNext,
                           onOpenAnimal: _editAnimalInModal,
                         ),
                     ],
@@ -512,6 +507,36 @@ class _VisitFormPageState extends ConsumerState<VisitFormPage> {
     }
     final code = a.animalCodigo.trim();
     return code.isNotEmpty && code == b.animalCodigo.trim();
+  }
+
+  /// Avisos do "o que fazer hoje" por animal, na data da visita.
+  Map<int, List<VisitActionHint>> get _hintsByAnimalId {
+    final dataVisita = parseDateInput(_dataVisita.text);
+    return {
+      for (final entry in _animalEntries)
+        entry.animalId: visitActionHints(entry, dataVisita: dataVisita),
+    };
+  }
+
+  int get _actionCount =>
+      _hintsByAnimalId.values.where((hints) => hints.isNotEmpty).length;
+
+  /// Quem precisa de ação primeiro (atrasados antes), depois o resto na
+  /// ordem do brinco.
+  List<VisitAnimalEntryModel> get _orderedEntries {
+    final hints = _hintsByAnimalId;
+    int rank(VisitAnimalEntryModel entry) {
+      final list = hints[entry.animalId] ?? const [];
+      if (list.isEmpty) return 2;
+      return list.first.urgent ? 0 : 1;
+    }
+
+    final indexed = _animalEntries.indexed.toList()
+      ..sort((a, b) {
+        final byRank = rank(a.$2).compareTo(rank(b.$2));
+        return byRank != 0 ? byRank : a.$1.compareTo(b.$1);
+      });
+    return [for (final item in indexed) item.$2];
   }
 
   VisitAnimalEntryModel? get _selectedEntry {
@@ -789,9 +814,12 @@ class _VisitFormPageState extends ConsumerState<VisitFormPage> {
     _reviewedAnimalIds = const {};
   }
 
+  // Mexer em qualquer campo do animal já conta como coleta: antes era preciso
+  // tocar em "Confirmar animal" e a mudança (ex.: prenha) se perdia sem aviso.
   void _updateAnimalEntry(VisitAnimalEntryModel updated) {
     final calculated = _applyAutomaticCalculations(updated);
     setState(() {
+      _reviewedAnimalIds = {..._reviewedAnimalIds, calculated.animalId};
       _animalEntries = _animalEntries
           .map((entry) {
             if (entry.animalId == calculated.animalId) {
@@ -809,29 +837,55 @@ class _VisitFormPageState extends ConsumerState<VisitFormPage> {
     });
   }
 
+  /// Confirma o animal e passa para o próximo da lista (desktop).
+  void _confirmAndSelectNext(int animalId) {
+    _confirmAnimal(animalId);
+    final next = _neighbor(animalId, 1);
+    if (next != null) setState(() => _selectedAnimalId = next.animalId);
+  }
+
+  VisitAnimalEntryModel? _neighbor(int animalId, int step) {
+    final ordered = _orderedEntries;
+    final index = ordered.indexWhere((entry) => entry.animalId == animalId);
+    final target = index + step;
+    if (index < 0 || target < 0 || target >= ordered.length) return null;
+    return ordered[target];
+  }
+
+  /// Mobile: um animal por vez, com "Anterior" e "Próximo" salvando o atual.
   Future<void> _editAnimalInModal(VisitAnimalEntryModel entry) async {
-    final updated = await AppDialog.show<VisitAnimalEntryModel>(
-      context: context,
-      title: entry.animalCodigo.isEmpty
-          ? 'Animal'
-          : 'Brinco ${entry.animalCodigo}',
-      width: 760,
-      useInternalScroll: true,
-      fullscreenOnMobile: true,
-      content: _AnimalEditorModalContent(
-        entry: entry,
-        iaHistory:
-            _iaHistoryByAnimalId[entry.animalId] ?? _AnimalIaHistory.empty,
-        applyAutomaticCalculations: _applyAutomaticCalculations,
-      ),
-    );
+    VisitAnimalEntryModel? current = entry;
+    while (current != null && mounted) {
+      final ordered = _orderedEntries;
+      final position =
+          ordered.indexWhere((item) => item.animalId == current!.animalId) + 1;
+      final shown = current;
+      final result = await AppDialog.show<_ModalResult>(
+        context: context,
+        title: shown.animalCodigo.isEmpty
+            ? 'Animal'
+            : 'Brinco ${shown.animalCodigo}',
+        width: 760,
+        useInternalScroll: true,
+        fullscreenOnMobile: true,
+        content: _AnimalEditorModalContent(
+          entry: shown,
+          iaHistory:
+              _iaHistoryByAnimalId[shown.animalId] ?? _AnimalIaHistory.empty,
+          hints: _hintsByAnimalId[shown.animalId] ?? const [],
+          applyAutomaticCalculations: _applyAutomaticCalculations,
+          positionLabel: '$position de ${ordered.length}',
+          hasPrevious: _neighbor(shown.animalId, -1) != null,
+          hasNext: _neighbor(shown.animalId, 1) != null,
+        ),
+      );
 
-    if (!mounted || updated == null) {
-      return;
+      if (!mounted || result == null) return;
+      _updateAnimalEntry(result.entry);
+      current = result.step == 0
+          ? null
+          : _neighbor(result.entry.animalId, result.step);
     }
-
-    _updateAnimalEntry(updated);
-    _confirmAnimal(updated.animalId);
   }
 
   PropertySummaryModel? _selectedProperty(
@@ -1220,6 +1274,7 @@ class _VisitActionsBar extends StatelessWidget {
 class _AnimalCollectionLayout extends StatefulWidget {
   const _AnimalCollectionLayout({
     required this.entries,
+    required this.hintsByAnimalId,
     required this.iaHistoryByAnimalId,
     required this.reviewedAnimalIds,
     required this.selectedAnimalId,
@@ -1232,6 +1287,7 @@ class _AnimalCollectionLayout extends StatefulWidget {
   });
 
   final List<VisitAnimalEntryModel> entries;
+  final Map<int, List<VisitActionHint>> hintsByAnimalId;
   final Map<int, _AnimalIaHistory> iaHistoryByAnimalId;
   final Set<int> reviewedAnimalIds;
   final int? selectedAnimalId;
@@ -1258,6 +1314,7 @@ class _AnimalCollectionLayoutState extends State<_AnimalCollectionLayout> {
         final stacked = constraints.maxWidth < 920;
         final listPane = _AnimalListPane(
           entries: widget.entries,
+          hintsByAnimalId: widget.hintsByAnimalId,
           reviewedAnimalIds: widget.reviewedAnimalIds,
           selectedAnimalId: widget.selectedAnimalId,
           height: stacked ? null : _editorHeight,
@@ -1268,6 +1325,10 @@ class _AnimalCollectionLayoutState extends State<_AnimalCollectionLayout> {
           key: _editorKey,
           child: _AnimalEditorPane(
             entry: widget.selectedEntry,
+            hints: widget.selectedEntry == null
+                ? const []
+                : widget.hintsByAnimalId[widget.selectedEntry!.animalId] ??
+                      const [],
             iaHistory: widget.selectedEntry == null
                 ? _AnimalIaHistory.empty
                 : widget.iaHistoryByAnimalId[widget.selectedEntry!.animalId] ??
@@ -1329,6 +1390,7 @@ class _AnimalCollectionLayoutState extends State<_AnimalCollectionLayout> {
 class _AnimalListPane extends StatefulWidget {
   const _AnimalListPane({
     required this.entries,
+    required this.hintsByAnimalId,
     required this.reviewedAnimalIds,
     required this.selectedAnimalId,
     this.height,
@@ -1337,6 +1399,7 @@ class _AnimalListPane extends StatefulWidget {
   });
 
   final List<VisitAnimalEntryModel> entries;
+  final Map<int, List<VisitActionHint>> hintsByAnimalId;
   final Set<int> reviewedAnimalIds;
   final int? selectedAnimalId;
   final double? height;
@@ -1350,6 +1413,10 @@ class _AnimalListPane extends StatefulWidget {
 class _AnimalListPaneState extends State<_AnimalListPane> {
   late final TextEditingController _searchController;
   String _searchTerm = '';
+  bool _onlyActions = false;
+
+  // Brinco costuma ser número: teclado numérico, com troca para letras.
+  bool _numericKeyboard = true;
 
   @override
   void initState() {
@@ -1392,13 +1459,8 @@ class _AnimalListPaneState extends State<_AnimalListPane> {
                 selected: selected,
                 reviewed: widget.reviewedAnimalIds.contains(entry.animalId),
                 subtitle: _buildSubtitle(entry),
-                onTap: () {
-                  if (widget.onOpenAnimal != null) {
-                    widget.onOpenAnimal!(entry);
-                    return;
-                  }
-                  widget.onSelectAnimal?.call(entry.animalId);
-                },
+                hints: widget.hintsByAnimalId[entry.animalId] ?? const [],
+                onTap: () => _open(entry),
               );
             },
           );
@@ -1425,20 +1487,61 @@ class _AnimalListPaneState extends State<_AnimalListPane> {
             ),
           ),
           Padding(
-            padding: const EdgeInsets.fromLTRB(14, 0, 14, 12),
-            child: AppTextField(
-              controller: _searchController,
-              label: 'Buscar brinco',
-              hint: 'Digite o brinco',
-              clearable: true,
-              prefixIcon: const Icon(Icons.search_outlined),
-              isDense: true,
-              contentPadding: const EdgeInsets.symmetric(
-                horizontal: 14,
-                vertical: 10,
-              ),
+            padding: const EdgeInsets.fromLTRB(14, 0, 14, 8),
+            child: Row(
+              children: [
+                Expanded(
+                  child: AppTextField(
+                    // A troca de teclado só vale ao recriar o campo.
+                    key: ValueKey('visit-search-$_numericKeyboard'),
+                    controller: _searchController,
+                    label: 'Buscar brinco',
+                    hint: 'Digite o brinco e toque em ir',
+                    clearable: true,
+                    keyboardType: _numericKeyboard
+                        ? TextInputType.number
+                        : TextInputType.text,
+                    textInputAction: TextInputAction.go,
+                    onSubmitted: _openSearchResult,
+                    prefixIcon: const Icon(Icons.search_outlined),
+                    isDense: true,
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 10,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 4),
+                IconButton(
+                  tooltip: _numericKeyboard
+                      ? 'Usar teclado com letras'
+                      : 'Usar teclado numérico',
+                  onPressed: () =>
+                      setState(() => _numericKeyboard = !_numericKeyboard),
+                  icon: Icon(
+                    _numericKeyboard
+                        ? Icons.abc_rounded
+                        : Icons.dialpad_rounded,
+                  ),
+                ),
+              ],
             ),
           ),
+          if (_actionTotal > 0)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(14, 0, 14, 10),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: FilterChip(
+                  selected: _onlyActions,
+                  onSelected: (value) => setState(() => _onlyActions = value),
+                  avatar: _onlyActions
+                      ? null
+                      : const Icon(Icons.priority_high_rounded, size: 18),
+                  label: Text('Só quem precisa de ação ($_actionTotal)'),
+                ),
+              ),
+            ),
           const Divider(height: 1),
           listBody,
         ],
@@ -1453,13 +1556,53 @@ class _AnimalListPaneState extends State<_AnimalListPane> {
     return SizedBox(height: height, child: card);
   }
 
+  int get _actionTotal => widget.entries
+      .where(
+        (entry) => widget.hintsByAnimalId[entry.animalId]?.isNotEmpty == true,
+      )
+      .length;
+
+  void _open(VisitAnimalEntryModel entry) {
+    if (widget.onOpenAnimal != null) {
+      widget.onOpenAnimal!(entry);
+      return;
+    }
+    widget.onSelectAnimal?.call(entry.animalId);
+  }
+
+  /// "Ir" no teclado: abre o brinco exato digitado, ou o único encontrado.
+  void _openSearchResult(String value) {
+    final query = value.trim().normalize();
+    if (query.isEmpty) return;
+    final exact = widget.entries.where(
+      (entry) => entry.animalCodigo.trim().normalize() == query,
+    );
+    final visible = _visibleEntries;
+    final target = exact.isNotEmpty
+        ? exact.first
+        : visible.length == 1
+        ? visible.first
+        : null;
+    if (target == null) return;
+    _searchController.clear();
+    _open(target);
+  }
+
   List<VisitAnimalEntryModel> get _visibleEntries {
     final query = _searchTerm.trim().normalize();
+    final base = _onlyActions
+        ? widget.entries
+              .where(
+                (entry) =>
+                    widget.hintsByAnimalId[entry.animalId]?.isNotEmpty == true,
+              )
+              .toList(growable: false)
+        : widget.entries;
     if (query.isEmpty) {
-      return widget.entries;
+      return base;
     }
 
-    return widget.entries
+    return base
         .where((entry) {
           final searchText = [
             entry.animalId.toString(),
@@ -1493,7 +1636,7 @@ class _AnimalListPaneState extends State<_AnimalListPane> {
     ];
 
     if (parts.isEmpty) {
-      return 'Toque para preencher os dados';
+      return 'Toque para preencher';
     }
 
     return parts.join(' | ');
@@ -1533,6 +1676,7 @@ class _AnimalListItem extends StatelessWidget {
     required this.selected,
     required this.reviewed,
     required this.subtitle,
+    required this.hints,
     required this.onTap,
   });
 
@@ -1540,6 +1684,7 @@ class _AnimalListItem extends StatelessWidget {
   final bool selected;
   final bool reviewed;
   final String subtitle;
+  final List<VisitActionHint> hints;
   final VoidCallback onTap;
 
   @override
@@ -1602,6 +1747,10 @@ class _AnimalListItem extends StatelessWidget {
                               color: colorScheme.onSurfaceVariant,
                             ),
                           ),
+                          if (hints.isNotEmpty) ...[
+                            const SizedBox(height: 6),
+                            _ActionHints(hints: hints),
+                          ],
                         ],
                       ),
                     ),
@@ -1631,6 +1780,7 @@ class _AnimalListItem extends StatelessWidget {
 class _AnimalEditorPane extends StatelessWidget {
   const _AnimalEditorPane({
     required this.entry,
+    required this.hints,
     required this.iaHistory,
     required this.onChanged,
     required this.applyAutomaticCalculations,
@@ -1639,6 +1789,7 @@ class _AnimalEditorPane extends StatelessWidget {
   });
 
   final VisitAnimalEntryModel? entry;
+  final List<VisitActionHint> hints;
   final _AnimalIaHistory iaHistory;
   final ValueChanged<VisitAnimalEntryModel> onChanged;
   final _VisitEntryCalculator applyAutomaticCalculations;
@@ -1663,6 +1814,10 @@ class _AnimalEditorPane extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           _AnimalEditorHeader(entry: selectedEntry, reviewed: reviewed),
+          if (hints.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            _ActionHints(hints: hints),
+          ],
           const SizedBox(height: 18),
           _AnimalEditorFields(
             entry: selectedEntry,
@@ -1773,15 +1928,16 @@ class _AnimalConfirmationButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
 
+    // Mudar qualquer campo já marca a coleta; o botão confirma o animal sem
+    // mudanças (ex.: situação conferida) e passa para o próximo.
     return AppButton(
-      text: reviewed ? 'Atualizar confirmação' : 'Confirmar animal',
-      height: 40,
-      outlined: reviewed,
-      icon: reviewed
-          ? Icon(Icons.refresh_rounded, size: 18, color: colorScheme.primary)
-          : null,
-      borderColor: reviewed ? colorScheme.outline : null,
-      textColor: reviewed ? colorScheme.primary : null,
+      text: reviewed ? 'Próximo animal' : 'Confirmar e ir ao próximo',
+      height: 44,
+      icon: Icon(
+        Icons.arrow_forward_rounded,
+        size: 18,
+        color: colorScheme.onPrimary,
+      ),
       onPressed: () => onConfirmAnimal(animalId),
     );
   }
@@ -1825,7 +1981,7 @@ class _AnimalVisitStatusBadge extends StatelessWidget {
           const SizedBox(width: 6),
           Flexible(
             child: Text(
-              reviewed ? 'Confirmado na visita' : 'Aguardando confirmação',
+              reviewed ? 'Coletado' : 'Sem coleta',
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: theme.textTheme.labelMedium?.copyWith(
@@ -1864,135 +2020,126 @@ class _AnimalEditorFields extends StatelessWidget {
     final visitIaNumber = hasVisitIa
         ? entry.numeroIaRecebida
         : iaHistory.suggestedNextNumber;
-    final animalIdentifier = _animalIdentifier(entry);
+    final visitIaDateField = _DateInputField(
+      key: ValueKey('visit-ia-date-${entry.animalId}-$hasVisitIa-$visitIaDate'),
+      label: 'Data da nova IA',
+      value: visitIaDate,
+      onChanged: (value) => emitChanged(
+        _entryWithVisitIaDate(entry: entry, iaHistory: iaHistory, value: value),
+      ),
+    );
+    final hasDetails =
+        entry.diagnostico?.isNotEmpty == true ||
+        entry.dataSecagemEfetiva != null ||
+        entry.entradaPreParto != null;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        _EditorSection(
-          title: 'Dados do animal',
-          child: _EditorGrid(
-            children: [
-              AppTextField(
-                key: ValueKey('animal-id-${entry.animalId}-$animalIdentifier'),
-                label: 'Identificação / número',
-                initialValue: animalIdentifier,
-                readOnly: true,
-              ),
-              AppDropdown<String>(
-                value: entry.situacaoProdutiva,
-                labelText: 'Situação produtiva',
-                onChanged: (value) =>
-                    emitChanged(entry.copyWith(situacaoProdutiva: value)),
-                options: _VisitFormPageState._situacaoProdutivaOptions,
-              ),
-              AppDropdown<String>(
-                value: entry.situacaoReprodutiva,
-                labelText: 'Situação reprodutiva',
-                onChanged: (value) =>
-                    emitChanged(entry.copyWith(situacaoReprodutiva: value)),
-                options: _VisitFormPageState._situacaoReprodutivaOptions,
-              ),
-              _DateInputField(
-                label: 'Data último parto',
-                value: entry.dataUltimoParto,
-                onChanged: (value) =>
-                    emitChanged(entry.copyWith(dataUltimoParto: value)),
-              ),
-              AppTextField(
-                label: 'Decisão',
-                initialValue: entry.decisao ?? '',
-                onChanged: (value) => emitChanged(
-                  entry.copyWith(
-                    decisao: value.trim().isEmpty ? null : value.trim(),
-                  ),
-                ),
-              ),
-              AppTextField(
-                label: 'Diagnóstico',
-                initialValue: entry.diagnostico ?? '',
-                onChanged: (value) => emitChanged(
-                  entry.copyWith(
-                    diagnostico: value.trim().isEmpty ? null : value.trim(),
-                  ),
-                ),
-              ),
-              _calculatedText('Idade (meses)', _formatDouble(entry.idadeMeses)),
-              _calculatedText('DEL', _formatInt(entry.del)),
-              _calculatedText('Dias prenhez', _formatInt(entry.diasPrenhez)),
-              _calculatedText('Dias p/ secar', _formatInt(entry.diasParaSecar)),
-              _calculatedText(
-                'Previsão parto',
-                formatDateInput(entry.previsaoParto),
-              ),
-              _calculatedText(
-                'Última IA (histórico)',
-                formatDateInput(iaHistory.lastDate),
-              ),
-            ],
-          ),
+        _QuickStatusPicker(
+          value: entry.situacaoReprodutiva,
+          onChanged: (value) =>
+              emitChanged(entry.copyWith(situacaoReprodutiva: value)),
         ),
-        const SizedBox(height: 22),
-        _EditorSection(
-          title: 'Inseminação Artificial',
-          child: _EditorGrid(
-            children: [
-              _DateInputField(
-                key: ValueKey(
-                  'visit-ia-date-${entry.animalId}-$hasVisitIa-$visitIaDate',
-                ),
-                label: 'Data da nova IA',
-                value: visitIaDate,
-                onChanged: (value) => emitChanged(
-                  _entryWithVisitIaDate(
-                    entry: entry,
-                    iaHistory: iaHistory,
-                    value: value,
-                  ),
-                ),
-              ),
-              AppTextField(
-                key: ValueKey(
-                  'visit-ia-number-${entry.animalId}-$hasVisitIa-$visitIaNumber',
-                ),
-                label: 'Número da IA da visita',
-                initialValue: _formatInt(visitIaNumber),
-                keyboardType: TextInputType.number,
-                readOnly: !hasVisitIa,
-                onChanged: (value) => emitChanged(
-                  _entryWithVisitIaNumber(
-                    entry: entry,
-                    iaHistory: iaHistory,
-                    value: value,
-                  ),
+        const SizedBox(height: 14),
+        _CalculatedSummary(entry: entry, iaHistory: iaHistory),
+        const SizedBox(height: 14),
+        _EditorGrid(
+          children: [
+            AppDropdown<String>(
+              value: entry.situacaoProdutiva,
+              labelText: 'Situação produtiva',
+              onChanged: (value) =>
+                  emitChanged(entry.copyWith(situacaoProdutiva: value)),
+              options: _VisitFormPageState._situacaoProdutivaOptions,
+            ),
+            visitIaDateField,
+            AppTextField(
+              label: 'Decisão',
+              initialValue: entry.decisao ?? '',
+              onChanged: (value) => emitChanged(
+                entry.copyWith(
+                  decisao: value.trim().isEmpty ? null : value.trim(),
                 ),
               ),
-            ],
-          ),
+            ),
+          ],
         ),
-        const SizedBox(height: 22),
-        _EditorSection(
-          title: 'Secagem e pré-parto',
-          child: _EditorGrid(
+        const SizedBox(height: 8),
+        Theme(
+          data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+          child: ExpansionTile(
+            key: PageStorageKey('visit-details-${entry.animalId}'),
+            initiallyExpanded: hasDetails,
+            maintainState: true,
+            tilePadding: EdgeInsets.zero,
+            childrenPadding: const EdgeInsets.only(top: 4, bottom: 8),
+            title: const Text('Mais detalhes'),
+            subtitle: const Text(
+              'Outras situações, parto, diagnóstico, nº da IA, secagem',
+            ),
             children: [
-              _DateInputField(
-                label: 'Secagem efetiva',
-                value: entry.dataSecagemEfetiva,
-                onChanged: (value) => emitChanged(
-                  entry.copyWith(
-                    dataSecagemEfetiva: value,
-                    situacaoProdutiva: AnimalProductiveSituation.afterDryOff(
-                      entry.situacaoProdutiva,
-                      value,
+              _EditorGrid(
+                children: [
+                  AppDropdown<String>(
+                    value: entry.situacaoReprodutiva,
+                    labelText: 'Situação reprodutiva (todas)',
+                    onChanged: (value) =>
+                        emitChanged(entry.copyWith(situacaoReprodutiva: value)),
+                    options: _VisitFormPageState._situacaoReprodutivaOptions,
+                  ),
+                  _DateInputField(
+                    label: 'Data último parto',
+                    value: entry.dataUltimoParto,
+                    onChanged: (value) =>
+                        emitChanged(entry.copyWith(dataUltimoParto: value)),
+                  ),
+                  AppTextField(
+                    label: 'Diagnóstico',
+                    initialValue: entry.diagnostico ?? '',
+                    onChanged: (value) => emitChanged(
+                      entry.copyWith(
+                        diagnostico: value.trim().isEmpty ? null : value.trim(),
+                      ),
                     ),
                   ),
-                ),
-              ),
-              _DateInputField(
-                label: 'Entrada pré-parto',
-                value: entry.entradaPreParto,
-                onChanged: (value) =>
-                    emitChanged(entry.copyWith(entradaPreParto: value)),
+                  AppTextField(
+                    key: ValueKey(
+                      'visit-ia-number-${entry.animalId}-$hasVisitIa-$visitIaNumber',
+                    ),
+                    label: 'Número da IA da visita',
+                    initialValue: _formatInt(visitIaNumber),
+                    keyboardType: TextInputType.number,
+                    readOnly: !hasVisitIa,
+                    onChanged: (value) => emitChanged(
+                      _entryWithVisitIaNumber(
+                        entry: entry,
+                        iaHistory: iaHistory,
+                        value: value,
+                      ),
+                    ),
+                  ),
+                  _DateInputField(
+                    label: 'Secagem efetiva',
+                    value: entry.dataSecagemEfetiva,
+                    onChanged: (value) => emitChanged(
+                      entry.copyWith(
+                        dataSecagemEfetiva: value,
+                        situacaoProdutiva:
+                            AnimalProductiveSituation.afterDryOff(
+                              entry.situacaoProdutiva,
+                              value,
+                            ),
+                      ),
+                    ),
+                  ),
+                  _DateInputField(
+                    label: 'Entrada pré-parto',
+                    value: entry.entradaPreParto,
+                    onChanged: (value) =>
+                        emitChanged(entry.copyWith(entradaPreParto: value)),
+                  ),
+                ],
               ),
             ],
           ),
@@ -2002,60 +2149,6 @@ class _AnimalEditorFields extends StatelessWidget {
   }
 
   static String _formatInt(int? value) => value?.toString() ?? '';
-
-  static String _formatDouble(double? value) {
-    if (value == null || !value.isFinite) return '';
-    if (value == value.roundToDouble()) return value.toStringAsFixed(0);
-    return value.toStringAsFixed(1);
-  }
-
-  Widget _calculatedText(String label, String value) {
-    return AppTextField(
-      key: ValueKey('visit-calc-${entry.animalId}-$label-$value'),
-      label: label,
-      initialValue: value,
-      readOnly: true,
-    );
-  }
-}
-
-class _EditorSection extends StatelessWidget {
-  const _EditorSection({required this.title, required this.child});
-
-  final String title;
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Row(
-          children: [
-            Text(
-              title,
-              style: theme.textTheme.titleSmall?.copyWith(
-                color: colorScheme.primary,
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Container(
-                height: 1,
-                color: colorScheme.outline.withValues(alpha: 0.35),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 12),
-        child,
-      ],
-    );
-  }
 }
 
 class _EditorGrid extends StatelessWidget {
@@ -2092,12 +2185,20 @@ class _AnimalEditorModalContent extends StatefulWidget {
   const _AnimalEditorModalContent({
     required this.entry,
     required this.iaHistory,
+    required this.hints,
     required this.applyAutomaticCalculations,
+    required this.positionLabel,
+    required this.hasPrevious,
+    required this.hasNext,
   });
 
   final VisitAnimalEntryModel entry;
   final _AnimalIaHistory iaHistory;
+  final List<VisitActionHint> hints;
   final _VisitEntryCalculator applyAutomaticCalculations;
+  final String positionLabel;
+  final bool hasPrevious;
+  final bool hasNext;
 
   @override
   State<_AnimalEditorModalContent> createState() =>
@@ -2106,6 +2207,9 @@ class _AnimalEditorModalContent extends StatefulWidget {
 
 class _AnimalEditorModalContentState extends State<_AnimalEditorModalContent> {
   late VisitAnimalEntryModel _draft;
+
+  void _close(int step) =>
+      Navigator.of(context).pop(_ModalResult(_draft, step));
 
   @override
   void initState() {
@@ -2120,9 +2224,13 @@ class _AnimalEditorModalContentState extends State<_AnimalEditorModalContent> {
       mainAxisSize: MainAxisSize.min,
       children: [
         Text(
-          'Preencha e confirme os dados da visita.',
+          '${widget.positionLabel} · ao trocar de animal o atual é salvo.',
           style: Theme.of(context).textTheme.bodySmall,
         ),
+        if (widget.hints.isNotEmpty) ...[
+          const SizedBox(height: 10),
+          _ActionHints(hints: widget.hints),
+        ],
         const SizedBox(height: 16),
         _AnimalEditorFields(
           entry: _draft,
@@ -2133,23 +2241,42 @@ class _AnimalEditorModalContentState extends State<_AnimalEditorModalContent> {
           }),
         ),
         const SizedBox(height: 16),
-        Wrap(
-          spacing: 10,
-          runSpacing: 10,
-          alignment: WrapAlignment.end,
+        Row(
           children: [
-            AppButton(
-              text: 'Cancelar',
-              outlined: true,
-              height: 40,
-              onPressed: () => Navigator.of(context).maybePop(),
+            Expanded(
+              child: AppButton(
+                text: 'Anterior',
+                outlined: true,
+                height: 48,
+                onPressed: widget.hasPrevious ? () => _close(-1) : null,
+              ),
             ),
-            AppButton(
-              text: 'Confirmar animal',
-              height: 40,
-              onPressed: () => Navigator.of(context).pop(_draft),
+            const SizedBox(width: 8),
+            Expanded(
+              child: AppButton(
+                text: 'Concluir',
+                outlined: true,
+                height: 48,
+                onPressed: () => _close(0),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: AppButton(
+                text: 'Próximo',
+                height: 48,
+                onPressed: widget.hasNext ? () => _close(1) : null,
+              ),
             ),
           ],
+        ),
+        const SizedBox(height: 4),
+        Align(
+          alignment: Alignment.center,
+          child: TextButton(
+            onPressed: () => Navigator.of(context).maybePop(),
+            child: const Text('Descartar mudanças deste animal'),
+          ),
         ),
       ],
     );
@@ -2248,6 +2375,171 @@ class _SummaryChip extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+/// Resultado do modal do animal no mobile: o que foi preenchido e para onde ir
+/// (-1 anterior, 0 fechar, 1 próximo).
+class _ModalResult {
+  const _ModalResult(this.entry, this.step);
+
+  final VisitAnimalEntryModel entry;
+  final int step;
+}
+
+/// Botões grandes com as situações mais usadas no curral; as demais ficam em
+/// "Mais detalhes".
+class _QuickStatusPicker extends StatelessWidget {
+  const _QuickStatusPicker({required this.value, required this.onChanged});
+
+  static const _quick = [
+    AnimalReproductiveStatus.pregnant,
+    AnimalReproductiveStatus.empty,
+    AnimalReproductiveStatus.inseminated,
+    AnimalReproductiveStatus.waitingDiagnosis,
+  ];
+
+  final String? value;
+  final ValueChanged<String?> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final current = value == null || value!.isEmpty
+        ? null
+        : AnimalReproductiveStatus.fromApiValue(value);
+    final isOther = current != null && !_quick.contains(current);
+
+    Widget option(AnimalReproductiveStatus status) {
+      final selected = current == status;
+      return SizedBox(
+        height: 52,
+        child: selected
+            ? FilledButton.icon(
+                onPressed: () => onChanged(status.apiValue),
+                icon: Icon(status.icon),
+                label: Text(status.label),
+              )
+            : OutlinedButton.icon(
+                onPressed: () => onChanged(status.apiValue),
+                icon: Icon(status.icon),
+                label: Text(status.label),
+              ),
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text(
+          'Situação reprodutiva',
+          style: theme.textTheme.titleSmall?.copyWith(
+            color: colorScheme.primary,
+            fontWeight: FontWeight.w800,
+          ),
+        ),
+        const SizedBox(height: 8),
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final columns = constraints.maxWidth >= 640 ? 4 : 2;
+            const spacing = 8.0;
+            final width =
+                (constraints.maxWidth - (columns - 1) * spacing) / columns;
+            return Wrap(
+              spacing: spacing,
+              runSpacing: spacing,
+              children: [
+                for (final status in _quick)
+                  SizedBox(width: width, child: option(status)),
+              ],
+            );
+          },
+        ),
+        if (isOther) ...[
+          const SizedBox(height: 8),
+          Text(
+            'Marcada: ${current.label} (outras em "Mais detalhes")',
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: colorScheme.primary,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+/// Números calculados em uma linha, em vez de campos somente leitura.
+class _CalculatedSummary extends StatelessWidget {
+  const _CalculatedSummary({required this.entry, required this.iaHistory});
+
+  final VisitAnimalEntryModel entry;
+  final _AnimalIaHistory iaHistory;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final items = <String>[
+      if (entry.del != null) 'DEL ${entry.del}',
+      if (entry.diasPrenhez != null) 'Prenhez ${entry.diasPrenhez} d',
+      if (entry.diasParaSecar != null) 'Secar em ${entry.diasParaSecar} d',
+      if (entry.previsaoParto != null)
+        'Parto ${formatDateInput(entry.previsaoParto)}',
+      if (iaHistory.lastDate != null)
+        'Última IA ${formatDateInput(iaHistory.lastDate)}',
+      if (entry.idadeMeses != null)
+        'Idade ${entry.idadeMeses!.toStringAsFixed(0)} meses',
+    ];
+    if (items.isEmpty) return const SizedBox.shrink();
+
+    return Text(
+      items.join('  ·  '),
+      style: theme.textTheme.bodyMedium?.copyWith(
+        color: theme.colorScheme.onSurfaceVariant,
+        fontWeight: FontWeight.w600,
+      ),
+    );
+  }
+}
+
+/// Avisos do "o que fazer hoje" (ex.: "Fazer DG · IA há 35 dias").
+class _ActionHints extends StatelessWidget {
+  const _ActionHints({required this.hints});
+
+  final List<VisitActionHint> hints;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
+    return Wrap(
+      spacing: 6,
+      runSpacing: 6,
+      children: [
+        for (final hint in hints)
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            decoration: BoxDecoration(
+              color: hint.urgent
+                  ? colorScheme.errorContainer
+                  : colorScheme.tertiaryContainer,
+              borderRadius: BorderRadius.circular(999),
+            ),
+            child: Text(
+              hint.label,
+              style: theme.textTheme.labelMedium?.copyWith(
+                color: hint.urgent
+                    ? colorScheme.onErrorContainer
+                    : colorScheme.onTertiaryContainer,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+      ],
     );
   }
 }
