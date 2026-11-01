@@ -5,11 +5,14 @@ import 'package:uuid/uuid.dart';
 import 'package:cysvet_app/core/constants/app_constants.dart';
 import 'package:cysvet_app/core/enums/animal_status.dart';
 import 'package:cysvet_app/core/presentation/app_scaffold_messenger.dart';
-import 'package:cysvet_app/core/utils/formatters.dart';
+import 'package:cysvet_app/core/widgets/app_date_field.dart';
 import 'package:cysvet_app/core/widgets/app_dialog.dart';
 import 'package:cysvet_app/core/widgets/app_dropdown.dart';
 import 'package:cysvet_app/core/widgets/app_form.dart';
 import 'package:cysvet_app/core/widgets/app_text_field.dart';
+import 'package:cysvet_app/core/widgets/reproductive_status_picker.dart';
+import 'package:cysvet_app/core/widgets/responsive_field_grid.dart';
+import 'package:cysvet_app/filters/animal_filter.dart';
 import 'package:cysvet_app/models/property_summary_model.dart';
 import 'package:cysvet_app/providers/animals_provider.dart';
 import 'package:cysvet_app/models/animal_import_field.dart';
@@ -28,7 +31,7 @@ class AnimalDialog extends StatelessWidget {
   }) {
     return AppDialog.show<void>(
       context: context,
-      title: animal == null ? 'Novo animal' : 'Editar animal',
+      title: animal == null ? 'Novo animal' : 'Editar animal ${animal.codigo}',
       width: 760,
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 14),
       fullscreenBodyPadding: const EdgeInsets.fromLTRB(16, 20, 16, 12),
@@ -57,14 +60,14 @@ class _AnimalForm extends ConsumerStatefulWidget {
 
 class _AnimalFormState extends ConsumerState<_AnimalForm> {
   final _codigo = TextEditingController();
-  final _nascimento = TextEditingController();
   final _lactacao = TextEditingController();
-  final _parto = TextEditingController();
-  final _inseminacao = TextEditingController();
   final _touroIa = TextEditingController();
   final _historico = TextEditingController();
 
   int? _propertyId;
+  DateTime? _nascimento;
+  DateTime? _parto;
+  DateTime? _inseminacao;
   AnimalReproductiveStatus _reproductiveStatus =
       AnimalReproductiveStatus.pending;
   String? _productiveSituation;
@@ -76,13 +79,13 @@ class _AnimalFormState extends ConsumerState<_AnimalForm> {
     final animal = widget.animal;
 
     _codigo.text = animal?.codigo ?? '';
-    _nascimento.text = formatDateInput(animal?.dataNascimento);
     _lactacao.text = (animal?.numeroLactacao ?? 0).toString();
-    _parto.text = formatDateInput(animal?.dataUltimoParto);
-    _inseminacao.text = formatDateInput(animal?.dataInseminacao);
     _touroIa.text = animal?.touroIa ?? '';
     _historico.text = animal?.historicoReprodutivo ?? '';
-    _propertyId = animal?.idPropriedade;
+    _nascimento = animal?.dataNascimento;
+    _parto = animal?.dataUltimoParto;
+    _inseminacao = animal?.dataInseminacao;
+    _propertyId = animal?.idPropriedade ?? _defaultPropertyId();
     _reproductiveStatus = _resolveReproductiveStatus(animal);
     _productiveSituation = animal?.situacaoProdutiva;
     // "Seca" é situação produtiva: a vaca seca continua prenha, vazia etc.
@@ -92,13 +95,18 @@ class _AnimalFormState extends ConsumerState<_AnimalForm> {
     }
   }
 
+  /// Animal novo já vem na propriedade filtrada na lista ou na única que há.
+  int? _defaultPropertyId() {
+    final ids = widget.properties.map((property) => property.id).toSet();
+    final filtered = ref.read(animalsPropertyFilterProvider);
+    if (filtered != null && ids.contains(filtered)) return filtered;
+    return ids.length == 1 ? ids.single : null;
+  }
+
   @override
   void dispose() {
     _codigo.dispose();
-    _nascimento.dispose();
     _lactacao.dispose();
-    _parto.dispose();
-    _inseminacao.dispose();
     _touroIa.dispose();
     _historico.dispose();
     super.dispose();
@@ -111,10 +119,7 @@ class _AnimalFormState extends ConsumerState<_AnimalForm> {
     final codigoField = AnimalImportFieldKey.codigo.spec;
     final nascimentoField = AnimalImportFieldKey.dataNascimento.spec;
     final propertyField = AnimalImportFieldKey.idPropriedade.spec;
-    final reproductiveStatusField = AnimalImportFieldKey.statusReprodutivo.spec;
     final lactacaoField = AnimalImportFieldKey.numeroLactacao.spec;
-    final partoField = AnimalImportFieldKey.dataUltimoParto.spec;
-    final inseminacaoField = AnimalImportFieldKey.dataInseminacao.spec;
     final touroIaField = AnimalImportFieldKey.touroIa.spec;
     final historicoField = AnimalImportFieldKey.historicoReprodutivo.spec;
 
@@ -122,12 +127,12 @@ class _AnimalFormState extends ConsumerState<_AnimalForm> {
       internalScroll: true,
       isLoading: isBusy,
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-      fieldsSpacing: 14,
+      fieldsSpacing: 24,
       actionsSpacing: 10,
-      actionButtonHeight: 38,
-      actionButtonFontSize: 14,
-      actionButtonPadding: const EdgeInsets.symmetric(horizontal: 14),
-      submitText: 'Salvar',
+      actionButtonHeight: 44,
+      actionButtonFontSize: 15,
+      actionButtonPadding: const EdgeInsets.symmetric(horizontal: 18),
+      submitText: animal == null ? 'Cadastrar animal' : 'Salvar',
       onCancel: () => Navigator.of(context).maybePop(),
       onSubmit: () async {
         final navigator = Navigator.of(context);
@@ -142,10 +147,10 @@ class _AnimalFormState extends ConsumerState<_AnimalForm> {
             idExternoPropriedade:
                 property?.idExterno ?? animal?.idExternoPropriedade ?? '',
             codigo: _codigo.text.trim(),
-            dataNascimento: parseDateInput(_nascimento.text),
+            dataNascimento: _nascimento,
             numeroLactacao: int.tryParse(_lactacao.text.trim()) ?? 0,
-            dataUltimoParto: parseDateInput(_parto.text),
-            dataInseminacao: parseDateInput(_inseminacao.text),
+            dataUltimoParto: _parto,
+            dataInseminacao: _inseminacao,
             touroIa: _touroIa.text.trim(),
             historicoReprodutivo: _historico.text.trim(),
             statusReprodutivo: _reproductiveStatus,
@@ -164,112 +169,94 @@ class _AnimalFormState extends ConsumerState<_AnimalForm> {
         }
       },
       fields: [
-        AppTextField(
-          label: codigoField.label,
-          controller: _codigo,
-          required: codigoField.required,
+        _Section(
+          title: 'Identificação',
+          child: ResponsiveFieldGrid(
+            children: [
+              AppTextField(
+                label: codigoField.label,
+                controller: _codigo,
+                required: codigoField.required,
+                autofocus: animal == null,
+              ),
+              AppDropdown<int>(
+                value: _propertyId,
+                labelText: propertyField.label,
+                required: propertyField.required,
+                searchable: true,
+                onChanged: (value) => setState(() => _propertyId = value),
+                options: widget.properties
+                    .map(
+                      (item) =>
+                          AppDropdownOption(label: item.nome, value: item.id),
+                    )
+                    .toList(growable: false),
+              ),
+              AppDateField(
+                label: nascimentoField.label,
+                value: _nascimento,
+                required: nascimentoField.required,
+                onChanged: (value) => setState(() => _nascimento = value),
+              ),
+            ],
+          ),
         ),
-        AppTextField(
-          label: nascimentoField.label,
-          hint: 'DD/MM/AAAA',
-          controller: _nascimento,
-          required: nascimentoField.required,
-          keyboardType: TextInputType.number,
-          inputFormatters: const [DateInputFormatter()],
-          validator: (value) {
-            if (parseDateInput(value ?? '') == null) {
-              return 'Informe uma data valida';
-            }
-            return null;
-          },
+        _Section(
+          title: 'Situação',
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              ReproductiveStatusPicker(
+                value: _reproductiveStatus == AnimalReproductiveStatus.pending
+                    ? null
+                    : _reproductiveStatus.apiValue,
+                onChanged: (value) => setState(() {
+                  _reproductiveStatus = value == null
+                      ? AnimalReproductiveStatus.pending
+                      : AnimalReproductiveStatus.fromApiValue(value);
+                }),
+              ),
+              const SizedBox(height: 16),
+              _ProductiveSituationPicker(
+                value: _productiveSituation,
+                onChanged: (value) =>
+                    setState(() => _productiveSituation = value),
+              ),
+            ],
+          ),
         ),
-      ],
-      rightFields: [
-        AppDropdown<int>(
-          value: _propertyId,
-          labelText: propertyField.label,
-          required: propertyField.required,
-          searchable: true,
-          onChanged: (value) => setState(() => _propertyId = value),
-          options: widget.properties
-              .map(
-                (item) => AppDropdownOption(label: item.nome, value: item.id),
-              )
-              .toList(growable: false),
+        _Section(
+          title: 'Reprodução',
+          child: ResponsiveFieldGrid(
+            children: [
+              _LactationField(
+                label: lactacaoField.label,
+                controller: _lactacao,
+              ),
+              AppDateField(
+                label: 'Data do último parto',
+                value: _parto,
+                showToday: true,
+                onChanged: (value) => setState(() => _parto = value),
+              ),
+              AppDateField(
+                label: 'Data da última IA',
+                value: _inseminacao,
+                showToday: true,
+                onChanged: (value) => setState(() => _inseminacao = value),
+              ),
+              AppTextField(label: touroIaField.label, controller: _touroIa),
+            ],
+          ),
         ),
-        AppDropdown<AnimalReproductiveStatus>(
-          value: _reproductiveStatus,
-          labelText: reproductiveStatusField.label,
-          required: reproductiveStatusField.required,
-          onChanged: (value) {
-            if (value == null) return;
-
-            setState(() {
-              _reproductiveStatus = value;
-            });
-          },
-          options: AnimalReproductiveStatus.editableValues
-              .where((item) => item != AnimalReproductiveStatus.dry)
-              .map((item) => AppDropdownOption(label: item.label, value: item))
-              .toList(growable: false),
-        ),
-        AppDropdown<String>(
-          value: _productiveSituation,
-          labelText: 'Situação produtiva',
-          required: false,
-          onChanged: (value) => setState(() => _productiveSituation = value),
-          options: AnimalProductiveSituation.values
-              .map(
-                (item) => AppDropdownOption(
-                  label: AnimalProductiveSituation.label(item),
-                  value: item,
-                ),
-              )
-              .toList(growable: false),
-        ),
-        AppTextField(
-          label: lactacaoField.label,
-          controller: _lactacao,
-          required: lactacaoField.required,
-          keyboardType: TextInputType.number,
-        ),
-        AppTextField(
-          label: partoField.label,
-          hint: 'DD/MM/AAAA',
-          controller: _parto,
-          keyboardType: TextInputType.number,
-          inputFormatters: const [DateInputFormatter()],
-          validator: (value) {
-            if ((value ?? '').trim().isEmpty) {
-              return null;
-            }
-            if (parseDateInput(value ?? '') == null) {
-              return 'Informe uma data valida';
-            }
-            return null;
-          },
-        ),
-        AppTextField(
-          label: inseminacaoField.label,
-          hint: 'DD/MM/AAAA',
-          controller: _inseminacao,
-          keyboardType: TextInputType.number,
-          inputFormatters: const [DateInputFormatter()],
-          validator: (value) {
-            if ((value ?? '').trim().isEmpty) {
-              return null;
-            }
-            if (parseDateInput(value ?? '') == null) {
-              return 'Informe uma data valida';
-            }
-            return null;
-          },
-        ),
-        AppTextField(label: touroIaField.label, controller: _touroIa),
-        AppTextField(
-          label: historicoField.label,
-          controller: _historico,
-          maxLines: 3,
+        _Section(
+          title: 'Observações',
+          child: AppTextField(
+            label: historicoField.label,
+            hint: 'Decisões, histórico, cuidados com o animal',
+            controller: _historico,
+            maxLines: 3,
+          ),
         ),
       ],
     );
@@ -318,5 +305,121 @@ class _AnimalFormState extends ConsumerState<_AnimalForm> {
     }
 
     return AnimalReproductiveStatus.pending;
+  }
+}
+
+class _Section extends StatelessWidget {
+  const _Section({required this.title, required this.child});
+
+  final String title;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          children: [
+            Text(
+              title,
+              style: theme.textTheme.titleSmall?.copyWith(
+                color: colorScheme.primary,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Container(
+                height: 1,
+                color: colorScheme.outline.withValues(alpha: 0.35),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        child,
+      ],
+    );
+  }
+}
+
+/// Situação produtiva em botões; tocar na marcada desmarca.
+class _ProductiveSituationPicker extends StatelessWidget {
+  const _ProductiveSituationPicker({
+    required this.value,
+    required this.onChanged,
+  });
+
+  final String? value;
+  final ValueChanged<String?> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text(
+          'Situação produtiva',
+          style: theme.textTheme.titleSmall?.copyWith(
+            color: theme.colorScheme.primary,
+            fontWeight: FontWeight.w800,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            for (final situation in AnimalProductiveSituation.values)
+              ChoiceChip(
+                label: Text(AnimalProductiveSituation.label(situation)),
+                selected: value == situation,
+                onSelected: (selected) =>
+                    onChanged(selected ? situation : null),
+              ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+/// Número de lactações com botões de menos e mais.
+class _LactationField extends StatelessWidget {
+  const _LactationField({required this.label, required this.controller});
+
+  final String label;
+  final TextEditingController controller;
+
+  void _step(int delta) {
+    final current = int.tryParse(controller.text.trim()) ?? 0;
+    final next = current + delta;
+    if (next < 0) return;
+    controller.text = next.toString();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AppTextField(
+      label: label,
+      controller: controller,
+      keyboardType: TextInputType.number,
+      prefixIcon: IconButton(
+        tooltip: 'Menos uma lactação',
+        icon: const Icon(Icons.remove),
+        onPressed: () => _step(-1),
+      ),
+      suffixIcon: IconButton(
+        tooltip: 'Mais uma lactação',
+        icon: const Icon(Icons.add),
+        onPressed: () => _step(1),
+      ),
+    );
   }
 }
