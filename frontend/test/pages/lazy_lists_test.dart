@@ -36,8 +36,12 @@ void main() {
     ),
   );
 
-  Future<void> pumpPage(WidgetTester tester, Widget page) async {
-    tester.view.physicalSize = const Size(390, 844);
+  Future<void> pumpPage(
+    WidgetTester tester,
+    Widget page, {
+    Size size = const Size(390, 844),
+  }) async {
+    tester.view.physicalSize = size;
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
@@ -80,6 +84,31 @@ void main() {
     );
     expect(find.textContaining('AN-00199'), findsOneWidget);
     expect(find.textContaining('AN-00000'), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('tabela de animais no desktop monta 50 linhas por vez', (
+    tester,
+  ) async {
+    await pumpPage(tester, const AnimalsPage(), size: const Size(1600, 1000));
+
+    expect(find.textContaining('AN-00049'), findsOneWidget);
+    expect(find.textContaining('AN-00050'), findsNothing);
+    expect(find.text('Mostrando 50 de $total'), findsOneWidget);
+
+    await tester.ensureVisible(find.text('Mostrar mais 50'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Mostrar mais 50'));
+    await tester.pump();
+    expect(find.textContaining('AN-00099'), findsOneWidget);
+    expect(find.text('Mostrando 100 de $total'), findsOneWidget);
+
+    await tester.ensureVisible(find.text('Mostrar todos'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Mostrar todos'));
+    await tester.pump();
+    expect(find.textContaining('AN-00199'), findsOneWidget);
+    expect(find.textContaining('Mostrando'), findsNothing);
     expect(tester.takeException(), isNull);
   });
 

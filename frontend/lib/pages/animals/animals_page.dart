@@ -472,7 +472,8 @@ class _AnimalsMainContent extends StatelessWidget {
   final _AnimalCallback onShowHistory;
 
   // Sliver: no celular os cartões entram direto na rolagem da página e só os
-  // visíveis são montados. A tabela larga (desktop/web) continua inteira.
+  // visíveis são montados. A tabela larga (desktop/web) rola na horizontal e
+  // monta 50 linhas por vez, com "Mostrar mais".
   @override
   Widget build(BuildContext context) {
     return SliverLayoutBuilder(
@@ -554,6 +555,7 @@ class _AnimalsTable extends StatelessWidget {
       rows: animals,
       footerLabel: _recordsLabel(animals.length),
       mobileBreakpoint: _animalsTableBreakpoint,
+      pageSize: 50,
       onRowTap: onShowHistory,
       columns: [
         AppTableColumn<AnimalSummaryModel>(

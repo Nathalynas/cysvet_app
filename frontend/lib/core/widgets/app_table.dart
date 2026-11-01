@@ -36,6 +36,7 @@ class AppTable<T> extends StatelessWidget {
     this.shadow = true,
     this.onRowTap,
     this.enableRowHover = true,
+    this.pageSize,
   });
 
   final List<T> rows;
@@ -50,6 +51,11 @@ class AppTable<T> extends StatelessWidget {
   final bool shadow;
   final ValueChanged<T>? onRowTap;
   final bool enableRowHover;
+
+  /// Linhas montadas por vez na tabela larga; o rodapé oferece "Mostrar
+  /// mais". A tabela é uma coluna inteira (não rola sozinha), então centenas
+  /// de linhas com muitas colunas travavam a tela. Nulo mostra todas.
+  final int? pageSize;
 
   @override
   Widget build(BuildContext context) {
@@ -81,13 +87,14 @@ class AppTable<T> extends StatelessWidget {
           shadow: shadow,
           onRowTap: onRowTap,
           enableRowHover: enableRowHover,
+          pageSize: pageSize,
         );
       },
     );
   }
 }
 
-class _AppTableGrid<T> extends StatelessWidget {
+class _AppTableGrid<T> extends StatefulWidget {
   const _AppTableGrid({
     required this.rows,
     required this.columns,
@@ -99,6 +106,7 @@ class _AppTableGrid<T> extends StatelessWidget {
     required this.shadow,
     required this.onRowTap,
     required this.enableRowHover,
+    required this.pageSize,
   });
 
   final List<T> rows;
@@ -111,11 +119,35 @@ class _AppTableGrid<T> extends StatelessWidget {
   final bool shadow;
   final ValueChanged<T>? onRowTap;
   final bool enableRowHover;
+  final int? pageSize;
+
+  @override
+  State<_AppTableGrid<T>> createState() => _AppTableGridState<T>();
+}
+
+class _AppTableGridState<T> extends State<_AppTableGrid<T>> {
+  late int _visibleCount = widget.pageSize ?? 0;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
+    final pageSize = widget.pageSize;
+    final allRows = widget.rows;
+    final rows = pageSize == null || allRows.length <= _visibleCount
+        ? allRows
+        : allRows.sublist(0, _visibleCount);
+    final hidden = allRows.length - rows.length;
+    final step = pageSize ?? 0;
+    final columns = widget.columns;
+    final equalColumnWidth = widget.equalColumnWidth;
+    final onRowTap = widget.onRowTap;
+    final enableRowHover = widget.enableRowHover;
+    final footerLabel = widget.footerLabel;
+    final emptyMessage = widget.emptyMessage;
+    final borderRadius = widget.borderRadius;
+    final borderColor = widget.borderColor;
+    final shadow = widget.shadow;
 
     return AppCard(
       padding: EdgeInsets.zero,
@@ -160,13 +192,46 @@ class _AppTableGrid<T> extends StatelessWidget {
                 enableHover: enableRowHover,
               ),
             ],
+          if (hidden > 0) ...[
+            Divider(color: colorScheme.outline.withValues(alpha: 0.26)),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
+              color: colorScheme.surface,
+              child: Wrap(
+                spacing: 12,
+                runSpacing: 4,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                children: [
+                  Text(
+                    'Mostrando ${rows.length} de ${allRows.length}',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: colorScheme.onSurfaceVariant,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  TextButton(
+                    onPressed: () =>
+                        setState(() => _visibleCount = rows.length + step),
+                    child: Text(
+                      'Mostrar mais ${hidden < step ? hidden : step}',
+                    ),
+                  ),
+                  TextButton(
+                    onPressed: () =>
+                        setState(() => _visibleCount = allRows.length),
+                    child: const Text('Mostrar todos'),
+                  ),
+                ],
+              ),
+            ),
+          ],
           if (footerLabel != null) ...[
             Divider(color: colorScheme.outline.withValues(alpha: 0.26)),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
               color: colorScheme.surface,
               child: Text(
-                footerLabel!,
+                footerLabel,
                 style: theme.textTheme.bodySmall?.copyWith(
                   color: colorScheme.onSurfaceVariant,
                   fontWeight: FontWeight.w600,
