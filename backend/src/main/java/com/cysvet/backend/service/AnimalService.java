@@ -133,7 +133,12 @@ public class AnimalService {
         Animal animal = animalRepository.findByIdExterno(request.idExterno())
                 .orElseGet(Animal::new);
 
-        if (animal.getId() != null && dataAtualizacaoCliente != null && animal.getDataAtualizacao().isAfter(dataAtualizacaoCliente)) {
+        // So a edicao de outra pessoa gera conflito; o recalculo do resumo depois
+        // de uma visita nao descarta a edicao feita sem sinal antes dela.
+        Instant ultimaEdicao = animal.getDataEdicaoUsuario() != null
+                ? animal.getDataEdicaoUsuario()
+                : animal.getDataAtualizacao();
+        if (animal.getId() != null && dataAtualizacaoCliente != null && ultimaEdicao.isAfter(dataAtualizacaoCliente)) {
             return SyncUpsertResult.conflicted(animal);
         }
 
@@ -184,6 +189,7 @@ public class AnimalService {
         }
 
         applyReproductiveBase(animal, request, statusReprodutivo, situacaoProdutiva);
+        animal.setDataEdicaoUsuario(Instant.now());
 
         animal.setIdExterno(request.idExterno());
         animal.setPropriedade(property);
@@ -227,6 +233,10 @@ public class AnimalService {
                                        StatusReprodutivoAnimal statusReprodutivo,
                                        SituacaoProdutivaAnimal situacaoProdutiva) {
         boolean isNew = animal.getId() == null;
+        // No cadastro a situacao informada e o ponto de partida, sem instante:
+        // eventos de qualquer data passam por cima dela, inclusive visitas
+        // anteriores ao cadastro lancadas depois. Nas edicoes ela e correcao.
+        Instant baseEm = isNew ? null : Instant.now();
 
         if (isNew
                 || !Objects.equals(animal.getNumeroLactacao(), request.numeroLactacao())
@@ -242,12 +252,12 @@ public class AnimalService {
         }
         if (isNew || animal.getStatusReprodutivo() != statusReprodutivo) {
             animal.setBaseStatusReprodutivo(statusReprodutivo);
-            animal.setBaseStatusReprodutivoEm(Instant.now());
+            animal.setBaseStatusReprodutivoEm(baseEm);
         }
         // Clientes que nao enviam a situacao produtiva mantem a atual.
         if (situacaoProdutiva != null && (isNew || animal.getSituacaoProdutiva() != situacaoProdutiva)) {
             animal.setBaseSituacaoProdutiva(situacaoProdutiva);
-            animal.setBaseSituacaoProdutivaEm(Instant.now());
+            animal.setBaseSituacaoProdutivaEm(baseEm);
         }
     }
 
@@ -264,6 +274,7 @@ public class AnimalService {
     private Animal updateStatus(Animal animal, StatusAnimal status, Usuario user) {
         StatusAnimal previousStatus = animal.getStatus();
         animal.setStatus(status);
+        animal.setDataEdicaoUsuario(Instant.now());
         Animal saved = animalRepository.save(animal);
         if (!Objects.equals(previousStatus, saved.getStatus())) {
             registerHistory(

@@ -13,10 +13,12 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.cysvet.backend.entity.Usuario;
 import com.cysvet.backend.repository.UsuarioEmpresaRepository;
 import com.cysvet.backend.repository.UsuarioRepository;
+import com.cysvet.backend.service.RecalculoResumoPendente;
 import com.cysvet.backend.support.TestAccounts;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
@@ -24,7 +26,9 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.ResultActions;
 
 /**
  * Visita gerando eventos e resumo reprodutivo recalculado a partir deles,
@@ -51,6 +55,12 @@ class VisitaEventosIntegrationTest {
 
     @Autowired
     private ObjectMapper objectMapper;
+
+    @Autowired
+    private JdbcTemplate jdbcTemplate;
+
+    @Autowired
+    private RecalculoResumoPendente recalculoResumoPendente;
 
     @Test
     void visitaGeraEventosEAtualizaResumoDoAnimalSemDuplicarNoReenvio() throws Exception {
@@ -240,6 +250,76 @@ class VisitaEventosIntegrationTest {
                 { "animalIdExterno": "animal-ve-5", "situacaoReprodutiva": "prenha" }
                 """));
         assertEquals("prenha", animal(auth, "animal-ve-5").path("statusReprodutivo").asText());
+    }
+
+    @Test
+    void visitaComDataAnteriorAoCadastroPrevaleceSobreASituacaoDoCadastro() throws Exception {
+        AuthContext auth = registerAndAuthenticate("visita.retroativa@example.com");
+        long propertyId = createProperty(auth, "prop-ve-9");
+        createAnimal(auth, propertyId, "animal-ve-9", "VE-09", "aguardando dg");
+
+        // Rebanho cadastrado hoje, visita de dois dias atras lancada depois.
+        syncVisit(auth, "mut-ve-9", visitPayload("visit-ve-9", "prop-ve-9", HOJE.minusDays(2), """
+                { "animalIdExterno": "animal-ve-9", "situacaoReprodutiva": "prenha" }
+                """));
+
+        assertEquals("prenha", animal(auth, "animal-ve-9").path("statusReprodutivo").asText());
+    }
+
+    @Test
+    void recalculoNaInicializacaoCorrigeOResumoDosAnimaisMarcadosPelaMigration() throws Exception {
+        AuthContext auth = registerAndAuthenticate("visita.recalculo@example.com");
+        long propertyId = createProperty(auth, "prop-ve-12");
+        long animalId = createAnimal(auth, propertyId, "animal-ve-12", "VE-12", "aguardando dg").path("id").asLong();
+        syncVisit(auth, "mut-ve-12", visitPayload("visit-ve-12", "prop-ve-12", HOJE.minusDays(2), """
+                { "animalIdExterno": "animal-ve-12", "situacaoReprodutiva": "prenha" }
+                """));
+        // Estado de antes da V19: resumo gravado com a base do cadastro vencendo a visita.
+        jdbcTemplate.update("update animal set status_reprodutivo = 'WAITING_DIAGNOSIS', resumo_pendente = true"
+                + " where id = ?", animalId);
+
+        recalculoResumoPendente.run(null);
+
+        assertEquals("prenha", animal(auth, "animal-ve-12").path("statusReprodutivo").asText());
+        assertEquals(Boolean.FALSE, jdbcTemplate.queryForObject(
+                "select resumo_pendente from animal where id = ?", Boolean.class, animalId));
+    }
+
+    @Test
+    void edicaoOfflineDoAnimalNaoEDescartadaPeloRecalculoDeUmaVisita() throws Exception {
+        AuthContext auth = registerAndAuthenticate("visita.edicao.offline@example.com");
+        long propertyId = createProperty(auth, "prop-ve-10");
+        createAnimal(auth, propertyId, "animal-ve-10", "VE-10", "vazia");
+        ObjectNode payload = (ObjectNode) animal(auth, "animal-ve-10").deepCopy();
+        payload.put("statusReprodutivo", "prenha");
+        Instant editadoSemSinal = Instant.now();
+        Thread.sleep(20);
+
+        // A visita sincroniza antes e recalcula o animal no servidor.
+        syncVisit(auth, "mut-ve-10a", visitPayload("visit-ve-10", "prop-ve-10", HOJE.minusDays(1), """
+                { "animalIdExterno": "animal-ve-10", "situacaoReprodutiva": "aguardando dg" }
+                """));
+        syncAnimal(auth, "mut-ve-10b", editadoSemSinal, payload)
+                .andExpect(jsonPath("$.items[0].status").value("SYNCED"));
+
+        assertEquals("prenha", animal(auth, "animal-ve-10").path("statusReprodutivo").asText());
+    }
+
+    @Test
+    void edicaoOfflineMaisAntigaQueOutraEdicaoDePessoaContinuaEmConflito() throws Exception {
+        AuthContext auth = registerAndAuthenticate("visita.conflito@example.com");
+        long propertyId = createProperty(auth, "prop-ve-11");
+        createAnimal(auth, propertyId, "animal-ve-11", "VE-11", "vazia");
+        ObjectNode payload = (ObjectNode) animal(auth, "animal-ve-11").deepCopy();
+        payload.put("statusReprodutivo", "prenha");
+        Instant editadoSemSinal = Instant.now();
+        Thread.sleep(20);
+
+        updateAnimalReproductiveStatus(auth, "animal-ve-11", "descarte");
+        syncAnimal(auth, "mut-ve-11", editadoSemSinal, payload)
+                .andExpect(jsonPath("$.items[0].status").value("CONFLICT_SERVER_WINS"));
+
+        assertEquals("descarte", animal(auth, "animal-ve-11").path("statusReprodutivo").asText());
     }
 
     @Test
@@ -478,6 +558,29 @@ class VisitaEventosIntegrationTest {
                                 """.formatted(chaveMutacao, visitPayload)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.items[0].status").value("SYNCED"));
+    }
+
+    private ResultActions syncAnimal(AuthContext auth, String chaveMutacao, Instant dataAtualizacaoCliente,
+                                     ObjectNode animalPayload) throws Exception {
+        return mockMvc.perform(post("/api/sync")
+                        .header("Authorization", auth.authorization())
+                        .header("empresaid", auth.tenantId())
+                        .contentType(APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "items": [
+                                    {
+                                      "chaveMutacao": "%s",
+                                      "operationType": "UPDATE",
+                                      "entity": "animal",
+                                      "dataAtualizacaoCliente": "%s",
+                                      "payload": %s
+                                    }
+                                  ]
+                                }
+                                """.formatted(chaveMutacao, dataAtualizacaoCliente,
+                                objectMapper.writeValueAsString(animalPayload))))
+                .andExpect(status().isOk());
     }
 
     private JsonNode listEvents(AuthContext auth, long animalId) throws Exception {

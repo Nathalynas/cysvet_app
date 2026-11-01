@@ -83,6 +83,14 @@ public class Animal extends TenantAwareEntity {
     @Column(name = "base_situacao_produtiva_em")
     private Instant baseSituacaoProdutivaEm;
 
+    // Ultima alteracao feita por uma pessoa (tela, importacao, sync do app).
+    // O recalculo do resumo pelo servidor muda so a data_atualizacao.
+    @Column(name = "data_edicao_usuario")
+    private Instant dataEdicaoUsuario;
+
+    @Column(name = "resumo_pendente", nullable = false)
+    private boolean resumoPendente;
+
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "id_propriedade", nullable = false)
     private Propriedade propriedade;
