@@ -18,4 +18,26 @@ class AccountRepository {
       data: {'newPassword': newPassword},
     );
   }
+
+  /// Atalhos de situação reprodutiva da visita (valores da API, na ordem).
+  Future<List<String>> reproductiveShortcuts() async {
+    final response = await _dio.get<Map<String, dynamic>>(
+      '/api/account/preferences',
+    );
+    return _shortcuts(response.data);
+  }
+
+  /// Salva os atalhos; `null` volta ao padrão. Devolve o que ficou gravado.
+  Future<List<String>> saveReproductiveShortcuts(List<String>? values) async {
+    final response = await _dio.put<Map<String, dynamic>>(
+      '/api/account/preferences',
+      data: {'atalhosSituacaoReprodutiva': values},
+    );
+    return _shortcuts(response.data);
+  }
+
+  static List<String> _shortcuts(Map<String, dynamic>? data) {
+    final values = data?['atalhosSituacaoReprodutiva'] as List? ?? const [];
+    return [for (final value in values) value.toString()];
+  }
 }

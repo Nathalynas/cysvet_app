@@ -22,6 +22,7 @@ import 'package:cysvet_app/models/indicador_reprodutivo_calculator.dart';
 import 'package:cysvet_app/providers/properties_provider.dart';
 import 'package:cysvet_app/models/property_summary_model.dart';
 import 'package:cysvet_app/models/visit_action_hint.dart';
+import 'package:cysvet_app/providers/reproductive_shortcuts_provider.dart';
 import 'package:cysvet_app/providers/visit_in_progress_provider.dart';
 import 'package:cysvet_app/providers/visits_provider.dart';
 import 'package:cysvet_app/models/visit_summary_model.dart';
@@ -209,25 +210,6 @@ class _VisitFormPageState extends ConsumerState<VisitFormPage> {
       label: 'Pré-parto',
       value: AnimalProductiveSituation.prepartum,
     ),
-  ];
-
-  static const _situacaoReprodutivaOptions = [
-    AppDropdownOption<String>(label: 'Não informado', value: null),
-    AppDropdownOption<String>(label: 'Em protocolo', value: 'em protocolo'),
-    AppDropdownOption<String>(label: 'Vazia', value: 'vazia'),
-    AppDropdownOption<String>(label: 'Liberada', value: 'liberada'),
-    AppDropdownOption<String>(label: 'Atrasada', value: 'atrasada'),
-    AppDropdownOption<String>(label: 'Aguardando DG', value: 'aguardando dg'),
-    AppDropdownOption<String>(label: 'Inseminada ST', value: 'inseminada st'),
-    AppDropdownOption<String>(label: 'Prenha', value: 'prenha'),
-    AppDropdownOption<String>(label: 'Indução', value: 'inducao'),
-    AppDropdownOption<String>(label: 'Descarte', value: 'descarte'),
-    AppDropdownOption<String>(label: 'PEV', value: 'pev'),
-    AppDropdownOption<String>(label: 'Sem idade', value: 'sem idade'),
-    AppDropdownOption<String>(label: 'Novilha', value: 'novilha'),
-    AppDropdownOption<String>(label: 'Inseminada', value: 'inseminada'),
-    AppDropdownOption<String>(label: 'Seca', value: 'seca'),
-    AppDropdownOption<String>(label: 'Pendente', value: 'pending'),
   ];
 
   final _formKey = GlobalKey<FormState>();
@@ -2175,6 +2157,13 @@ class _AnimalEditorFields extends StatelessWidget {
               options: _VisitFormPageState._situacaoProdutivaOptions,
             ),
             visitIaDateField,
+            _DateInputField(
+              label: 'Data último parto',
+              value: entry.dataUltimoParto,
+              showToday: true,
+              onChanged: (value) =>
+                  emitChanged(entry.copyWith(dataUltimoParto: value)),
+            ),
             AppTextField(
               label: 'Decisão',
               initialValue: entry.decisao ?? '',
@@ -2196,25 +2185,10 @@ class _AnimalEditorFields extends StatelessWidget {
             tilePadding: EdgeInsets.zero,
             childrenPadding: const EdgeInsets.only(top: 4, bottom: 8),
             title: const Text('Mais detalhes'),
-            subtitle: const Text(
-              'Outras situações, parto, diagnóstico, nº da IA, secagem',
-            ),
+            subtitle: const Text('Diagnóstico, nº da IA, secagem, pré-parto'),
             children: [
               _EditorGrid(
                 children: [
-                  AppDropdown<String>(
-                    value: entry.situacaoReprodutiva,
-                    labelText: 'Situação reprodutiva (todas)',
-                    onChanged: (value) =>
-                        emitChanged(entry.copyWith(situacaoReprodutiva: value)),
-                    options: _VisitFormPageState._situacaoReprodutivaOptions,
-                  ),
-                  _DateInputField(
-                    label: 'Data último parto',
-                    value: entry.dataUltimoParto,
-                    onChanged: (value) =>
-                        emitChanged(entry.copyWith(dataUltimoParto: value)),
-                  ),
                   AppTextField(
                     label: 'Diagnóstico',
                     initialValue: entry.diagnostico ?? '',
@@ -2593,42 +2567,53 @@ class _ModalResult {
 
 /// Botões grandes com as situações mais usadas no curral; as demais ficam em
 /// "Mais detalhes".
-class _QuickStatusPicker extends StatelessWidget {
+class _QuickStatusPicker extends ConsumerStatefulWidget {
   const _QuickStatusPicker({required this.value, required this.onChanged});
-
-  static const _quick = [
-    AnimalReproductiveStatus.pregnant,
-    AnimalReproductiveStatus.empty,
-    AnimalReproductiveStatus.inseminated,
-    AnimalReproductiveStatus.waitingDiagnosis,
-  ];
 
   final String? value;
   final ValueChanged<String?> onChanged;
 
   @override
+  ConsumerState<_QuickStatusPicker> createState() => _QuickStatusPickerState();
+}
+
+/// Botões grandes com os atalhos de situação reprodutiva do veterinário (os
+/// 4 padrão até ele escolher os seus) e "Outras situações" com as demais.
+class _QuickStatusPickerState extends ConsumerState<_QuickStatusPicker> {
+  bool _showOthers = false;
+
+  @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
-    final current = value == null || value!.isEmpty
+    final shortcuts =
+        ref.watch(reproductiveShortcutsProvider).asData?.value ??
+        defaultReproductiveShortcuts;
+    final value = widget.value;
+    final current = value == null || value.isEmpty
         ? null
         : AnimalReproductiveStatus.fromApiValue(value);
-    final isOther = current != null && !_quick.contains(current);
+    final others = reproductiveShortcutOptions
+        .where((status) => !shortcuts.contains(status))
+        .toList(growable: false);
+    final currentIsOther = current != null && !shortcuts.contains(current);
+    final showOthers = _showOthers || currentIsOther;
 
-    Widget option(AnimalReproductiveStatus status) {
+    Widget option(AnimalReproductiveStatus status, {double height = 52}) {
       final selected = current == status;
+      final child = Text(status.label, overflow: TextOverflow.ellipsis);
       return SizedBox(
-        height: 52,
+        height: height,
         child: selected
             ? FilledButton.icon(
-                onPressed: () => onChanged(status.apiValue),
+                onPressed: () => widget.onChanged(status.apiValue),
                 icon: Icon(status.icon),
-                label: Text(status.label),
+                label: child,
               )
             : OutlinedButton.icon(
-                onPressed: () => onChanged(status.apiValue),
+                onPressed: () => widget.onChanged(status.apiValue),
                 icon: Icon(status.icon),
-                label: Text(status.label),
+                label: child,
               ),
       );
     }
@@ -2636,14 +2621,26 @@ class _QuickStatusPicker extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Text(
-          'Situação reprodutiva',
-          style: theme.textTheme.titleSmall?.copyWith(
-            color: colorScheme.primary,
-            fontWeight: FontWeight.w800,
-          ),
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                'Situação reprodutiva',
+                style: theme.textTheme.titleSmall?.copyWith(
+                  color: colorScheme.primary,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ),
+            IconButton(
+              tooltip: 'Escolher atalhos',
+              visualDensity: VisualDensity.compact,
+              onPressed: () => _ShortcutsEditor.show(context, shortcuts),
+              icon: const Icon(Icons.tune_rounded, size: 20),
+            ),
+          ],
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 4),
         LayoutBuilder(
           builder: (context, constraints) {
             final columns = constraints.maxWidth >= 640 ? 4 : 2;
@@ -2654,22 +2651,160 @@ class _QuickStatusPicker extends StatelessWidget {
               spacing: spacing,
               runSpacing: spacing,
               children: [
-                for (final status in _quick)
+                for (final status in shortcuts)
                   SizedBox(width: width, child: option(status)),
               ],
             );
           },
         ),
-        if (isOther) ...[
-          const SizedBox(height: 8),
-          Text(
-            'Marcada: ${current.label} (outras em "Mais detalhes")',
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: colorScheme.primary,
-              fontWeight: FontWeight.w700,
+        if (others.isNotEmpty) ...[
+          const SizedBox(height: 4),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: TextButton.icon(
+              onPressed: currentIsOther
+                  ? null
+                  : () => setState(() => _showOthers = !_showOthers),
+              icon: Icon(
+                showOthers ? Icons.expand_less : Icons.expand_more,
+                size: 20,
+              ),
+              label: Text(
+                showOthers
+                    ? 'Outras situações'
+                    : 'Outras situações (${others.length})',
+              ),
             ),
           ),
+          if (showOthers)
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                for (final status in others) option(status, height: 40),
+                if (current != null)
+                  SizedBox(
+                    height: 40,
+                    child: TextButton.icon(
+                      onPressed: () => widget.onChanged(null),
+                      icon: const Icon(Icons.backspace_outlined, size: 18),
+                      label: const Text('Não informado'),
+                    ),
+                  ),
+              ],
+            ),
         ],
+      ],
+    );
+  }
+}
+
+/// Escolha dos atalhos de situação reprodutiva, salva no servidor.
+class _ShortcutsEditor extends ConsumerStatefulWidget {
+  const _ShortcutsEditor({required this.initial});
+
+  final List<AnimalReproductiveStatus> initial;
+
+  static Future<void> show(
+    BuildContext context,
+    List<AnimalReproductiveStatus> current,
+  ) {
+    return AppDialog.show<void>(
+      context: context,
+      title: 'Atalhos da situação reprodutiva',
+      width: 480,
+      useInternalScroll: true,
+      fullscreenOnMobile: true,
+      content: _ShortcutsEditor(initial: current),
+    );
+  }
+
+  @override
+  ConsumerState<_ShortcutsEditor> createState() => _ShortcutsEditorState();
+}
+
+class _ShortcutsEditorState extends ConsumerState<_ShortcutsEditor> {
+  late final List<AnimalReproductiveStatus> _selected = [...widget.initial];
+  bool _saving = false;
+
+  Future<void> _save(List<AnimalReproductiveStatus>? shortcuts) async {
+    setState(() => _saving = true);
+    try {
+      final synced = await ref
+          .read(reproductiveShortcutsProvider.notifier)
+          .save(shortcuts);
+      if (!mounted) return;
+      Navigator.of(context).pop();
+      if (synced) {
+        showAppSuccess('Atalhos salvos.');
+      } else {
+        showAppInfo(
+          'Atalhos salvos no aparelho. Serão enviados quando houver conexão.',
+        );
+      }
+    } catch (error) {
+      if (mounted) setState(() => _saving = false);
+      showAppError(error);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final full = _selected.length >= maxReproductiveShortcuts;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          'Marque até $maxReproductiveShortcuts situações para aparecerem como '
+          'botões na visita, na ordem em que forem marcadas. As outras ficam '
+          'em "Outras situações". Vale em qualquer aparelho em que você entrar.',
+          style: Theme.of(context).textTheme.bodySmall,
+        ),
+        const SizedBox(height: 8),
+        for (final status in reproductiveShortcutOptions)
+          CheckboxListTile(
+            value: _selected.contains(status),
+            dense: true,
+            contentPadding: EdgeInsets.zero,
+            secondary: Icon(status.icon),
+            title: Text(status.label),
+            subtitle: _selected.contains(status)
+                ? Text('Atalho ${_selected.indexOf(status) + 1}')
+                : null,
+            onChanged: _saving || (!_selected.contains(status) && full)
+                ? null
+                : (checked) => setState(() {
+                    if (checked == true) {
+                      _selected.add(status);
+                    } else {
+                      _selected.remove(status);
+                    }
+                  }),
+          ),
+        const SizedBox(height: 12),
+        Wrap(
+          spacing: 10,
+          runSpacing: 10,
+          alignment: WrapAlignment.end,
+          children: [
+            AppButton(
+              text: 'Voltar ao padrão',
+              outlined: true,
+              height: 40,
+              onPressed: _saving ? null : () => _save(null),
+            ),
+            AppButton(
+              text: 'Salvar',
+              height: 40,
+              loading: _saving,
+              onPressed: _saving || _selected.isEmpty
+                  ? null
+                  : () => _save(List.unmodifiable(_selected)),
+            ),
+          ],
+        ),
       ],
     );
   }

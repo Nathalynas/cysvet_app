@@ -6,6 +6,7 @@ import 'package:cysvet_app/core/widgets/visit_in_progress_bar.dart';
 import 'package:cysvet_app/pages/visits/visit_form_page.dart';
 import 'package:cysvet_app/providers/animals_provider.dart';
 import 'package:cysvet_app/providers/properties_provider.dart';
+import 'package:cysvet_app/providers/reproductive_shortcuts_provider.dart';
 import 'package:cysvet_app/providers/visits_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -42,6 +43,21 @@ class _FakeVisitsController extends VisitsController {
   }
 }
 
+class _FakeShortcuts extends ReproductiveShortcutsNotifier {
+  final saves = <List<AnimalReproductiveStatus>?>[];
+
+  @override
+  Future<List<AnimalReproductiveStatus>> build() async =>
+      defaultReproductiveShortcuts;
+
+  @override
+  Future<bool> save(List<AnimalReproductiveStatus>? shortcuts) async {
+    saves.add(shortcuts);
+    state = AsyncData(shortcuts ?? defaultReproductiveShortcuts);
+    return true;
+  }
+}
+
 void main() {
   setUpAll(() => GoogleFonts.config.allowRuntimeFetching = false);
   late GoRouter lastRouter;
@@ -63,10 +79,13 @@ void main() {
     ),
   ];
 
+  late _FakeShortcuts shortcuts;
+
   Future<List<VisitSummaryModel>> pumpForm(
     WidgetTester tester, {
     Size size = const Size(390, 844),
   }) async {
+    shortcuts = _FakeShortcuts();
     tester.view.physicalSize = size;
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
@@ -109,6 +128,7 @@ void main() {
           visitsControllerProvider.overrideWith(
             (ref) => _FakeVisitsController(ref, saved),
           ),
+          reproductiveShortcutsProvider.overrideWith(() => shortcuts),
         ],
         child: MaterialApp.router(
           routerConfig: lastRouter,
@@ -136,6 +156,8 @@ void main() {
 
       await tester.tap(find.widgetWithText(OutlinedButton, 'Prenha'));
       await tester.pumpAndSettle();
+      await tester.ensureVisible(find.text('Próximo'));
+      await tester.pumpAndSettle();
       await tester.tap(find.text('Próximo'));
       await tester.pumpAndSettle();
 
@@ -144,6 +166,8 @@ void main() {
         find.text('2 de 2 · ao trocar de animal o atual é salvo.'),
         findsOneWidget,
       );
+      await tester.ensureVisible(find.text('Concluir'));
+      await tester.pumpAndSettle();
       await tester.tap(find.text('Concluir'));
       await tester.pumpAndSettle();
 
@@ -188,7 +212,7 @@ void main() {
   testWidgets('"Usar hoje" preenche a data da nova IA', (tester) async {
     final saved = await pumpForm(tester, size: const Size(1400, 1000));
 
-    await tester.tap(find.text('Usar hoje'));
+    await tester.tap(find.text('Usar hoje').first);
     await tester.pumpAndSettle();
 
     final hoje = DateUtils.dateOnly(DateTime.now());
@@ -199,7 +223,8 @@ void main() {
       ),
       findsWidgets,
     );
-    expect(find.text('Usar hoje'), findsNothing);
+    // Some só o da nova IA; o do parto continua.
+    expect(find.text('Usar hoje'), findsOneWidget);
 
     await tester.tap(find.text('Finalizar visita'));
     await tester.pumpAndSettle();
@@ -285,6 +310,8 @@ void main() {
       // A tela da visita, atrás do modal, já tem o animal coletado.
       expect(find.text('1 com coleta', skipOffstage: false), findsOneWidget);
 
+      await tester.ensureVisible(find.text('Descartar mudanças deste animal'));
+      await tester.pumpAndSettle();
       await tester.tap(find.text('Descartar mudanças deste animal'));
       await tester.pumpAndSettle();
 
@@ -292,4 +319,58 @@ void main() {
       expect(find.textContaining('prenha'), findsNothing);
     },
   );
+
+  testWidgets('"Outras situações" mostra as demais e grava a escolhida', (
+    tester,
+  ) async {
+    final saved = await pumpForm(tester, size: const Size(1400, 1000));
+
+    expect(find.widgetWithText(OutlinedButton, 'Descarte'), findsNothing);
+    await tester.tap(find.text('Outras situações (10)'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(OutlinedButton, 'Descarte'));
+    await tester.pumpAndSettle();
+
+    // Escolhida uma "outra", a lista continua aberta mostrando a marcada.
+    expect(find.widgetWithText(FilledButton, 'Descarte'), findsOneWidget);
+    await tester.tap(find.text('Finalizar visita'));
+    await tester.pumpAndSettle();
+    expect(saved.single.animais.single.situacaoReprodutiva, 'descarte');
+  });
+
+  testWidgets('veterinário escolhe os próprios atalhos', (tester) async {
+    await pumpForm(tester, size: const Size(1400, 1000));
+
+    await tester.tap(find.byTooltip('Escolher atalhos'));
+    await tester.pumpAndSettle();
+    for (final label in ['Vazia', 'Em protocolo']) {
+      final tile = find.widgetWithText(CheckboxListTile, label);
+      await tester.ensureVisible(tile);
+      await tester.pumpAndSettle();
+      await tester.tap(tile);
+    }
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('Salvar'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Salvar'));
+    await tester.pumpAndSettle();
+
+    expect(shortcuts.saves.single, [
+      AnimalReproductiveStatus.pregnant,
+      AnimalReproductiveStatus.inseminated,
+      AnimalReproductiveStatus.waitingDiagnosis,
+      AnimalReproductiveStatus.protocol,
+    ]);
+    expect(find.widgetWithText(OutlinedButton, 'Em protocolo'), findsOneWidget);
+    expect(find.widgetWithText(OutlinedButton, 'Vazia'), findsNothing);
+  });
+
+  testWidgets('data do último parto fica à vista, fora de "Mais detalhes"', (
+    tester,
+  ) async {
+    await pumpForm(tester, size: const Size(1400, 1000));
+
+    expect(find.text('Data último parto'), findsOneWidget);
+    expect(find.text('Diagnóstico'), findsNothing);
+  });
 }
