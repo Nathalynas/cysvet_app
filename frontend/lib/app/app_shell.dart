@@ -10,6 +10,7 @@ import 'package:go_router/go_router.dart';
 import '../core/constants/app_constants.dart';
 import '../core/platform/offline_platform.dart';
 import '../core/widgets/sync_status_bar.dart';
+import '../core/widgets/visit_in_progress_bar.dart';
 import '../core/widgets/app_button.dart';
 import '../core/widgets/pending_sync_logout_dialog.dart';
 import '../models/auth_session_model.dart';
@@ -85,6 +86,7 @@ class AppShell extends ConsumerWidget {
               onMenuPressed: null,
             ),
             if (showSyncBar) const SyncStatusBar(),
+            const VisitInProgressBar(),
             Expanded(
               child: Row(
                 children: [
@@ -124,6 +126,7 @@ class AppShell extends ConsumerWidget {
                 backRoute: pageHeader.backRoute,
               ),
               if (showSyncBar) const SyncStatusBar(),
+              const VisitInProgressBar(),
               Expanded(child: _ShellContent(child: child)),
             ],
           );

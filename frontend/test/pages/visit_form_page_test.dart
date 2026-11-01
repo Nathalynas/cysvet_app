@@ -2,6 +2,7 @@ import 'package:cysvet_app/core/enums/animal_status.dart';
 import 'package:cysvet_app/models/animal_summary_model.dart';
 import 'package:cysvet_app/models/property_summary_model.dart';
 import 'package:cysvet_app/models/visit_summary_model.dart';
+import 'package:cysvet_app/core/widgets/visit_in_progress_bar.dart';
 import 'package:cysvet_app/pages/visits/visit_form_page.dart';
 import 'package:cysvet_app/providers/animals_provider.dart';
 import 'package:cysvet_app/providers/properties_provider.dart';
@@ -43,6 +44,7 @@ class _FakeVisitsController extends VisitsController {
 
 void main() {
   setUpAll(() => GoogleFonts.config.allowRuntimeFetching = false);
+  late GoRouter lastRouter;
 
   final animals = [
     AnimalSummaryModel(
@@ -71,12 +73,21 @@ void main() {
     addTearDown(tester.view.resetDevicePixelRatio);
 
     final saved = <VisitSummaryModel>[];
-    final router = GoRouter(
+    lastRouter = GoRouter(
+      initialLocation: '/visitas/nova',
       routes: [
         GoRoute(
-          path: '/',
+          path: '/visitas/nova',
           builder: (context, state) =>
               const Scaffold(body: VisitFormPage(initialPropertyId: 1)),
+        ),
+        GoRoute(
+          path: '/animais',
+          builder: (context, state) => const Scaffold(
+            body: Column(
+              children: [VisitInProgressBar(), Text('tela de animais')],
+            ),
+          ),
         ),
         GoRoute(
           path: '/visitas',
@@ -100,7 +111,7 @@ void main() {
           ),
         ],
         child: MaterialApp.router(
-          routerConfig: router,
+          routerConfig: lastRouter,
           locale: const Locale('pt', 'BR'),
           supportedLocales: const [Locale('pt', 'BR')],
           localizationsDelegates: GlobalMaterialLocalizations.delegates,
@@ -206,5 +217,57 @@ void main() {
 
     expect(find.byType(DatePickerDialog), findsOneWidget);
     expect(find.text('Cancelar'), findsWidgets);
+  });
+
+  testWidgets('sair da visita e voltar mantém o que foi coletado', (
+    tester,
+  ) async {
+    final saved = await pumpForm(tester, size: const Size(1400, 1000));
+
+    await tester.tap(find.widgetWithText(OutlinedButton, 'Prenha'));
+    await tester.pumpAndSettle();
+
+    lastRouter.go('/animais');
+    await tester.pumpAndSettle();
+    expect(find.text('tela de animais'), findsOneWidget);
+    expect(find.text('Visita em andamento'), findsOneWidget);
+    expect(
+      find.text('Fazenda teste · 1 animal coletado · não salva'),
+      findsOneWidget,
+    );
+
+    await tester.tap(find.text('Voltar à visita'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Continuando a visita que ficou aberta.'), findsOneWidget);
+    expect(find.text('1 com coleta'), findsOneWidget);
+    expect(find.widgetWithText(FilledButton, 'Prenha'), findsOneWidget);
+
+    await tester.tap(find.text('Finalizar visita'));
+    await tester.pumpAndSettle();
+    expect(saved.single.animais.single.situacaoReprodutiva, 'prenha');
+
+    // Salva, a visita deixa de estar em andamento.
+    lastRouter.go('/animais');
+    await tester.pumpAndSettle();
+    expect(find.text('Visita em andamento'), findsNothing);
+  });
+
+  testWidgets('"Começar outra" descarta a visita que ficou aberta', (
+    tester,
+  ) async {
+    await pumpForm(tester, size: const Size(1400, 1000));
+    await tester.tap(find.widgetWithText(OutlinedButton, 'Prenha'));
+    await tester.pumpAndSettle();
+    lastRouter.go('/animais');
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Voltar à visita'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Começar outra'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('0 com coleta'), findsOneWidget);
+    expect(find.text('Continuando a visita que ficou aberta.'), findsNothing);
   });
 }

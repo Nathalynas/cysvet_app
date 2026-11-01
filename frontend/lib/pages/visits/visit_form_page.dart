@@ -22,6 +22,7 @@ import 'package:cysvet_app/models/indicador_reprodutivo_calculator.dart';
 import 'package:cysvet_app/providers/properties_provider.dart';
 import 'package:cysvet_app/models/property_summary_model.dart';
 import 'package:cysvet_app/models/visit_action_hint.dart';
+import 'package:cysvet_app/providers/visit_in_progress_provider.dart';
 import 'package:cysvet_app/providers/visits_provider.dart';
 import 'package:cysvet_app/models/visit_summary_model.dart';
 
@@ -246,12 +247,18 @@ class _VisitFormPageState extends ConsumerState<VisitFormPage> {
   VisitSummaryModel? _editingVisit;
   bool _isEditingDraft = false;
 
+  /// Esta tela reabriu a visita que tinha ficado em andamento.
+  bool _resumed = false;
+
   @override
   void initState() {
     super.initState();
     _dataVisita.text = formatDateInput(DateTime.now());
     _propertyId = widget.initialPropertyId;
-    if (widget.editingIdExterno != null) {
+    _dataVisita.addListener(_rememberProgress);
+    if (_restoreProgress()) {
+      _resumed = true;
+    } else if (widget.editingIdExterno != null) {
       _isLoadingAnimals = true;
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) _loadEditingVisit(widget.editingIdExterno!);
@@ -267,8 +274,82 @@ class _VisitFormPageState extends ConsumerState<VisitFormPage> {
 
   @override
   void dispose() {
-    _dataVisita.dispose();
+    _dataVisita
+      ..removeListener(_rememberProgress)
+      ..dispose();
     super.dispose();
+  }
+
+  // Toda mudança de estado da coleta fica guardada para o usuário poder sair
+  // da visita, ir a outra tela e voltar do ponto onde parou.
+  @override
+  void setState(VoidCallback fn) {
+    super.setState(fn);
+    _rememberProgress();
+  }
+
+  String get _route => widget.editingIdExterno == null
+      ? '/visitas/nova'
+      : '/visitas/editar/${widget.editingIdExterno}';
+
+  void _rememberProgress() {
+    if (!mounted || _propertyId == null || _isLoadingAnimals) return;
+    final properties = ref.read(propertiesProvider).asData?.value ?? const [];
+    ref
+        .read(visitInProgressProvider.notifier)
+        .remember(
+          VisitInProgress(
+            route: _route,
+            propertyId: _propertyId,
+            propertyName: _selectedProperty(properties)?.nome,
+            dataVisita: _dataVisita.text,
+            entries: _animalEntries,
+            reviewedAnimalIds: _reviewedAnimalIds,
+            selectedAnimalId: _selectedAnimalId,
+            editing: _editingVisit,
+            isEditingDraft: _isEditingDraft,
+            extras: _iaHistoryByAnimalId,
+          ),
+        );
+  }
+
+  /// Reabre a visita em andamento se ela é desta mesma tela (nova visita ou a
+  /// mesma visita em edição) e da mesma propriedade, quando informada.
+  bool _restoreProgress() {
+    final saved = ref.read(visitInProgressProvider);
+    if (saved == null || saved.route != _route) return false;
+    final property = widget.initialPropertyId;
+    if (property != null && property != saved.propertyId) return false;
+
+    _propertyId = saved.propertyId;
+    _loadedPropertyId = saved.propertyId;
+    _dataVisita.text = saved.dataVisita;
+    _animalEntries = saved.entries;
+    _reviewedAnimalIds = saved.reviewedAnimalIds;
+    _selectedAnimalId = saved.selectedAnimalId;
+    _editingVisit = saved.editing;
+    _isEditingDraft = saved.isEditingDraft;
+    final extras = saved.extras;
+    if (extras is Map<int, _AnimalIaHistory>) _iaHistoryByAnimalId = extras;
+    return true;
+  }
+
+  void _discardProgress() {
+    ref.read(visitInProgressProvider.notifier).clear();
+  }
+
+  /// Descarta a visita reaberta e começa outra do zero.
+  void _startOver() {
+    _discardProgress();
+    setState(() {
+      _resumed = false;
+      _editingVisit = null;
+      _isEditingDraft = false;
+      _propertyId = widget.initialPropertyId;
+      _dataVisita.text = formatDateInput(DateTime.now());
+      _resetAnimalCollection();
+    });
+    if (_propertyId != null) _loadAnimalsForSelectedProperty();
   }
 
   @override
@@ -327,6 +408,11 @@ class _VisitFormPageState extends ConsumerState<VisitFormPage> {
                               ),
                             ),
                             const SizedBox(height: 6),
+                            if (_resumed &&
+                                widget.editingIdExterno == null) ...[
+                              _ResumedNotice(onStartOver: _startOver),
+                              const SizedBox(height: 10),
+                            ],
                             Text(
                               'Escolha a propriedade e toque nos animais. '
                               'Quem precisa de ação aparece primeiro.',
@@ -426,7 +512,10 @@ class _VisitFormPageState extends ConsumerState<VisitFormPage> {
           _VisitActionsBar(
             isBusy: isBusy,
             isLoadingAnimals: _isLoadingAnimals,
-            onCancel: () => context.go('/visitas'),
+            onCancel: () {
+              _discardProgress();
+              context.go('/visitas');
+            },
             onSave: _saveVisit,
             // Rascunho só no app mobile e enquanto a visita não foi finalizada.
             onSaveDraft:
@@ -788,6 +877,7 @@ class _VisitFormPageState extends ConsumerState<VisitFormPage> {
         await controller.save(payload);
       }
       if (mounted) {
+        _discardProgress();
         showAppSuccess(_savedMessage(asDraft: asDraft));
         context.go('/visitas');
       }
@@ -2613,6 +2703,49 @@ class _ActionHints extends StatelessWidget {
             ),
           ),
       ],
+    );
+  }
+}
+
+class _ResumedNotice extends StatelessWidget {
+  const _ResumedNotice({required this.onStartOver});
+
+  final VoidCallback onStartOver;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
+    return Container(
+      padding: const EdgeInsets.fromLTRB(12, 6, 6, 6),
+      decoration: BoxDecoration(
+        color: colorScheme.secondaryContainer,
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            Icons.history_rounded,
+            size: 18,
+            color: colorScheme.onSecondaryContainer,
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              'Continuando a visita que ficou aberta.',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: colorScheme.onSecondaryContainer,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+          TextButton(
+            onPressed: onStartOver,
+            child: const Text('Começar outra'),
+          ),
+        ],
+      ),
     );
   }
 }
