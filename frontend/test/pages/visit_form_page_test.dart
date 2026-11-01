@@ -270,4 +270,26 @@ void main() {
     expect(find.text('0 com coleta'), findsOneWidget);
     expect(find.text('Continuando a visita que ficou aberta.'), findsNothing);
   });
+
+  testWidgets(
+    'no celular a mudança vai para a visita com o animal ainda aberto, '
+    'e descartar desfaz',
+    (tester) async {
+      await pumpForm(tester);
+
+      await tester.tap(find.text('101'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(OutlinedButton, 'Prenha'));
+      await tester.pumpAndSettle();
+
+      // A tela da visita, atrás do modal, já tem o animal coletado.
+      expect(find.text('1 com coleta', skipOffstage: false), findsOneWidget);
+
+      await tester.tap(find.text('Descartar mudanças deste animal'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('0 com coleta'), findsOneWidget);
+      expect(find.textContaining('prenha'), findsNothing);
+    },
+  );
 }

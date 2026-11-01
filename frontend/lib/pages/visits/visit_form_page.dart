@@ -308,7 +308,13 @@ class _VisitFormPageState extends ConsumerState<VisitFormPage> {
             selectedAnimalId: _selectedAnimalId,
             editing: _editingVisit,
             isEditingDraft: _isEditingDraft,
-            extras: _iaHistoryByAnimalId,
+            iaHistory: {
+              for (final item in _iaHistoryByAnimalId.entries)
+                item.key: VisitIaHistorySnapshot(
+                  dates: item.value.dates,
+                  totalIas: item.value.totalIas,
+                ),
+            },
           ),
         );
   }
@@ -329,8 +335,13 @@ class _VisitFormPageState extends ConsumerState<VisitFormPage> {
     _selectedAnimalId = saved.selectedAnimalId;
     _editingVisit = saved.editing;
     _isEditingDraft = saved.isEditingDraft;
-    final extras = saved.extras;
-    if (extras is Map<int, _AnimalIaHistory>) _iaHistoryByAnimalId = extras;
+    _iaHistoryByAnimalId = {
+      for (final item in saved.iaHistory.entries)
+        item.key: _AnimalIaHistory(
+          dates: List.unmodifiable(item.value.dates),
+          totalIas: item.value.totalIas,
+        ),
+    };
     return true;
   }
 
@@ -950,6 +961,7 @@ class _VisitFormPageState extends ConsumerState<VisitFormPage> {
       final position =
           ordered.indexWhere((item) => item.animalId == current!.animalId) + 1;
       final shown = current;
+      final wasReviewed = _reviewedAnimalIds.contains(shown.animalId);
       final result = await AppDialog.show<_ModalResult>(
         context: context,
         title: shown.animalCodigo.isEmpty
@@ -964,13 +976,31 @@ class _VisitFormPageState extends ConsumerState<VisitFormPage> {
               _iaHistoryByAnimalId[shown.animalId] ?? _AnimalIaHistory.empty,
           hints: _hintsByAnimalId[shown.animalId] ?? const [],
           applyAutomaticCalculations: _applyAutomaticCalculations,
+          // Cada mudança vai direto para a visita (e para o aparelho), para
+          // não se perder se o sistema fechar o app com o animal aberto.
+          onDraftChanged: _updateAnimalEntry,
           positionLabel: '$position de ${ordered.length}',
           hasPrevious: _neighbor(shown.animalId, -1) != null,
           hasNext: _neighbor(shown.animalId, 1) != null,
         ),
       );
 
-      if (!mounted || result == null) return;
+      if (!mounted) return;
+      if (result == null) {
+        // "Descartar mudanças deste animal" (ou voltar): desfaz o que foi
+        // aplicado enquanto o modal estava aberto.
+        setState(() {
+          _animalEntries = [
+            for (final entry in _animalEntries)
+              entry.animalId == shown.animalId ? shown : entry,
+          ];
+          if (!wasReviewed) {
+            _reviewedAnimalIds = {..._reviewedAnimalIds}
+              ..remove(shown.animalId);
+          }
+        });
+        return;
+      }
       _updateAnimalEntry(result.entry);
       current = result.step == 0
           ? null
@@ -2278,6 +2308,7 @@ class _AnimalEditorModalContent extends StatefulWidget {
     required this.iaHistory,
     required this.hints,
     required this.applyAutomaticCalculations,
+    required this.onDraftChanged,
     required this.positionLabel,
     required this.hasPrevious,
     required this.hasNext,
@@ -2287,6 +2318,7 @@ class _AnimalEditorModalContent extends StatefulWidget {
   final _AnimalIaHistory iaHistory;
   final List<VisitActionHint> hints;
   final _VisitEntryCalculator applyAutomaticCalculations;
+  final ValueChanged<VisitAnimalEntryModel> onDraftChanged;
   final String positionLabel;
   final bool hasPrevious;
   final bool hasNext;
@@ -2327,9 +2359,10 @@ class _AnimalEditorModalContentState extends State<_AnimalEditorModalContent> {
           entry: _draft,
           iaHistory: widget.iaHistory,
           applyAutomaticCalculations: widget.applyAutomaticCalculations,
-          onChanged: (value) => setState(() {
-            _draft = widget.applyAutomaticCalculations(value);
-          }),
+          onChanged: (value) {
+            setState(() => _draft = widget.applyAutomaticCalculations(value));
+            widget.onDraftChanged(_draft);
+          },
         ),
         const SizedBox(height: 16),
         Row(
@@ -2403,7 +2436,12 @@ class _DateInputFieldState extends State<_DateInputField> {
     super.didUpdateWidget(oldWidget);
     // Data trocada por fora (calendário, "Hoje"); enquanto a pessoa digita,
     // o texto incompleto e o valor (nulo) coincidem e nada é sobrescrito.
-    if (parseDateInput(_controller.text) != widget.value) {
+    // Compara o dia: datas lidas do aparelho voltam em UTC.
+    final typed = parseDateInput(_controller.text);
+    final same = typed == null || widget.value == null
+        ? typed == widget.value
+        : DateUtils.isSameDay(typed, widget.value!.toLocal());
+    if (!same) {
       _controller.text = formatDateInput(widget.value);
     }
   }
@@ -2459,7 +2497,9 @@ class _DateInputFieldState extends State<_DateInputField> {
                 )
               : null,
         ),
-        if (widget.showToday && enabled && widget.value != today)
+        if (widget.showToday &&
+            enabled &&
+            !DateUtils.isSameDay(widget.value?.toLocal(), today))
           Align(
             alignment: Alignment.centerLeft,
             child: TextButton.icon(
