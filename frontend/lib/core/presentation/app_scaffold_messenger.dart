@@ -30,6 +30,20 @@ void showAppWarning(String message) {
   showTypedAppSnackBar(message, type: AppSnackBarType.warning);
 }
 
+/// Ação reversível já feita, com "Desfazer" no aviso em vez de pedir
+/// confirmação antes.
+void showAppUndo(String message, {required VoidCallback onUndo}) {
+  showAppSnackBar(
+    SnackBar(
+      content: Text(message),
+      duration: const Duration(seconds: 6),
+      behavior: SnackBarBehavior.floating,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+      action: SnackBarAction(label: 'Desfazer', onPressed: onUndo),
+    ),
+  );
+}
+
 void showAppInfo(String message) {
   showTypedAppSnackBar(message, type: AppSnackBarType.info);
 }

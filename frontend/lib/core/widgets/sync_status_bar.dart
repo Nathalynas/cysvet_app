@@ -6,9 +6,10 @@ import 'package:cysvet_app/core/presentation/app_scaffold_messenger.dart';
 import 'package:cysvet_app/providers/connectivity_provider.dart';
 import 'package:cysvet_app/providers/sync_provider.dart';
 
-/// Faixa global do mobile com o estado da sincronização: modo offline,
-/// pendências, sincronizando, erro — e botão de sincronização manual.
-/// Some quando está tudo sincronizado e online.
+/// Faixa global do mobile com o estado da sincronização: modo offline
+/// (salvo no aparelho), pendências, sincronizando, enviado, erro e alterações
+/// não aceitas — e botão de sincronização manual. Some quando está tudo
+/// sincronizado e online e não há aviso a mostrar.
 class SyncStatusBar extends ConsumerWidget {
   const SyncStatusBar({super.key});
 
@@ -18,7 +19,13 @@ class SyncStatusBar extends ConsumerWidget {
     final isOffline = ref.watch(isOfflineProvider);
 
     if (!sync.enabled) return const SizedBox.shrink();
-    if (!isOffline && sync.status == SyncStatusEnum.synced) {
+    final rejected = sync.rejectedNotice;
+    final justSent =
+        sync.justSentCount > 0 && sync.status == SyncStatusEnum.synced;
+    if (!isOffline &&
+        sync.status == SyncStatusEnum.synced &&
+        rejected == null &&
+        !justSent) {
       return const SizedBox.shrink();
     }
 
@@ -36,7 +43,15 @@ class SyncStatusBar extends ConsumerWidget {
       Color foreground,
     })
     view;
-    if (isOffline) {
+    if (rejected != null && !sync.isSyncing) {
+      view = (
+        icon: Icons.report_gmailerrorred_outlined,
+        title: 'Alteração não aceita pelo servidor',
+        subtitle: rejected,
+        background: colorScheme.errorContainer,
+        foreground: colorScheme.onErrorContainer,
+      );
+    } else if (isOffline) {
       view = (
         icon: Icons.wifi_off,
         title: 'Modo offline',
@@ -51,6 +66,16 @@ class SyncStatusBar extends ConsumerWidget {
         icon: Icons.sync,
         title: 'Sincronizando...',
         subtitle: pending == 0 ? null : pendingLabel,
+        background: colorScheme.secondaryContainer,
+        foreground: colorScheme.onSecondaryContainer,
+      );
+    } else if (justSent) {
+      view = (
+        icon: Icons.cloud_done_outlined,
+        title: 'Tudo enviado ao servidor',
+        subtitle: sync.justSentCount == 1
+            ? '1 registro enviado.'
+            : '${sync.justSentCount} registros enviados.',
         background: colorScheme.secondaryContainer,
         foreground: colorScheme.onSecondaryContainer,
       );
@@ -118,7 +143,7 @@ class SyncStatusBar extends ConsumerWidget {
                   if (view.subtitle != null)
                     Text(
                       view.subtitle!,
-                      maxLines: 2,
+                      maxLines: rejected != null ? 4 : 2,
                       overflow: TextOverflow.ellipsis,
                       style: Theme.of(
                         context,
@@ -127,7 +152,16 @@ class SyncStatusBar extends ConsumerWidget {
                 ],
               ),
             ),
-            if (!isOffline && !sync.isSyncing && pending > 0)
+            if (rejected != null && !sync.isSyncing)
+              IconButton(
+                tooltip: 'Fechar aviso',
+                color: view.foreground,
+                onPressed: ref
+                    .read(syncControllerProvider.notifier)
+                    .dismissRejectedNotice,
+                icon: const Icon(Icons.close),
+              )
+            else if (!isOffline && !sync.isSyncing && pending > 0)
               TextButton.icon(
                 onPressed: syncNow,
                 style: TextButton.styleFrom(foregroundColor: view.foreground),

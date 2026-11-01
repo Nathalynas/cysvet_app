@@ -200,9 +200,9 @@ class AnimalsPage extends ConsumerWidget {
                             animal: animal,
                           ),
                           onInactivate: (animal) =>
-                              _confirmInactivate(context, ref, animal),
+                              _setActive(ref, animal, active: false),
                           onActivate: (animal) =>
-                              _confirmActivate(context, ref, animal),
+                              _setActive(ref, animal, active: true),
                           onDelete: (animal) =>
                               _confirmDelete(context, ref, animal),
                           onShowHistory: (animal) => AnimalHistoryDialog.show(
@@ -1596,56 +1596,34 @@ Future<void> _importAnimalsExcel(
   }
 }
 
-Future<void> _confirmInactivate(
-  BuildContext context,
+/// Inativar e ativar são reversíveis: agem na hora e o aviso oferece
+/// "Desfazer", em vez de um diálogo de confirmação antes.
+Future<void> _setActive(
   WidgetRef ref,
-  AnimalSummaryModel animal,
-) {
-  return AppDialog.show<void>(
-    context: context,
-    title: 'Inativar animal',
-    content: Text('Deseja inativar ${animal.codigo}?'),
-    confirmText: 'Inativar',
-    cancelText: 'Cancelar',
-    onConfirm: () async {
-      final navigator = Navigator.of(context, rootNavigator: true);
-      try {
-        await ref.read(animalsControllerProvider).inactivate(animal.id);
-        if (context.mounted) {
-          await navigator.maybePop();
-          showAppSuccess('Animal inativado com sucesso.');
-        }
-      } catch (error) {
-        showAppError(error);
-      }
-    },
-  );
-}
+  AnimalSummaryModel animal, {
+  required bool active,
+}) async {
+  final controller = ref.read(animalsControllerProvider);
+  Future<void> apply(bool value) =>
+      value ? controller.activate(animal.id) : controller.inactivate(animal.id);
 
-Future<void> _confirmActivate(
-  BuildContext context,
-  WidgetRef ref,
-  AnimalSummaryModel animal,
-) {
-  return AppDialog.show<void>(
-    context: context,
-    title: 'Ativar animal',
-    content: Text('Deseja ativar ${animal.codigo}?'),
-    confirmText: 'Ativar',
-    cancelText: 'Cancelar',
-    onConfirm: () async {
-      final navigator = Navigator.of(context, rootNavigator: true);
-      try {
-        await ref.read(animalsControllerProvider).activate(animal.id);
-        if (context.mounted) {
-          await navigator.maybePop();
-          showAppSuccess('Animal ativado com sucesso.');
+  try {
+    await apply(active);
+    showAppUndo(
+      active
+          ? 'Animal ${animal.codigo} ativado.'
+          : 'Animal ${animal.codigo} inativado.',
+      onUndo: () async {
+        try {
+          await apply(!active);
+        } catch (error) {
+          showAppError(error);
         }
-      } catch (error) {
-        showAppError(error);
-      }
-    },
-  );
+      },
+    );
+  } catch (error) {
+    showAppError(error);
+  }
 }
 
 Future<void> _confirmDelete(

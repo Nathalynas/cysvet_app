@@ -32,6 +32,8 @@ class SyncState {
     this.errorCount = 0,
     this.lastSyncedAt,
     this.lastMessage,
+    this.rejectedNotice,
+    this.justSentCount = 0,
   });
 
   /// `false` fora do mobile ou sem sessão.
@@ -45,6 +47,13 @@ class SyncState {
 
   /// Última mensagem relevante para o usuário (erro ou conflito).
   final String? lastMessage;
+
+  /// Alterações que o servidor não aceitou (outra pessoa mudou antes). Fica
+  /// visível até o usuário fechar, mesmo com tudo sincronizado.
+  final String? rejectedNotice;
+
+  /// Quantos registros acabaram de ser enviados; mostrado por alguns segundos.
+  final int justSentCount;
 
   SyncStatusEnum get status {
     if (isSyncing) return SyncStatusEnum.syncing;
@@ -60,6 +69,9 @@ class SyncState {
     DateTime? lastSyncedAt,
     String? lastMessage,
     bool clearMessage = false,
+    String? rejectedNotice,
+    bool clearRejectedNotice = false,
+    int? justSentCount,
   }) {
     return SyncState(
       enabled: enabled,
@@ -68,6 +80,10 @@ class SyncState {
       errorCount: errorCount ?? this.errorCount,
       lastSyncedAt: lastSyncedAt ?? this.lastSyncedAt,
       lastMessage: clearMessage ? null : lastMessage ?? this.lastMessage,
+      rejectedNotice: clearRejectedNotice
+          ? null
+          : rejectedNotice ?? this.rejectedNotice,
+      justSentCount: justSentCount ?? this.justSentCount,
     );
   }
 }
@@ -81,9 +97,11 @@ class SyncState {
 class SyncController extends Notifier<SyncState> {
   static const _batchSize = 50;
   static const _retryInterval = Duration(minutes: 2);
+  static const _sentNoticeDuration = Duration(seconds: 4);
 
   bool _running = false;
   bool _rerunRequested = false;
+  Timer? _sentNoticeTimer;
 
   @override
   SyncState build() {
@@ -103,6 +121,7 @@ class SyncController extends Notifier<SyncState> {
       if (state.pendingCount > 0) unawaited(syncNow());
     });
     ref.onDispose(timer.cancel);
+    ref.onDispose(() => _sentNoticeTimer?.cancel());
 
     Future.microtask(() async {
       await ref.read(syncQueueStoreProvider).recoverInterrupted();
@@ -148,16 +167,21 @@ class SyncController extends Notifier<SyncState> {
 
     try {
       await ref.read(authSessionProvider.notifier).refreshIfExpired();
-      final conflicts = await _push(scope);
+      final pushed = await _push(scope);
       await _pull(scope);
       reachedBackend = true;
+      final conflicts = pushed.conflicts;
       state = state.copyWith(
         lastSyncedAt: DateTime.now(),
-        lastMessage: conflicts > 0
-            ? '$conflicts registro(s) já tinham versão mais recente no servidor; '
-                  'a versão do servidor foi mantida.'
-            : null,
+        rejectedNotice: conflicts.isEmpty ? null : _rejectedText(conflicts),
+        justSentCount: pushed.sent,
       );
+      if (pushed.sent > 0) {
+        _sentNoticeTimer?.cancel();
+        _sentNoticeTimer = Timer(_sentNoticeDuration, () {
+          if (ref.mounted) state = state.copyWith(justSentCount: 0);
+        });
+      }
     } catch (error) {
       state = state.copyWith(
         lastMessage: isNetworkError(error)
@@ -181,15 +205,28 @@ class SyncController extends Notifier<SyncState> {
     return reachedBackend;
   }
 
-  /// Envia a fila. Retorna quantos itens tiveram conflito (servidor venceu).
-  Future<int> _push(OfflineScope scope) async {
+  /// Fecha o aviso de alterações não aceitas.
+  void dismissRejectedNotice() {
+    state = state.copyWith(clearRejectedNotice: true);
+  }
+
+  static String _rejectedText(List<String> items) {
+    final shown = items.take(3).join(', ');
+    final more = items.length > 3 ? ' e mais ${items.length - 3}' : '';
+    return 'Não foi aceito: $shown$more. Alguém alterou antes no servidor e '
+        'a versão de lá foi mantida; confira e refaça se precisar.';
+  }
+
+  /// Envia a fila. Retorna quantos itens foram aceitos e a descrição dos que
+  /// tiveram conflito (servidor venceu).
+  Future<({int sent, List<String> conflicts})> _push(OfflineScope scope) async {
     final queue = ref.read(syncQueueStoreProvider);
     final visitsStore = ref.read(visitsLocalStoreProvider);
     final mutations = await queue.listSendable(
       companyId: scope.companyId,
       userId: scope.userId,
     );
-    if (mutations.isEmpty) return 0;
+    if (mutations.isEmpty) return (sent: 0, conflicts: const <String>[]);
 
     await queue.markSyncing(_ids(mutations));
     await visitsStore.updateSyncStatus(
@@ -199,14 +236,17 @@ class SyncController extends Notifier<SyncState> {
     await _refreshLocalMirror(scope);
     ref.invalidate(localVisitRecordsProvider);
 
-    var conflicts = 0;
+    var sent = 0;
+    final conflicts = <String>[];
     for (var start = 0; start < mutations.length; start += _batchSize) {
       final batch = mutations.sublist(
         start,
         (start + _batchSize).clamp(0, mutations.length),
       );
       try {
-        conflicts += await _pushBatch(batch);
+        final result = await _pushBatch(batch);
+        sent += result.sent;
+        conflicts.addAll(result.conflicts);
       } catch (error) {
         // Sem conexão / sessão inválida: tudo o que não foi enviado volta
         // para a fila como pendente, sem marcar erro.
@@ -228,10 +268,12 @@ class SyncController extends Notifier<SyncState> {
         rethrow;
       }
     }
-    return conflicts;
+    return (sent: sent, conflicts: conflicts);
   }
 
-  Future<int> _pushBatch(List<SyncMutation> batch) async {
+  Future<({int sent, List<String> conflicts})> _pushBatch(
+    List<SyncMutation> batch,
+  ) async {
     try {
       final results = await ref.read(syncRepositoryProvider).push(batch);
       return await _applyResults(batch, results);
@@ -245,11 +287,14 @@ class SyncController extends Notifier<SyncState> {
       // envelope inválido ou servidor antigo. Reenvia item a item para isolar
       // o problemático sem travar os demais.
       if (batch.length > 1) {
-        var conflicts = 0;
+        var sent = 0;
+        final conflicts = <String>[];
         for (final mutation in batch) {
-          conflicts += await _pushBatch([mutation]);
+          final result = await _pushBatch([mutation]);
+          sent += result.sent;
+          conflicts.addAll(result.conflicts);
         }
-        return conflicts;
+        return (sent: sent, conflicts: conflicts);
       }
 
       final message = describeError(error);
@@ -261,11 +306,29 @@ class SyncController extends Notifier<SyncState> {
             SyncStatusEnum.error,
             error: message,
           );
-      return 0;
+      return (sent: 0, conflicts: const <String>[]);
     }
   }
 
-  Future<int> _applyResults(
+  /// Nome curto do registro para o aviso de conflito (ex.: "animal 101").
+  static String _describe(SyncMutation mutation) {
+    final payload = mutation.payload;
+    switch (mutation.entity) {
+      case SyncEntity.animal:
+        final code = payload['codigo']?.toString().trim();
+        return code == null || code.isEmpty ? 'um animal' : 'animal $code';
+      case SyncEntity.visit:
+        final date = DateTime.tryParse(payload['dataVisita']?.toString() ?? '');
+        return date == null
+            ? 'uma visita'
+            : 'visita de ${date.day.toString().padLeft(2, '0')}/'
+                  '${date.month.toString().padLeft(2, '0')}';
+      default:
+        return 'um registro';
+    }
+  }
+
+  Future<({int sent, List<String> conflicts})> _applyResults(
     List<SyncMutation> batch,
     List<SyncItemResult> results,
   ) async {
@@ -276,7 +339,7 @@ class SyncController extends Notifier<SyncState> {
     final accepted = <SyncMutation>[];
     final missing = <SyncMutation>[];
     final rejected = <SyncMutation, String>{};
-    var conflicts = 0;
+    final conflicts = <String>[];
     for (final mutation in batch) {
       final result = byKey[mutation.chaveMutacao];
       if (result?.status == SyncItemStatus.rejected) {
@@ -287,7 +350,9 @@ class SyncController extends Notifier<SyncState> {
         missing.add(mutation);
         continue;
       }
-      if (result.status == SyncItemStatus.conflictServerWins) conflicts++;
+      if (result.status == SyncItemStatus.conflictServerWins) {
+        conflicts.add(_describe(mutation));
+      }
       accepted.add(mutation);
     }
 
@@ -330,7 +395,7 @@ class SyncController extends Notifier<SyncState> {
         error: entry.value,
       );
     }
-    return conflicts;
+    return (sent: accepted.length - conflicts.length, conflicts: conflicts);
   }
 
   Future<void> _pull(OfflineScope scope) async {
