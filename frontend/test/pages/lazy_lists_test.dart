@@ -5,11 +5,28 @@ import 'package:cysvet_app/pages/animals/animals_page.dart';
 import 'package:cysvet_app/pages/visits/visits_page.dart';
 import 'package:cysvet_app/providers/animals_provider.dart';
 import 'package:cysvet_app/providers/properties_provider.dart';
+import 'package:cysvet_app/providers/visit_in_progress_provider.dart';
 import 'package:cysvet_app/providers/visits_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:google_fonts/google_fonts.dart';
+
+class _OpenVisit extends VisitInProgressNotifier {
+  @override
+  VisitInProgress? build() => VisitInProgress(
+    route: '/visitas/nova',
+    propertyId: 1,
+    propertyName: 'Fazenda teste',
+    dataVisita: '01/11/2026',
+    entries: const [
+      VisitAnimalEntryModel(animalId: 1, situacaoReprodutiva: 'prenha'),
+      VisitAnimalEntryModel(animalId: 2),
+      VisitAnimalEntryModel(animalId: 3),
+    ],
+    reviewedAnimalIds: const {1},
+  );
+}
 
 /// As listas do celular montam só os cartões visíveis; a rolagem ainda precisa
 /// alcançar o último registro e o rodapé.
@@ -40,6 +57,7 @@ void main() {
     WidgetTester tester,
     Widget page, {
     Size size = const Size(390, 844),
+    List overrides = const [],
   }) async {
     tester.view.physicalSize = size;
     tester.view.devicePixelRatio = 1;
@@ -55,6 +73,7 @@ void main() {
               PropertySummaryModel(id: 1, nome: 'Fazenda teste'),
             ],
           ),
+          ...overrides,
         ],
         child: MaterialApp(home: page),
       ),
@@ -110,6 +129,22 @@ void main() {
     expect(find.textContaining('AN-00199'), findsOneWidget);
     expect(find.textContaining('Mostrando'), findsNothing);
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('visita em andamento aparece marcada no topo da lista', (
+    tester,
+  ) async {
+    await pumpPage(
+      tester,
+      const VisitsPage(),
+      overrides: [visitInProgressProvider.overrideWith(_OpenVisit.new)],
+    );
+
+    expect(find.text('EM ANDAMENTO · NÃO SALVA'), findsOneWidget);
+    expect(find.text('1 de 3'), findsOneWidget);
+    // Cabeçalho e cartão levam de volta à visita aberta.
+    expect(find.text('Continuar visita'), findsNWidgets(2));
+    expect(find.text('Nova visita'), findsNothing);
   });
 
   testWidgets('lista de visitas monta sob demanda e chega ao fim', (

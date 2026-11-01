@@ -16,6 +16,7 @@ import 'package:cysvet_app/core/widgets/sync_status_indicator.dart';
 import 'package:cysvet_app/local/visits_local_store.dart';
 import 'package:cysvet_app/filters/visit_filter.dart';
 import 'package:cysvet_app/providers/properties_provider.dart';
+import 'package:cysvet_app/providers/visit_in_progress_provider.dart';
 import 'package:cysvet_app/models/property_summary_model.dart';
 import 'package:cysvet_app/providers/visits_provider.dart';
 import 'package:cysvet_app/models/visit_summary_model.dart';
@@ -34,6 +35,7 @@ class VisitsPage extends ConsumerWidget {
     final properties = ref.watch(propertiesProvider);
     final selectedPropertyId = ref.watch(visitsPropertyFilterProvider);
     final searchQuery = ref.watch(visitsSearchQueryProvider);
+    final inProgress = ref.watch(visitInProgressProvider);
     final propertyOptions =
         properties.asData?.value ?? const <PropertySummaryModel>[];
     final propertyById = {
@@ -61,6 +63,11 @@ class VisitsPage extends ConsumerWidget {
     });
 
     void createVisit() {
+      // Há uma visita aberta: o botão do cabeçalho volta para ela.
+      if (inProgress != null) {
+        context.go(inProgress.route);
+        return;
+      }
       if (propertyOptions.isEmpty) {
         showAppWarning('Carregue ou cadastre uma propriedade antes da visita.');
         return;
@@ -86,8 +93,13 @@ class VisitsPage extends ConsumerWidget {
                   subtitle:
                       'Registre atendimentos, acompanhe visitas e gere relatórios técnicos.',
                   headerButton: AppButton(
-                    text: 'Nova visita',
-                    icon: const Icon(Icons.add, size: 18),
+                    text: inProgress == null
+                        ? 'Nova visita'
+                        : 'Continuar visita',
+                    icon: Icon(
+                      inProgress == null ? Icons.add : Icons.play_arrow_rounded,
+                      size: 18,
+                    ),
                     onPressed: createVisit,
                   ),
                 ),
@@ -113,6 +125,25 @@ class VisitsPage extends ConsumerWidget {
                       ),
                     ),
                     const SliverToBoxAdapter(child: SizedBox(height: 28)),
+                    if (inProgress != null) ...[
+                      SliverToBoxAdapter(
+                        child: _VisitInProgressCard(
+                          visit: inProgress,
+                          onContinue: () => context.go(inProgress.route),
+                          onDiscard: () {
+                            final notifier = ref.read(
+                              visitInProgressProvider.notifier,
+                            );
+                            notifier.clear();
+                            showAppUndo(
+                              'Visita em andamento descartada.',
+                              onUndo: () => notifier.remember(inProgress),
+                            );
+                          },
+                        ),
+                      ),
+                      const SliverToBoxAdapter(child: SizedBox(height: 20)),
+                    ],
                     if (filteredVisits.isNotEmpty)
                       _VisitsGrid(
                         visits: filteredVisits,
@@ -480,6 +511,133 @@ class _VisitCard extends StatelessWidget {
                 ),
               ],
             ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Visita aberta no formulário e ainda não salva, no topo da lista.
+class _VisitInProgressCard extends StatelessWidget {
+  const _VisitInProgressCard({
+    required this.visit,
+    required this.onContinue,
+    required this.onDiscard,
+  });
+
+  final VisitInProgress visit;
+  final VoidCallback onContinue;
+  final VoidCallback onDiscard;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final date = parseDateInput(visit.dataVisita);
+    final collected = visit.collectedCount;
+    final pregnant = visit.entries
+        .where(
+          (entry) =>
+              visit.reviewedAnimalIds.contains(entry.animalId) &&
+              _isPregnant(entry),
+        )
+        .length;
+
+    return AppCard(
+      borderRadius: 18,
+      padding: const EdgeInsets.all(18),
+      shadow: false,
+      borderColor: colorScheme.primary,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              _VisitDateBadge(date: date),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 3,
+                      ),
+                      decoration: BoxDecoration(
+                        color: colorScheme.primary,
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                      child: Text(
+                        'EM ANDAMENTO · NÃO SALVA',
+                        style: theme.textTheme.labelSmall?.copyWith(
+                          color: colorScheme.onPrimary,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 0.4,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      _dashIfBlank(visit.propertyName),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        color: colorScheme.onSurface,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w900,
+                        height: 1.1,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Expanded(
+                child: _VisitMetricTile(
+                  label: 'Coletados',
+                  value: '$collected de ${visit.entries.length}',
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _VisitMetricTile(
+                  label: 'Prenhas',
+                  value: pregnant == 0 ? '--' : pregnant.toString(),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              IconButton.outlined(
+                tooltip: 'Descartar visita em andamento',
+                onPressed: onDiscard,
+                icon: const Icon(Icons.delete_outline, size: 20),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: AppButton(
+                  text: 'Continuar visita',
+                  height: 46,
+                  expanded: true,
+                  borderRadius: 10,
+                  icon: const Icon(Icons.play_arrow_rounded, size: 20),
+                  trailingIcon: const Icon(
+                    Icons.chevron_right_rounded,
+                    size: 22,
+                  ),
+                  onPressed: onContinue,
+                ),
+              ),
+            ],
+          ),
         ],
       ),
     );

@@ -5,8 +5,9 @@ import 'package:go_router/go_router.dart';
 import 'package:cysvet_app/core/presentation/app_scaffold_messenger.dart';
 import 'package:cysvet_app/providers/visit_in_progress_provider.dart';
 
-/// Faixa global que aparece fora do formulário quando há uma visita com
-/// animais coletados e ainda não salva, com atalho para voltar a ela.
+/// Faixa global que aparece fora do formulário quando há uma visita aberta e
+/// ainda não salva, com atalho para voltar a ela. Na lista de visitas ela é
+/// mostrada como cartão, então a faixa não aparece lá.
 class VisitInProgressBar extends ConsumerWidget {
   const VisitInProgressBar({super.key});
 
@@ -14,15 +15,17 @@ class VisitInProgressBar extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final visit = ref.watch(visitInProgressProvider);
     final location = GoRouterState.of(context).uri.path;
-    if (visit == null || visit.collectedCount == 0 || location == visit.route) {
+    if (visit == null || location == visit.route || location == '/visitas') {
       return const SizedBox.shrink();
     }
 
     final colorScheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
-    final collected = visit.collectedCount == 1
-        ? '1 animal coletado'
-        : '${visit.collectedCount} animais coletados';
+    final collected = switch (visit.collectedCount) {
+      0 => 'nenhum animal coletado',
+      1 => '1 animal coletado',
+      final count => '$count animais coletados',
+    };
     final property = visit.propertyName;
 
     void discard() {
