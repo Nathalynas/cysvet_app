@@ -14,7 +14,10 @@ import 'package:cysvet_app/core/widgets/app_button.dart';
 import 'package:cysvet_app/core/widgets/app_card.dart';
 import 'package:cysvet_app/core/widgets/app_dialog.dart';
 import 'package:cysvet_app/core/widgets/app_dropdown.dart';
+import 'package:cysvet_app/core/widgets/app_date_field.dart';
 import 'package:cysvet_app/core/widgets/app_text_field.dart';
+import 'package:cysvet_app/core/widgets/reproductive_status_picker.dart';
+import 'package:cysvet_app/core/widgets/responsive_field_grid.dart';
 import 'package:cysvet_app/models/animal_summary_model.dart';
 import 'package:cysvet_app/providers/animals_provider.dart';
 import 'package:cysvet_app/providers/connectivity_provider.dart';
@@ -22,7 +25,6 @@ import 'package:cysvet_app/models/indicador_reprodutivo_calculator.dart';
 import 'package:cysvet_app/providers/properties_provider.dart';
 import 'package:cysvet_app/models/property_summary_model.dart';
 import 'package:cysvet_app/models/visit_action_hint.dart';
-import 'package:cysvet_app/providers/reproductive_shortcuts_provider.dart';
 import 'package:cysvet_app/providers/visit_in_progress_provider.dart';
 import 'package:cysvet_app/providers/visits_provider.dart';
 import 'package:cysvet_app/models/visit_summary_model.dart';
@@ -2122,7 +2124,7 @@ class _AnimalEditorFields extends StatelessWidget {
     final visitIaNumber = hasVisitIa
         ? entry.numeroIaRecebida
         : iaHistory.suggestedNextNumber;
-    final visitIaDateField = _DateInputField(
+    final visitIaDateField = AppDateField(
       key: ValueKey('visit-ia-date-${entry.animalId}-$hasVisitIa-$visitIaDate'),
       label: 'Data da nova IA',
       value: visitIaDate,
@@ -2139,7 +2141,7 @@ class _AnimalEditorFields extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        _QuickStatusPicker(
+        ReproductiveStatusPicker(
           value: entry.situacaoReprodutiva,
           onChanged: (value) =>
               emitChanged(entry.copyWith(situacaoReprodutiva: value)),
@@ -2147,7 +2149,7 @@ class _AnimalEditorFields extends StatelessWidget {
         const SizedBox(height: 14),
         _CalculatedSummary(entry: entry, iaHistory: iaHistory),
         const SizedBox(height: 14),
-        _EditorGrid(
+        ResponsiveFieldGrid(
           children: [
             AppDropdown<String>(
               value: entry.situacaoProdutiva,
@@ -2157,7 +2159,7 @@ class _AnimalEditorFields extends StatelessWidget {
               options: _VisitFormPageState._situacaoProdutivaOptions,
             ),
             visitIaDateField,
-            _DateInputField(
+            AppDateField(
               label: 'Data último parto',
               value: entry.dataUltimoParto,
               showToday: true,
@@ -2187,7 +2189,7 @@ class _AnimalEditorFields extends StatelessWidget {
             title: const Text('Mais detalhes'),
             subtitle: const Text('Diagnóstico, nº da IA, secagem, pré-parto'),
             children: [
-              _EditorGrid(
+              ResponsiveFieldGrid(
                 children: [
                   AppTextField(
                     label: 'Diagnóstico',
@@ -2214,7 +2216,7 @@ class _AnimalEditorFields extends StatelessWidget {
                       ),
                     ),
                   ),
-                  _DateInputField(
+                  AppDateField(
                     label: 'Secagem efetiva',
                     value: entry.dataSecagemEfetiva,
                     onChanged: (value) => emitChanged(
@@ -2228,7 +2230,7 @@ class _AnimalEditorFields extends StatelessWidget {
                       ),
                     ),
                   ),
-                  _DateInputField(
+                  AppDateField(
                     label: 'Entrada pré-parto',
                     value: entry.entradaPreParto,
                     onChanged: (value) =>
@@ -2244,36 +2246,6 @@ class _AnimalEditorFields extends StatelessWidget {
   }
 
   static String _formatInt(int? value) => value?.toString() ?? '';
-}
-
-class _EditorGrid extends StatelessWidget {
-  const _EditorGrid({required this.children});
-
-  final List<Widget> children;
-
-  @override
-  Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final maxWidth = constraints.maxWidth;
-        final columns = maxWidth >= 980
-            ? 3
-            : maxWidth >= 640
-            ? 2
-            : 1;
-        final spacing = 12.0;
-        final itemWidth = (maxWidth - ((columns - 1) * spacing)) / columns;
-
-        return Wrap(
-          spacing: spacing,
-          runSpacing: spacing,
-          children: children
-              .map((child) => SizedBox(width: itemWidth, child: child))
-              .toList(growable: false),
-        );
-      },
-    );
-  }
 }
 
 class _AnimalEditorModalContent extends StatefulWidget {
@@ -2381,112 +2353,6 @@ class _AnimalEditorModalContentState extends State<_AnimalEditorModalContent> {
   }
 }
 
-/// Campo de data digitável, com calendário e, opcionalmente, atalho "Hoje".
-class _DateInputField extends StatefulWidget {
-  const _DateInputField({
-    super.key,
-    required this.label,
-    required this.value,
-    this.onChanged,
-    this.showToday = false,
-  });
-
-  final String label;
-  final DateTime? value;
-  final ValueChanged<DateTime?>? onChanged;
-  final bool showToday;
-
-  @override
-  State<_DateInputField> createState() => _DateInputFieldState();
-}
-
-class _DateInputFieldState extends State<_DateInputField> {
-  late final TextEditingController _controller = TextEditingController(
-    text: formatDateInput(widget.value),
-  );
-
-  @override
-  void didUpdateWidget(covariant _DateInputField oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    // Data trocada por fora (calendário, "Hoje"); enquanto a pessoa digita,
-    // o texto incompleto e o valor (nulo) coincidem e nada é sobrescrito.
-    // Compara o dia: datas lidas do aparelho voltam em UTC.
-    final typed = parseDateInput(_controller.text);
-    final same = typed == null || widget.value == null
-        ? typed == widget.value
-        : DateUtils.isSameDay(typed, widget.value!.toLocal());
-    if (!same) {
-      _controller.text = formatDateInput(widget.value);
-    }
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  void _set(DateTime? value) {
-    final date = value == null ? null : DateUtils.dateOnly(value);
-    _controller.text = formatDateInput(date);
-    widget.onChanged?.call(date);
-  }
-
-  Future<void> _pickDate() async {
-    final now = DateTime.now();
-    final picked = await showDatePicker(
-      context: context,
-      initialDate: widget.value ?? now,
-      firstDate: DateTime(now.year - 30),
-      lastDate: DateTime(now.year + 2),
-      helpText: widget.label,
-    );
-    if (picked != null) _set(picked);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final enabled = widget.onChanged != null;
-    final today = DateUtils.dateOnly(DateTime.now());
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        AppTextField(
-          label: widget.label,
-          hint: 'DD/MM/AAAA',
-          controller: _controller,
-          readOnly: !enabled,
-          keyboardType: TextInputType.number,
-          inputFormatters: const [DateInputFormatter()],
-          onChanged: enabled
-              ? (text) => widget.onChanged!(parseDateInput(text))
-              : null,
-          suffixIcon: enabled
-              ? IconButton(
-                  tooltip: 'Abrir calendário',
-                  icon: const Icon(Icons.calendar_month_outlined),
-                  onPressed: _pickDate,
-                )
-              : null,
-        ),
-        if (widget.showToday &&
-            enabled &&
-            !DateUtils.isSameDay(widget.value?.toLocal(), today))
-          Align(
-            alignment: Alignment.centerLeft,
-            child: TextButton.icon(
-              onPressed: () => _set(today),
-              icon: const Icon(Icons.today_outlined, size: 18),
-              label: const Text('Usar hoje'),
-            ),
-          ),
-      ],
-    );
-  }
-}
-
 class _FeedbackPanel extends StatelessWidget {
   const _FeedbackPanel({required this.message, this.error = false});
 
@@ -2563,251 +2429,6 @@ class _ModalResult {
 
   final VisitAnimalEntryModel entry;
   final int step;
-}
-
-/// Botões grandes com as situações mais usadas no curral; as demais ficam em
-/// "Mais detalhes".
-class _QuickStatusPicker extends ConsumerStatefulWidget {
-  const _QuickStatusPicker({required this.value, required this.onChanged});
-
-  final String? value;
-  final ValueChanged<String?> onChanged;
-
-  @override
-  ConsumerState<_QuickStatusPicker> createState() => _QuickStatusPickerState();
-}
-
-/// Botões grandes com os atalhos de situação reprodutiva do veterinário (os
-/// 4 padrão até ele escolher os seus) e "Outras situações" com as demais.
-class _QuickStatusPickerState extends ConsumerState<_QuickStatusPicker> {
-  bool _showOthers = false;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-    final shortcuts =
-        ref.watch(reproductiveShortcutsProvider).asData?.value ??
-        defaultReproductiveShortcuts;
-    final value = widget.value;
-    final current = value == null || value.isEmpty
-        ? null
-        : AnimalReproductiveStatus.fromApiValue(value);
-    final others = reproductiveShortcutOptions
-        .where((status) => !shortcuts.contains(status))
-        .toList(growable: false);
-    final currentIsOther = current != null && !shortcuts.contains(current);
-    final showOthers = _showOthers || currentIsOther;
-
-    Widget option(AnimalReproductiveStatus status, {double height = 52}) {
-      final selected = current == status;
-      final child = Text(status.label, overflow: TextOverflow.ellipsis);
-      return SizedBox(
-        height: height,
-        child: selected
-            ? FilledButton.icon(
-                onPressed: () => widget.onChanged(status.apiValue),
-                icon: Icon(status.icon),
-                label: child,
-              )
-            : OutlinedButton.icon(
-                onPressed: () => widget.onChanged(status.apiValue),
-                icon: Icon(status.icon),
-                label: child,
-              ),
-      );
-    }
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Row(
-          children: [
-            Expanded(
-              child: Text(
-                'Situação reprodutiva',
-                style: theme.textTheme.titleSmall?.copyWith(
-                  color: colorScheme.primary,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-            ),
-            IconButton(
-              tooltip: 'Escolher atalhos',
-              visualDensity: VisualDensity.compact,
-              onPressed: () => _ShortcutsEditor.show(context, shortcuts),
-              icon: const Icon(Icons.tune_rounded, size: 20),
-            ),
-          ],
-        ),
-        const SizedBox(height: 4),
-        LayoutBuilder(
-          builder: (context, constraints) {
-            final columns = constraints.maxWidth >= 640 ? 4 : 2;
-            const spacing = 8.0;
-            final width =
-                (constraints.maxWidth - (columns - 1) * spacing) / columns;
-            return Wrap(
-              spacing: spacing,
-              runSpacing: spacing,
-              children: [
-                for (final status in shortcuts)
-                  SizedBox(width: width, child: option(status)),
-              ],
-            );
-          },
-        ),
-        if (others.isNotEmpty) ...[
-          const SizedBox(height: 4),
-          Align(
-            alignment: Alignment.centerLeft,
-            child: TextButton.icon(
-              onPressed: currentIsOther
-                  ? null
-                  : () => setState(() => _showOthers = !_showOthers),
-              icon: Icon(
-                showOthers ? Icons.expand_less : Icons.expand_more,
-                size: 20,
-              ),
-              label: Text(
-                showOthers
-                    ? 'Outras situações'
-                    : 'Outras situações (${others.length})',
-              ),
-            ),
-          ),
-          if (showOthers)
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                for (final status in others) option(status, height: 40),
-                if (current != null)
-                  SizedBox(
-                    height: 40,
-                    child: TextButton.icon(
-                      onPressed: () => widget.onChanged(null),
-                      icon: const Icon(Icons.backspace_outlined, size: 18),
-                      label: const Text('Não informado'),
-                    ),
-                  ),
-              ],
-            ),
-        ],
-      ],
-    );
-  }
-}
-
-/// Escolha dos atalhos de situação reprodutiva, salva no servidor.
-class _ShortcutsEditor extends ConsumerStatefulWidget {
-  const _ShortcutsEditor({required this.initial});
-
-  final List<AnimalReproductiveStatus> initial;
-
-  static Future<void> show(
-    BuildContext context,
-    List<AnimalReproductiveStatus> current,
-  ) {
-    return AppDialog.show<void>(
-      context: context,
-      title: 'Atalhos da situação reprodutiva',
-      width: 480,
-      useInternalScroll: true,
-      fullscreenOnMobile: true,
-      content: _ShortcutsEditor(initial: current),
-    );
-  }
-
-  @override
-  ConsumerState<_ShortcutsEditor> createState() => _ShortcutsEditorState();
-}
-
-class _ShortcutsEditorState extends ConsumerState<_ShortcutsEditor> {
-  late final List<AnimalReproductiveStatus> _selected = [...widget.initial];
-  bool _saving = false;
-
-  Future<void> _save(List<AnimalReproductiveStatus>? shortcuts) async {
-    setState(() => _saving = true);
-    try {
-      final synced = await ref
-          .read(reproductiveShortcutsProvider.notifier)
-          .save(shortcuts);
-      if (!mounted) return;
-      Navigator.of(context).pop();
-      if (synced) {
-        showAppSuccess('Atalhos salvos.');
-      } else {
-        showAppInfo(
-          'Atalhos salvos no aparelho. Serão enviados quando houver conexão.',
-        );
-      }
-    } catch (error) {
-      if (mounted) setState(() => _saving = false);
-      showAppError(error);
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final full = _selected.length >= maxReproductiveShortcuts;
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Text(
-          'Marque até $maxReproductiveShortcuts situações para aparecerem como '
-          'botões na visita, na ordem em que forem marcadas. As outras ficam '
-          'em "Outras situações". Vale em qualquer aparelho em que você entrar.',
-          style: Theme.of(context).textTheme.bodySmall,
-        ),
-        const SizedBox(height: 8),
-        for (final status in reproductiveShortcutOptions)
-          CheckboxListTile(
-            value: _selected.contains(status),
-            dense: true,
-            contentPadding: EdgeInsets.zero,
-            secondary: Icon(status.icon),
-            title: Text(status.label),
-            subtitle: _selected.contains(status)
-                ? Text('Atalho ${_selected.indexOf(status) + 1}')
-                : null,
-            onChanged: _saving || (!_selected.contains(status) && full)
-                ? null
-                : (checked) => setState(() {
-                    if (checked == true) {
-                      _selected.add(status);
-                    } else {
-                      _selected.remove(status);
-                    }
-                  }),
-          ),
-        const SizedBox(height: 12),
-        Wrap(
-          spacing: 10,
-          runSpacing: 10,
-          alignment: WrapAlignment.end,
-          children: [
-            AppButton(
-              text: 'Voltar ao padrão',
-              outlined: true,
-              height: 40,
-              onPressed: _saving ? null : () => _save(null),
-            ),
-            AppButton(
-              text: 'Salvar',
-              height: 40,
-              loading: _saving,
-              onPressed: _saving || _selected.isEmpty
-                  ? null
-                  : () => _save(List.unmodifiable(_selected)),
-            ),
-          ],
-        ),
-      ],
-    );
-  }
 }
 
 /// Números calculados em uma linha, em vez de campos somente leitura.
