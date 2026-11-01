@@ -29,4 +29,8 @@ public class Usuario extends BaseEntity {
 
     @Column(name = "trocar_senha", nullable = false)
     private boolean trocarSenha = false;
+
+    // Valores de StatusReprodutivoAnimal separados por virgula; nulo = padrao.
+    @Column(name = "atalhos_situacao_reprodutiva", length = 512)
+    private String atalhosSituacaoReprodutiva;
 }
