@@ -209,7 +209,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
             loading: isBusy,
             disabled: isBusy,
             expanded: true,
-            height: 36,
+            height: 48,
             borderRadius: 9,
             onPressed: _submit,
           ),

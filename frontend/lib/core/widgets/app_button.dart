@@ -3,7 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:cysvet_app/app/theme.dart';
 
 class _ButtonControlStyle {
-  static const double height = 42;
+  // 48 dp: alvo de toque mínimo do Material, usável com pressa e de luva.
+  static const double height = 48;
   static const double radius = 12;
   static const double iconWidth = height;
 

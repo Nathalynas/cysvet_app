@@ -223,7 +223,7 @@ class AppDialog extends StatelessWidget {
       AppButton(
         text: cancelText ?? 'Cancelar',
         outlined: true,
-        height: 40,
+        height: 48,
         fontSize: 14,
         padding: const EdgeInsets.symmetric(horizontal: 16),
         onPressed: confirmLoading
@@ -233,7 +233,7 @@ class AppDialog extends StatelessWidget {
       AppButton(
         text: confirmText ?? 'Confirmar',
         loading: confirmLoading,
-        height: 40,
+        height: 48,
         fontSize: 14,
         padding: const EdgeInsets.symmetric(horizontal: 16),
         onPressed: onConfirm ?? () => Navigator.of(context).maybePop(),
