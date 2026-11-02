@@ -26,18 +26,19 @@ class AppShell extends ConsumerWidget {
   static const double _mobileDrawerWidth = 232;
   static const int _mobileBottomItemCount = 4;
 
+  // Os 4 primeiros vão para a barra de baixo do celular: as telas de campo.
   static const _items = [
     _NavigationItem(
-      route: '/dashboard',
-      label: 'Dashboard',
-      icon: Icons.dashboard_outlined,
-      selectedIcon: Icons.dashboard,
+      route: '/hoje',
+      label: 'Hoje',
+      icon: Icons.today_outlined,
+      selectedIcon: Icons.today,
     ),
     _NavigationItem(
-      route: '/propriedades',
-      label: 'Propriedades',
-      icon: Icons.agriculture_outlined,
-      selectedIcon: Icons.agriculture,
+      route: '/visitas',
+      label: 'Visitas',
+      icon: Icons.assignment_outlined,
+      selectedIcon: Icons.assignment,
     ),
     _NavigationItem(
       route: '/animais',
@@ -46,10 +47,16 @@ class AppShell extends ConsumerWidget {
       selectedIcon: MdiIcons.cow,
     ),
     _NavigationItem(
-      route: '/visitas',
-      label: 'Visitas',
-      icon: Icons.assignment_outlined,
-      selectedIcon: Icons.assignment,
+      route: '/propriedades',
+      label: 'Propriedades',
+      icon: Icons.agriculture_outlined,
+      selectedIcon: Icons.agriculture,
+    ),
+    _NavigationItem(
+      route: '/dashboard',
+      label: 'Dashboard',
+      icon: Icons.dashboard_outlined,
+      selectedIcon: Icons.dashboard,
     ),
     _NavigationItem(
       route: '/usuarios',
@@ -159,6 +166,9 @@ class AppShell extends ConsumerWidget {
     if (location.startsWith('/visitas/nova') ||
         location.startsWith('/visitas/editar')) {
       return const _PageHeaderConfig(backRoute: '/visitas');
+    }
+    if (location.startsWith('/hoje/')) {
+      return const _PageHeaderConfig(backRoute: '/hoje');
     }
 
     return const _PageHeaderConfig();

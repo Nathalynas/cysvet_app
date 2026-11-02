@@ -3,11 +3,25 @@ import 'package:flutter/material.dart';
 import 'package:cysvet_app/core/enums/animal_status.dart';
 import 'package:cysvet_app/models/visit_summary_model.dart';
 
+/// Tipo de ação, para agrupar na tela "Hoje".
+enum VisitActionKind {
+  diagnosis('Fazer DG'),
+  reconfirm('Reconfirmar prenhez'),
+  dryOff('Secar'),
+  prepartum('Pré-parto'),
+  noService('Sem IA, DEL alto');
+
+  const VisitActionKind(this.title);
+
+  final String title;
+}
+
 /// Motivo para o veterinário olhar o animal na visita ("o que fazer hoje").
 class VisitActionHint {
-  const VisitActionHint(this.label, {this.urgent = false});
+  const VisitActionHint(this.label, this.kind, {this.urgent = false});
 
   final String label;
+  final VisitActionKind kind;
 
   /// Atrasado (ex.: secagem passou da data); aparece antes dos demais.
   final bool urgent;
@@ -51,7 +65,9 @@ List<VisitActionHint> visitActionHints(
   if (aguardandoDiagnostico.contains(status) && ultimaIa != null) {
     final dias = hoje.difference(DateUtils.dateOnly(ultimaIa)).inDays;
     if (dias >= diasParaDiagnostico) {
-      hints.add(VisitActionHint('Fazer DG · IA há $dias dias'));
+      hints.add(
+        VisitActionHint('Fazer DG · IA há $dias dias', VisitActionKind.diagnosis),
+      );
     }
   }
 
@@ -60,7 +76,12 @@ List<VisitActionHint> visitActionHints(
     if (gestacao != null &&
         gestacao >= reconfirmacaoInicio &&
         gestacao <= reconfirmacaoFim) {
-      hints.add(VisitActionHint('Reconfirmar prenhez · $gestacao dias'));
+      hints.add(
+        VisitActionHint(
+          'Reconfirmar prenhez · $gestacao dias',
+          VisitActionKind.reconfirm,
+        ),
+      );
     }
 
     final paraSecar = entry.diasParaSecar;
@@ -73,10 +94,12 @@ List<VisitActionHint> visitActionHints(
         paraSecar < 0
             ? VisitActionHint(
                 'Secagem atrasada ${-paraSecar} dias',
+                VisitActionKind.dryOff,
                 urgent: true,
               )
             : VisitActionHint(
                 paraSecar == 0 ? 'Secar hoje' : 'Secar em $paraSecar dias',
+                VisitActionKind.dryOff,
               ),
       );
     }
@@ -87,8 +110,15 @@ List<VisitActionHint> visitActionHints(
       if (dias <= antecedenciaPreParto) {
         hints.add(
           dias < 0
-              ? VisitActionHint('Parto previsto há ${-dias} dias', urgent: true)
-              : VisitActionHint('Pré-parto · parto em $dias dias'),
+              ? VisitActionHint(
+                  'Parto previsto há ${-dias} dias',
+                  VisitActionKind.prepartum,
+                  urgent: true,
+                )
+              : VisitActionHint(
+                  'Pré-parto · parto em $dias dias',
+                  VisitActionKind.prepartum,
+                ),
         );
       }
     }
@@ -104,7 +134,7 @@ List<VisitActionHint> visitActionHints(
       produtiva != AnimalProductiveSituation.heifer &&
       del != null &&
       del >= delSemIa) {
-    hints.add(VisitActionHint('Sem IA · DEL $del'));
+    hints.add(VisitActionHint('Sem IA · DEL $del', VisitActionKind.noService));
   }
 
   hints.sort((a, b) => (b.urgent ? 1 : 0) - (a.urgent ? 1 : 0));

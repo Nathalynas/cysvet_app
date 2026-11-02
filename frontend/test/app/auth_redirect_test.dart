@@ -109,4 +109,17 @@ void main() {
   test('splash sem sessao vai para /login', () {
     expect(_redirect(null, '/splash'), '/login');
   });
+
+  test('no celular a tela inicial é a Hoje', () {
+    String? redirect(String location) => resolveAuthRedirect(
+      bootstrapComplete: true,
+      session: _session(perfil: 'VETERINARIO'),
+      location: location,
+      homeRoute: '/hoje',
+    );
+    expect(redirect('/splash'), '/hoje');
+    expect(redirect('/login'), '/hoje');
+    expect(redirect('/usuarios'), '/hoje');
+    expect(redirect('/hoje/3'), isNull);
+  });
 }

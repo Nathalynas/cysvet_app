@@ -11,6 +11,7 @@ String? resolveAuthRedirect({
   required bool bootstrapComplete,
   required AuthSessionModel? session,
   required String location,
+  String homeRoute = _dashboardRoute,
 }) {
   if (!bootstrapComplete) {
     return location == _splashRoute ? null : _splashRoute;
@@ -20,9 +21,9 @@ String? resolveAuthRedirect({
     return location == _loginRoute ? null : _loginRoute;
   }
 
-  final homeRoute = _homeRoute(session.user);
+  final userHome = _homeRoute(session.user, homeRoute);
   if (location == _splashRoute) {
-    return homeRoute;
+    return userHome;
   }
 
   if (session.user.trocarSenha) {
@@ -36,21 +37,21 @@ String? resolveAuthRedirect({
   if (location == _loginRoute ||
       location == _superRoute ||
       location == _changePasswordRoute) {
-    return _dashboardRoute;
+    return homeRoute;
   }
 
   // So o administrador da empresa cadastra a equipe.
   if (location.startsWith(_teamRoute) && !session.user.isAdmin) {
-    return _dashboardRoute;
+    return homeRoute;
   }
 
   return null;
 }
 
-String _homeRoute(AuthenticatedUserModel user) {
+String _homeRoute(AuthenticatedUserModel user, String homeRoute) {
   if (user.trocarSenha) {
     return _changePasswordRoute;
   }
 
-  return user.isSuperAdmin ? _superRoute : _dashboardRoute;
+  return user.isSuperAdmin ? _superRoute : homeRoute;
 }

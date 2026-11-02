@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../core/platform/offline_platform.dart';
 import '../pages/animals/animals_page.dart';
 import '../providers/auth_state.dart';
 import '../pages/auth/login_page.dart';
@@ -13,6 +14,7 @@ import '../pages/properties/property_details_page.dart';
 import '../pages/properties/properties_page.dart';
 import '../pages/splash/splash_page.dart';
 import '../pages/super_admin/super_admin_page.dart';
+import '../pages/today/today_page.dart';
 import '../pages/users/users_page.dart';
 import '../pages/visits/visit_form_page.dart';
 import '../pages/visits/visit_report_page.dart';
@@ -36,6 +38,8 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       bootstrapComplete: ref.read(authBootstrapProvider),
       session: ref.read(authSessionProvider),
       location: state.matchedLocation,
+      // No celular a tela inicial é a "Hoje" (funciona sem internet).
+      homeRoute: isOfflineFirstPlatform ? '/hoje' : '/dashboard',
     ),
     routes: [
       GoRoute(
@@ -59,6 +63,21 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         pageBuilder: (context, state, child) =>
             _buildAppShellPage(AppShell(child: child)),
         routes: [
+          GoRoute(
+            path: '/hoje',
+            pageBuilder: (context, state) =>
+                _buildShellChildPage(state, const TodayPage()),
+          ),
+          GoRoute(
+            path: '/hoje/:propertyId',
+            pageBuilder: (context, state) => _buildShellChildPage(
+              state,
+              TodayFarmPage(
+                propertyId:
+                    int.tryParse(state.pathParameters['propertyId'] ?? '') ?? 0,
+              ),
+            ),
+          ),
           GoRoute(
             path: '/dashboard',
             pageBuilder: (context, state) =>
