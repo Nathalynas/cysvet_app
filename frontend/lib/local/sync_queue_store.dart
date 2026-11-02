@@ -34,6 +34,31 @@ class SyncQueueStore {
     required Map<String, dynamic> payload,
   }) async {
     final db = await _database();
+    return db.transaction(
+      (txn) => enqueueIn(
+        txn,
+        companyId: companyId,
+        userId: userId,
+        entity: entity,
+        entityIdExterno: entityIdExterno,
+        operation: operation,
+        payload: payload,
+      ),
+    );
+  }
+
+  /// Como [enqueue], dentro de uma transação já aberta: quem grava o registro
+  /// local e a mutação junto não deixa o registro sem fila se o app morrer
+  /// entre as duas escritas.
+  Future<SyncMutation> enqueueIn(
+    Transaction txn, {
+    required int companyId,
+    required int userId,
+    required String entity,
+    required String entityIdExterno,
+    required SyncOperationType operation,
+    required Map<String, dynamic> payload,
+  }) async {
     final now = DateTime.now().toUtc();
     final mutation = SyncMutation(
       id: 0,
@@ -49,46 +74,43 @@ class SyncQueueStore {
       attempts: 0,
     );
 
-    final id = await db.transaction((txn) async {
-      final previous = await txn.query(
-        'sync_mutations',
-        columns: ['operation'],
-        where:
-            'entity = ? AND entity_id_externo = ? AND company_id = ? AND status != ?',
-        whereArgs: [
-          entity,
-          entityIdExterno,
-          companyId,
-          SyncMutationStatus.syncing.name,
-        ],
-      );
-      await txn.delete(
-        'sync_mutations',
-        where:
-            'entity = ? AND entity_id_externo = ? AND company_id = ? AND status != ?',
-        whereArgs: [
-          entity,
-          entityIdExterno,
-          companyId,
-          SyncMutationStatus.syncing.name,
-        ],
-      );
+    final previous = await txn.query(
+      'sync_mutations',
+      columns: ['operation'],
+      where:
+          'entity = ? AND entity_id_externo = ? AND company_id = ? AND status != ?',
+      whereArgs: [
+        entity,
+        entityIdExterno,
+        companyId,
+        SyncMutationStatus.syncing.name,
+      ],
+    );
+    await txn.delete(
+      'sync_mutations',
+      where:
+          'entity = ? AND entity_id_externo = ? AND company_id = ? AND status != ?',
+      whereArgs: [
+        entity,
+        entityIdExterno,
+        companyId,
+        SyncMutationStatus.syncing.name,
+      ],
+    );
 
-      // Um CREATE que nunca foi confirmado continua sendo CREATE.
-      final keepsCreate = previous.any(
-        (row) => row['operation'] == SyncOperationType.create.apiValue,
-      );
-      final effective = keepsCreate && operation == SyncOperationType.update
-          ? SyncOperationType.create
-          : operation;
+    // Um CREATE que nunca foi confirmado continua sendo CREATE.
+    final keepsCreate = previous.any(
+      (row) => row['operation'] == SyncOperationType.create.apiValue,
+    );
+    final effective = keepsCreate && operation == SyncOperationType.update
+        ? SyncOperationType.create
+        : operation;
 
-      return txn.insert(
-        'sync_mutations',
-        mutation.copyWith(operation: effective).toRow(now),
-      );
-    });
-
-    return mutation.copyWith(id: id);
+    final id = await txn.insert(
+      'sync_mutations',
+      mutation.copyWith(operation: effective).toRow(now),
+    );
+    return mutation.copyWith(id: id, operation: effective);
   }
 
   /// Mutações a enviar, na ordem oficial do contrato

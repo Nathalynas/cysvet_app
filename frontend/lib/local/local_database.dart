@@ -16,23 +16,52 @@ class LocalDatabase {
   const LocalDatabase._();
 
   static const _fileName = 'cysvet_offline.db';
-  static const _version = 1;
+
+  /// Versão do schema local. Ao mudar o schema: subir a versão e acrescentar
+  /// o passo em [_migrations] (nunca editar passos antigos). O app se
+  /// atualiza sozinho, então o banco antigo com a fila pendente precisa
+  /// continuar abrindo depois da atualização.
+  static const version = 1;
 
   static Future<Database> open() async {
     final directory = await getDatabasesPath();
-    return openDatabase(
-      p.join(directory, _fileName),
-      version: _version,
-      onConfigure: (db) => db.execute('PRAGMA foreign_keys = ON'),
-      onCreate: (db, version) async {
-        final batch = db.batch();
-        for (final statement in _schemaV1) {
-          batch.execute(statement);
-        }
-        await batch.commit(noResult: true);
-      },
+    return openWith(databaseFactory, p.join(directory, _fileName));
+  }
+
+  /// Usado também nos testes, com o banco em memória.
+  static Future<Database> openWith(DatabaseFactory factory, String path) {
+    return factory.openDatabase(
+      path,
+      options: OpenDatabaseOptions(
+        version: version,
+        onConfigure: (db) => db.execute('PRAGMA foreign_keys = ON'),
+        onCreate: (db, _) async {
+          final batch = db.batch();
+          for (final statement in _schemaV1) {
+            batch.execute(statement);
+          }
+          await batch.commit(noResult: true);
+          await _upgrade(db, 1, version);
+        },
+        onUpgrade: _upgrade,
+      ),
     );
   }
+
+  static Future<void> _upgrade(Database db, int from, int to) async {
+    for (var target = from + 1; target <= to; target++) {
+      final steps = _migrations[target];
+      if (steps == null) {
+        throw StateError('Migração do banco local ausente para a versão $target');
+      }
+      for (final statement in steps) {
+        await db.execute(statement);
+      }
+    }
+  }
+
+  /// Passos de migração por versão de destino (ex.: `2: ['ALTER TABLE ...']`).
+  static const Map<int, List<String>> _migrations = {};
 
   static const _schemaV1 = [
     '''

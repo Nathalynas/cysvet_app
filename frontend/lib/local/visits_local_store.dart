@@ -96,6 +96,8 @@ class VisitsLocalStore {
     required VisitSummaryModel visit,
     required VisitLocalStatus localStatus,
     required SyncStatusEnum syncStatus,
+    Future<void> Function(Transaction txn, VisitSummaryModel saved)?
+    inSameTransaction,
   }) async {
     final db = await _database();
     await db.transaction((txn) async {
@@ -122,9 +124,35 @@ class VisitsLocalStore {
         localStatus: localStatus,
         syncStatus: syncStatus,
       );
+      if (inSameTransaction != null) {
+        await inSameTransaction(txn, visit.copyWith(id: serverId ?? localId));
+      }
     });
 
     return (await findByIdExterno(visit.idExterno))!;
+  }
+
+  /// Visitas finalizadas que ainda não foram enviadas e não têm mutação na
+  /// fila. Acontecia quando o app era fechado entre gravar a visita e
+  /// enfileirar (antes das duas escritas irem para a mesma transação).
+  Future<List<LocalVisitRecord>> listFinalizedWithoutMutation(
+    int companyId,
+  ) async {
+    final db = await _database();
+    final rows = await db.rawQuery(
+      'SELECT v.* FROM visits v '
+      'WHERE v.company_id = ? AND v.local_status = ? AND v.sync_status != ? '
+      'AND NOT EXISTS (SELECT 1 FROM sync_mutations m '
+      "WHERE m.entity = 'visit' AND m.entity_id_externo = v.id_externo)",
+      [companyId, VisitLocalStatus.finalized.name, SyncStatusEnum.synced.name],
+    );
+    if (rows.isEmpty) return const [];
+    final ids = rows.map((row) => row['id_externo'] as String).toList();
+    final events = await _eventsByVisit(db, ids);
+    return [
+      for (final row in rows)
+        _toRecord(row, events[row['id_externo'] as String] ?? const []),
+    ];
   }
 
   Future<void> updateSyncStatus(

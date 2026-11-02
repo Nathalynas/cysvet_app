@@ -125,6 +125,7 @@ class SyncController extends Notifier<SyncState> {
 
     Future.microtask(() async {
       await ref.read(syncQueueStoreProvider).recoverInterrupted();
+      await _requeueOrphanVisits(scope);
       await notifyLocalChange();
       await syncNow();
     });
@@ -203,6 +204,29 @@ class SyncController extends Notifier<SyncState> {
       return syncNow();
     }
     return reachedBackend;
+  }
+
+  /// Visita finalizada sem mutação na fila (app fechado entre as duas
+  /// gravações, antes de irem para a mesma transação) volta para a fila.
+  Future<void> _requeueOrphanVisits(OfflineScope scope) async {
+    final orphans = await ref
+        .read(visitsLocalStoreProvider)
+        .listFinalizedWithoutMutation(scope.companyId);
+    if (orphans.isEmpty) return;
+    final queue = ref.read(syncQueueStoreProvider);
+    final repository = ref.read(visitsRepositoryProvider);
+    for (final record in orphans) {
+      await queue.enqueue(
+        companyId: scope.companyId,
+        userId: scope.userId,
+        entity: SyncEntity.visit,
+        entityIdExterno: record.visit.idExterno,
+        operation: record.visit.id > 0
+            ? SyncOperationType.update
+            : SyncOperationType.create,
+        payload: repository.toRequest(record.visit),
+      );
+    }
   }
 
   /// Fecha o aviso de alterações não aceitas.

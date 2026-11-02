@@ -231,6 +231,9 @@ class _VisitFormPageState extends ConsumerState<VisitFormPage> {
   VisitSummaryModel? _editingVisit;
   bool _isEditingDraft = false;
 
+  /// Reservado ao abrir: tentar salvar de novo não cria outra visita.
+  String _newVisitIdExterno = const Uuid().v4();
+
   /// Esta tela reabriu a visita que tinha ficado em andamento.
   bool _resumed = false;
 
@@ -292,6 +295,7 @@ class _VisitFormPageState extends ConsumerState<VisitFormPage> {
             selectedAnimalId: _selectedAnimalId,
             editing: _editingVisit,
             isEditingDraft: _isEditingDraft,
+            newIdExterno: _newVisitIdExterno,
             iaHistory: {
               for (final item in _iaHistoryByAnimalId.entries)
                 item.key: VisitIaHistorySnapshot(
@@ -319,6 +323,7 @@ class _VisitFormPageState extends ConsumerState<VisitFormPage> {
     _selectedAnimalId = saved.selectedAnimalId;
     _editingVisit = saved.editing;
     _isEditingDraft = saved.isEditingDraft;
+    _newVisitIdExterno = saved.newIdExterno ?? _newVisitIdExterno;
     _iaHistoryByAnimalId = {
       for (final item in saved.iaHistory.entries)
         item.key: _AnimalIaHistory(
@@ -339,6 +344,7 @@ class _VisitFormPageState extends ConsumerState<VisitFormPage> {
     setState(() {
       _resumed = false;
       _editingVisit = null;
+      _newVisitIdExterno = const Uuid().v4();
       _isEditingDraft = false;
       _propertyId = widget.initialPropertyId;
       _dataVisita.text = formatDateInput(DateTime.now());
@@ -852,7 +858,7 @@ class _VisitFormPageState extends ConsumerState<VisitFormPage> {
       final editing = _editingVisit;
       final payload = VisitSummaryModel(
         id: editing?.id ?? 0,
-        idExterno: editing?.idExterno ?? const Uuid().v4(),
+        idExterno: editing?.idExterno ?? _newVisitIdExterno,
         idPropriedade: _propertyId ?? 0,
         idExternoPropriedade:
             property?.idExterno ?? editing?.idExternoPropriedade ?? '',

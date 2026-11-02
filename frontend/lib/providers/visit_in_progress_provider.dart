@@ -34,6 +34,7 @@ class VisitInProgress {
     this.editing,
     this.isEditingDraft = false,
     this.iaHistory = const {},
+    this.newIdExterno,
   });
 
   factory VisitInProgress.fromJson(Map<String, dynamic> json) {
@@ -61,6 +62,7 @@ class VisitInProgress {
               Map<String, dynamic>.from(editing as Map),
             ),
       isEditingDraft: json['isEditingDraft'] as bool? ?? false,
+      newIdExterno: json['newIdExterno'] as String?,
       iaHistory: {
         for (final item in iaHistory.entries)
           int.parse(item.key): VisitIaHistorySnapshot(
@@ -89,6 +91,10 @@ class VisitInProgress {
   final VisitSummaryModel? editing;
   final bool isEditingDraft;
 
+  /// `idExterno` reservado para a visita nova ao abrir o formulário: salvar
+  /// de novo depois de uma falha atualiza a mesma visita em vez de duplicar.
+  final String? newIdExterno;
+
   /// Histórico de IAs por animal, para não recalcular ao voltar.
   final Map<int, VisitIaHistorySnapshot> iaHistory;
 
@@ -104,6 +110,7 @@ class VisitInProgress {
     'selectedAnimalId': selectedAnimalId,
     'editing': editing?.toMap(),
     'isEditingDraft': isEditingDraft,
+    'newIdExterno': newIdExterno,
     'iaHistory': {
       for (final item in iaHistory.entries)
         '${item.key}': {

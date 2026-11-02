@@ -226,6 +226,10 @@ class VisitsController {
         nomeUsuario: visit.nomeUsuario ?? user?.name,
       );
 
+      final queue = _ref.read(syncQueueStoreProvider);
+      final repository = _ref.read(visitsRepositoryProvider);
+      // Visita e mutação na mesma transação: se o app morrer no meio, ou as
+      // duas ficam gravadas ou nenhuma.
       final record = await _ref
           .read(visitsLocalStoreProvider)
           .saveLocal(
@@ -237,23 +241,24 @@ class VisitsController {
             syncStatus: finalize
                 ? SyncStatusEnum.pending
                 : SyncStatusEnum.localOnly,
+            inSameTransaction: !finalize
+                ? null
+                : (txn, saved) async {
+                    await queue.enqueueIn(
+                      txn,
+                      companyId: scope.companyId,
+                      userId: scope.userId,
+                      entity: SyncEntity.visit,
+                      entityIdExterno: saved.idExterno,
+                      operation: saved.id > 0
+                          ? SyncOperationType.update
+                          : SyncOperationType.create,
+                      payload: repository.toRequest(saved),
+                    );
+                  },
           );
 
       if (finalize) {
-        await _ref
-            .read(syncQueueStoreProvider)
-            .enqueue(
-              companyId: scope.companyId,
-              userId: scope.userId,
-              entity: SyncEntity.visit,
-              entityIdExterno: record.visit.idExterno,
-              operation: record.visit.id > 0
-                  ? SyncOperationType.update
-                  : SyncOperationType.create,
-              payload: _ref
-                  .read(visitsRepositoryProvider)
-                  .toRequest(record.visit),
-            );
         await _applyAnimalPreview(scope, record.visit);
       }
 
