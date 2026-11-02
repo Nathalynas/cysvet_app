@@ -60,12 +60,20 @@ public class AnimalSpreadsheetImportService {
 
     private static final List<DateTimeFormatter> FORMATOS_DE_DATA = List.of(
             DateTimeFormatter.ISO_LOCAL_DATE,
-            DateTimeFormatter.ofPattern("d/M/uuuu"),
-            DateTimeFormatter.ofPattern("d/M/uu"),
-            DateTimeFormatter.ofPattern("M/d/uuuu"),
-            DateTimeFormatter.ofPattern("M/d/uu"),
-            DateTimeFormatter.ofPattern("d-M-uuuu"),
-            DateTimeFormatter.ofPattern("d-M-uu"));
+            estrito("d/M/uuuu"),
+            estrito("d/M/uu"),
+            estrito("M/d/uuuu"),
+            estrito("M/d/uu"),
+            estrito("d-M-uuuu"),
+            estrito("d-M-uu"));
+
+    // Indices em FORMATOS_DE_DATA dos padroes com ano de dois digitos.
+    private static final java.util.Set<Integer> FORMATOS_COM_ANO_CURTO = java.util.Set.of(2, 4, 6);
+
+    // STRICT: 31/04 e 29/02/2025 sao recusados em vez de virar 30/04 e 28/02.
+    private static DateTimeFormatter estrito(String padrao) {
+        return DateTimeFormatter.ofPattern(padrao).withResolverStyle(java.time.format.ResolverStyle.STRICT);
+    }
 
     // Planilhas de campo usam 0, FALSO, "s/inf" e erros de formula no lugar de celula vazia.
     private static final Set<String> MARCADORES_DE_VAZIO = Set.of(
@@ -459,17 +467,35 @@ public class AnimalSpreadsheetImportService {
                             .atZone(ZoneId.systemDefault())
                             .toLocalDate();
                 }
-                for (DateTimeFormatter formatter : FORMATOS_DE_DATA) {
+                for (int i = 0; i < FORMATOS_DE_DATA.size(); i++) {
+                    LocalDate parsed;
                     try {
-                        return LocalDate.parse(text, formatter);
+                        parsed = LocalDate.parse(text, FORMATOS_DE_DATA.get(i));
                     } catch (DateTimeParseException ignored) {
-                        // tenta o proximo formato
+                        continue; // tenta o proximo formato
                     }
+                    return dentroDoPassado(field, parsed, FORMATOS_COM_ANO_CURTO.contains(i));
                 }
+            } catch (IllegalArgumentException futura) {
+                throw futura;
             } catch (Exception ignored) {
                 // cai na mensagem de data invalida abaixo
             }
             throw invalid(field, "Informe uma data válida");
+        }
+
+        // Ano com dois digitos ("98") e lido como 2098; nascimento, parto e IA
+        // nunca estao no futuro, entao volta um seculo. Data futura de verdade
+        // (erro de digitacao) e recusada.
+        private LocalDate dentroDoPassado(String field, LocalDate date, boolean anoCurto) {
+            LocalDate amanha = LocalDate.now().plusDays(1);
+            if (anoCurto && date.isAfter(amanha)) {
+                date = date.minusYears(100);
+            }
+            if (date.isAfter(amanha)) {
+                throw invalid(field, "Data no futuro");
+            }
+            return date;
         }
 
         StatusReprodutivoAnimal status(String value) {

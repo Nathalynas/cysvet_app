@@ -109,6 +109,56 @@ class AnimalSpreadsheetImportIntegrationTest {
         assertEquals("2026-02-05", textual.path("dataUltimoParto").asText());
     }
 
+    @Test
+    void datasImpossiveisOuFuturasSaoRecusadasEAnoComDoisDigitosFicaNoPassado() throws Exception {
+        AuthContext auth = registerAndAuthenticate("importacao.datas@example.com");
+        long propertyId = createProperty(auth);
+        String[][] linhas = {
+                {"D-ABRIL", "31/04/2024"},
+                {"D-BISSEXTO", "29/02/2025"},
+                {"D-FUTURA", "10/05/2099"},
+                {"D-ANO98", "10/05/98"},
+                {"D-OK", "29/02/2024"},
+        };
+        MockMultipartFile file;
+        try (XSSFWorkbook workbook = new XSSFWorkbook(); ByteArrayOutputStream output = new ByteArrayOutputStream()) {
+            Sheet sheet = workbook.createSheet("CAMPO");
+            Row header = sheet.createRow(0);
+            header.createCell(0).setCellValue("Matriz (N°)");
+            header.createCell(1).setCellValue("Data Nasci.");
+            for (int i = 0; i < linhas.length; i++) {
+                Row row = sheet.createRow(i + 1);
+                row.createCell(0).setCellValue(linhas[i][0]);
+                row.createCell(1).setCellValue(linhas[i][1]);
+            }
+            workbook.write(output);
+            file = new MockMultipartFile("file", "datas.xlsx",
+                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", output.toByteArray());
+        }
+
+        JsonNode preview = readResponse(mockMvc.perform(multipart("/api/animals/import/xlsx/preview")
+                        .file(file)
+                        .param("sheetName", "CAMPO")
+                        .param("idPropriedade", Long.toString(propertyId))
+                        .header("Authorization", auth.authorization())
+                        .header("empresaid", auth.tenantId()))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString());
+        assertEquals(2, preview.path("validRows").asInt());
+        assertEquals(3, preview.path("invalidRows").asInt());
+
+        mockMvc.perform(multipart("/api/animals/import/xlsx")
+                        .file(file)
+                        .param("sheetName", "CAMPO")
+                        .param("idPropriedade", Long.toString(propertyId))
+                        .param("mappings", objectMapper.writeValueAsString(preview.path("mappings")))
+                        .header("Authorization", auth.authorization())
+                        .header("empresaid", auth.tenantId()))
+                .andExpect(status().isOk());
+        assertEquals("1998-05-10", animal(auth, "D-ANO98").path("dataNascimento").asText());
+        assertEquals("2024-02-29", animal(auth, "D-OK").path("dataNascimento").asText());
+    }
+
     private byte[] planilhaDeCampo() throws Exception {
         try (XSSFWorkbook workbook = new XSSFWorkbook(); ByteArrayOutputStream output = new ByteArrayOutputStream()) {
             CellStyle dataCurta = workbook.createCellStyle();
