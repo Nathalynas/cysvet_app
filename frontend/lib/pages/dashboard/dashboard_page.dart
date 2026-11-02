@@ -611,9 +611,12 @@ class _TopDashboardSection extends StatelessWidget {
     // medido por dimensoes intrinsecas. Por isso, no desktop a altura e
     // controlada pelo container pai, mantendo os cards alinhados sem quebrar o
     // layout do Flutter.
+    // Cada linha do resumo ocupa ~52 px (texto + divisória); cabeçalho,
+    // margens e a primeira divisória ~110 px. Com 44 px por linha a 6ª linha
+    // (perda gestacional) estourava 42 px.
     final sectionHeight = math.max(
       348.0,
-      insights.mainMetrics.length * 44.0 + 96.0,
+      insights.mainMetrics.length * 52.0 + 110.0,
     );
 
     return SizedBox(

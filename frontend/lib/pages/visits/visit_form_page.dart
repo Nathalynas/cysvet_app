@@ -1966,6 +1966,18 @@ class _AnimalListItem extends StatelessWidget {
                               fontWeight: FontWeight.w800,
                             ),
                           ),
+                          if (_listKeyNumbers(entry).isNotEmpty) ...[
+                            const SizedBox(height: 2),
+                            Text(
+                              _listKeyNumbers(entry),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: theme.textTheme.bodyMedium?.copyWith(
+                                color: colorScheme.onSurface,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ],
                           const SizedBox(height: 4),
                           Text(
                             subtitle,
@@ -2003,6 +2015,18 @@ class _AnimalListItem extends StatelessWidget {
       ),
     );
   }
+}
+
+/// "DEL 145 d · IA 29/09/2026 · Prenhez 100 d", sem os que não se aplicam.
+String _listKeyNumbers(VisitAnimalEntryModel entry) {
+  return _visitKeyNumbers(entry)
+      .where((number) => number.value != '--')
+      .map(
+        (number) => number.label == 'Última IA'
+            ? 'IA ${number.value}'
+            : '${number.label} ${number.value}',
+      )
+      .join(' · ');
 }
 
 class _AnimalEditorPane extends StatelessWidget {
@@ -2637,24 +2661,108 @@ class _CalculatedSummary extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final items = <String>[
-      if (entry.del != null) 'DEL ${entry.del}',
-      if (entry.diasPrenhez != null) 'Prenhez ${entry.diasPrenhez} d',
-      if (entry.diasParaSecar != null) 'Secar em ${entry.diasParaSecar} d',
+    final secondary = <String>[
+      if (entry.diasParaSecar != null)
+        entry.diasParaSecar! < 0
+            ? 'Secagem atrasada ${-entry.diasParaSecar!} d'
+            : 'Secar em ${entry.diasParaSecar} d',
       if (entry.previsaoParto != null)
         'Parto ${formatDateInput(entry.previsaoParto)}',
-      if (iaHistory.lastDate != null)
-        'Última IA ${formatDateInput(iaHistory.lastDate)}',
       if (entry.idadeMeses != null)
         'Idade ${entry.idadeMeses!.toStringAsFixed(0)} meses',
     ];
-    if (items.isEmpty) return const SizedBox.shrink();
 
-    return Text(
-      items.join('  ·  '),
-      style: theme.textTheme.bodyMedium?.copyWith(
-        color: theme.colorScheme.onSurfaceVariant,
-        fontWeight: FontWeight.w600,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          children: [
+            for (final (index, number) in _visitKeyNumbers(
+              entry,
+              ultimaIa: iaHistory.lastDate,
+            ).indexed) ...[
+              if (index > 0) const SizedBox(width: 8),
+              Expanded(child: _KeyNumberTile(number: number)),
+            ],
+          ],
+        ),
+        if (secondary.isNotEmpty) ...[
+          const SizedBox(height: 8),
+          Text(
+            secondary.join('  ·  '),
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+/// Os três números que o veterinário confere em toda vaca.
+typedef _KeyNumber = ({String label, String value});
+
+List<_KeyNumber> _visitKeyNumbers(
+  VisitAnimalEntryModel entry, {
+  DateTime? ultimaIa,
+}) {
+  final ia = ultimaIa ?? entry.dataUltimaIa;
+  final dias = entry.diasPrenhez;
+  final prenha =
+      AnimalReproductiveStatus.fromApiValue(entry.situacaoReprodutiva) ==
+      AnimalReproductiveStatus.pregnant;
+  return [
+    (label: 'DEL', value: entry.del == null ? '--' : '${entry.del} d'),
+    (label: 'Última IA', value: ia == null ? '--' : formatDateInput(ia)),
+    // Inseminada sem DG ainda não é prenhez: "Pós-IA" para não confundir.
+    (
+      label: prenha || dias == null ? 'Prenhez' : 'Pós-IA',
+      value: dias == null ? '--' : '$dias d',
+    ),
+  ];
+}
+
+class _KeyNumberTile extends StatelessWidget {
+  const _KeyNumberTile({required this.number});
+
+  final _KeyNumber number;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        color: scheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            number.label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: theme.textTheme.labelMedium?.copyWith(
+              color: scheme.onSurfaceVariant,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Text(
+              number.value,
+              style: theme.textTheme.titleLarge?.copyWith(
+                color: scheme.onSurface,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

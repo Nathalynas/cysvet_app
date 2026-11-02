@@ -345,6 +345,19 @@ void main() {
     },
   );
 
+  testWidgets('o animal aberto mostra DEL, última IA e prenhez em destaque', (
+    tester,
+  ) async {
+    await pumpForm(tester);
+
+    await tester.tap(find.text('101'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('DEL'), findsOneWidget);
+    expect(find.text('Última IA'), findsOneWidget);
+    expect(find.text('Prenhez'), findsOneWidget);
+  });
+
   testWidgets('prenha que vira vazia registra a perda e o método do DG', (
     tester,
   ) async {
