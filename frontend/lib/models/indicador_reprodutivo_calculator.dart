@@ -47,6 +47,7 @@ class IndicadorReprodutivoCalculator {
       del: _del(
         situacaoProdutiva: situacaoProdutiva,
         dataUltimoParto: entry.dataUltimoParto,
+        dataAtual: dataAtual,
       ),
       idadePrimeiroPartoMeses: _monthsBetween(
         entry.dataNascimento,
@@ -263,12 +264,14 @@ class IndicadorReprodutivoCalculator {
   static int? _del({
     required String? situacaoProdutiva,
     required DateTime? dataUltimoParto,
+    required DateTime? dataAtual,
   }) {
     if (situacaoProdutiva != AnimalProductiveSituation.lactating) {
       return null;
     }
 
-    return _diasEntre(dataUltimoParto, DateTime.now());
+    // Conta até a data da visita: reabrir uma visita antiga não muda o DEL.
+    return _diasEntre(dataUltimoParto, dataAtual ?? DateTime.now());
   }
 
   static double? _idadePrimeiraIa({

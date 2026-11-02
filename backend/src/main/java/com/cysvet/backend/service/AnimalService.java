@@ -409,7 +409,11 @@ public class AnimalService {
     }
 
     public AnimalResponse toResponse(Animal animal) {
-        Long diasEmLactacao = animal.getDataUltimoParto() == null
+        // DEL so existe em lactacao: vaca seca, pre-parto ou novilha nao tem.
+        SituacaoProdutivaAnimal situacaoProdutiva = animal.getSituacaoProdutiva();
+        boolean foraDaLactacao = situacaoProdutiva != null
+                && situacaoProdutiva != SituacaoProdutivaAnimal.LACTANTE;
+        Long diasEmLactacao = animal.getDataUltimoParto() == null || foraDaLactacao
                 ? null
                 : ChronoUnit.DAYS.between(animal.getDataUltimoParto(), LocalDate.now());
 
