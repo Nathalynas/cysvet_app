@@ -550,7 +550,7 @@ class _VisitFormPageState extends ConsumerState<VisitFormPage> {
                           onChanged: _updateAnimalEntry,
                           applyAutomaticCalculations:
                               _applyAutomaticCalculations,
-                          onConfirmAnimal: _confirmAndSelectNext,
+                          onConfirmAnimal: _confirmAnimal,
                           onOpenAnimal: _editAnimalInModal,
                         ),
                     ],
@@ -983,28 +983,29 @@ class _VisitFormPageState extends ConsumerState<VisitFormPage> {
     });
   }
 
-  /// Confirma o animal e passa para o próximo da lista (desktop).
-  void _confirmAndSelectNext(int animalId) {
-    _confirmAnimal(animalId);
-    final next = _neighbor(animalId, 1);
-    if (next != null) setState(() => _selectedAnimalId = next.animalId);
+  /// Animal da visita pelo brinco digitado: o exato, ou o único que contém o
+  /// texto. Os animais entram no brete fora de ordem, então o veterinário vai
+  /// pelo brinco, não por "próximo da lista".
+  VisitAnimalEntryModel? _findByCode(String value) {
+    final query = value.trim().normalize();
+    if (query.isEmpty) return null;
+    final exact = _animalEntries.where(
+      (entry) => entry.animalCodigo.trim().normalize() == query,
+    );
+    if (exact.isNotEmpty) return exact.first;
+    final partial = _animalEntries
+        .where((entry) => entry.animalCodigo.normalize().contains(query))
+        .toList(growable: false);
+    return partial.length == 1 ? partial.single : null;
   }
 
-  VisitAnimalEntryModel? _neighbor(int animalId, int step) {
-    final ordered = _orderedEntries;
-    final index = ordered.indexWhere((entry) => entry.animalId == animalId);
-    final target = index + step;
-    if (index < 0 || target < 0 || target >= ordered.length) return null;
-    return ordered[target];
-  }
-
-  /// Mobile: um animal por vez, com "Anterior" e "Próximo" salvando o atual.
+  /// Mobile: um animal por vez. Ao terminar, o veterinário digita o brinco
+  /// da próxima vaca que entrou no brete e ela abre direto (a atual é salva).
   Future<void> _editAnimalInModal(VisitAnimalEntryModel entry) async {
     VisitAnimalEntryModel? current = entry;
     while (current != null && mounted) {
-      final ordered = _orderedEntries;
-      final position =
-          ordered.indexWhere((item) => item.animalId == current!.animalId) + 1;
+      final collected = _reviewedAnimalIds.length;
+      final total = _animalEntries.length;
       final shown = current;
       final wasReviewed = _reviewedAnimalIds.contains(shown.animalId);
       final result = await AppDialog.show<_ModalResult>(
@@ -1024,9 +1025,13 @@ class _VisitFormPageState extends ConsumerState<VisitFormPage> {
           // Cada mudança vai direto para a visita (e para o aparelho), para
           // não se perder se o sistema fechar o app com o animal aberto.
           onDraftChanged: _updateAnimalEntry,
-          positionLabel: '$position de ${ordered.length}',
-          hasPrevious: _neighbor(shown.animalId, -1) != null,
-          hasNext: _neighbor(shown.animalId, 1) != null,
+          progressLabel: '$collected de $total coletados',
+          findByCode: (code) {
+            final found = _findByCode(code);
+            return found == null || found.animalId == shown.animalId
+                ? null
+                : found;
+          },
         ),
       );
 
@@ -1074,9 +1079,12 @@ class _VisitFormPageState extends ConsumerState<VisitFormPage> {
         return;
       }
       _updateAnimalEntry(result.entry);
-      current = result.step == 0
+      final nextId = result.nextAnimalId;
+      current = nextId == null
           ? null
-          : _neighbor(result.entry.animalId, result.step);
+          : _animalEntries
+                .where((item) => item.animalId == nextId)
+                .firstOrNull;
     }
   }
 
@@ -2181,12 +2189,12 @@ class _AnimalConfirmationButton extends StatelessWidget {
     final colorScheme = Theme.of(context).colorScheme;
 
     // Mudar qualquer campo já marca a coleta; o botão confirma o animal sem
-    // mudanças (ex.: situação conferida) e passa para o próximo.
+    // mudanças (ex.: situação conferida). O próximo é escolhido pelo brinco.
     return AppButton(
-      text: reviewed ? 'Próximo animal' : 'Confirmar e ir ao próximo',
-      height: 44,
+      text: reviewed ? 'Animal confirmado' : 'Confirmar animal',
+      height: 48,
       icon: Icon(
-        Icons.arrow_forward_rounded,
+        reviewed ? Icons.check_circle : Icons.check_rounded,
         size: 18,
         color: colorScheme.onPrimary,
       ),
@@ -2408,9 +2416,8 @@ class _AnimalEditorModalContent extends StatefulWidget {
     required this.hints,
     required this.applyAutomaticCalculations,
     required this.onDraftChanged,
-    required this.positionLabel,
-    required this.hasPrevious,
-    required this.hasNext,
+    required this.progressLabel,
+    required this.findByCode,
   });
 
   final VisitAnimalEntryModel entry;
@@ -2418,9 +2425,11 @@ class _AnimalEditorModalContent extends StatefulWidget {
   final List<VisitActionHint> hints;
   final _VisitEntryCalculator applyAutomaticCalculations;
   final ValueChanged<VisitAnimalEntryModel> onDraftChanged;
-  final String positionLabel;
-  final bool hasPrevious;
-  final bool hasNext;
+  final String progressLabel;
+
+  /// Animal da visita com o brinco digitado (nulo se não achar ou se é o
+  /// mesmo que está aberto).
+  final VisitAnimalEntryModel? Function(String code) findByCode;
 
   @override
   State<_AnimalEditorModalContent> createState() =>
@@ -2429,9 +2438,29 @@ class _AnimalEditorModalContent extends StatefulWidget {
 
 class _AnimalEditorModalContentState extends State<_AnimalEditorModalContent> {
   late VisitAnimalEntryModel _draft;
+  final _nextCode = TextEditingController();
+  String? _nextError;
 
-  void _close(int step) =>
-      Navigator.of(context).pop(_ModalResult(_draft, step));
+  @override
+  void dispose() {
+    _nextCode.dispose();
+    super.dispose();
+  }
+
+  void _finish() => Navigator.of(context).pop(_ModalResult(_draft));
+
+  void _openNext() {
+    final code = _nextCode.text.trim();
+    if (code.isEmpty) return;
+    final next = widget.findByCode(code);
+    if (next == null) {
+      setState(() => _nextError = 'Brinco $code não encontrado nesta visita');
+      return;
+    }
+    Navigator.of(
+      context,
+    ).pop(_ModalResult(_draft, nextAnimalId: next.animalId));
+  }
 
   @override
   void initState() {
@@ -2446,7 +2475,7 @@ class _AnimalEditorModalContentState extends State<_AnimalEditorModalContent> {
       mainAxisSize: MainAxisSize.min,
       children: [
         Text(
-          '${widget.positionLabel} · ao trocar de animal o atual é salvo.',
+          '${widget.progressLabel} · cada mudança já fica salva.',
           style: Theme.of(context).textTheme.bodySmall,
         ),
         if (widget.hints.isNotEmpty) ...[
@@ -2464,34 +2493,38 @@ class _AnimalEditorModalContentState extends State<_AnimalEditorModalContent> {
           },
         ),
         const SizedBox(height: 16),
-        Row(
-          children: [
-            Expanded(
-              child: AppButton(
-                text: 'Anterior',
-                outlined: true,
-                height: 48,
-                onPressed: widget.hasPrevious ? () => _close(-1) : null,
-              ),
+        AppTextField(
+          label: 'Próximo brinco',
+          hint: 'Digite o brinco da vaca que entrou',
+          controller: _nextCode,
+          keyboardType: TextInputType.number,
+          textInputAction: TextInputAction.go,
+          onChanged: (_) {
+            if (_nextError != null) setState(() => _nextError = null);
+          },
+          onSubmitted: (_) => _openNext(),
+          suffixIcon: IconButton(
+            tooltip: 'Abrir brinco',
+            icon: const Icon(Icons.arrow_forward_rounded),
+            onPressed: _openNext,
+          ),
+        ),
+        if (_nextError != null) ...[
+          const SizedBox(height: 4),
+          Text(
+            _nextError!,
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              color: Theme.of(context).colorScheme.error,
+              fontWeight: FontWeight.w700,
             ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: AppButton(
-                text: 'Concluir',
-                outlined: true,
-                height: 48,
-                onPressed: () => _close(0),
-              ),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: AppButton(
-                text: 'Próximo',
-                height: 48,
-                onPressed: widget.hasNext ? () => _close(1) : null,
-              ),
-            ),
-          ],
+          ),
+        ],
+        const SizedBox(height: 12),
+        AppButton(
+          text: 'Concluir animal',
+          height: 52,
+          expanded: true,
+          onPressed: _finish,
         ),
         const SizedBox(height: 4),
         Align(
@@ -2499,7 +2532,7 @@ class _AnimalEditorModalContentState extends State<_AnimalEditorModalContent> {
           child: TextButton(
             onPressed: () => Navigator.of(
               context,
-            ).pop(_ModalResult(_draft, 0, discard: true)),
+            ).pop(_ModalResult(_draft, discard: true)),
             child: const Text('Descartar mudanças deste animal'),
           ),
         ),
@@ -2642,10 +2675,12 @@ class _GestationalLossSection extends StatelessWidget {
 }
 
 class _ModalResult {
-  const _ModalResult(this.entry, this.step, {this.discard = false});
+  const _ModalResult(this.entry, {this.nextAnimalId, this.discard = false});
 
   final VisitAnimalEntryModel entry;
-  final int step;
+
+  /// Brinco digitado em "Próximo brinco": abre esse animal em seguida.
+  final int? nextAnimalId;
 
   /// Tocou em "Descartar mudanças deste animal" (o voltar mantém).
   final bool discard;

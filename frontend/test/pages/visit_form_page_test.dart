@@ -1,3 +1,4 @@
+import 'package:cysvet_app/core/widgets/app_text_field.dart';
 import 'package:cysvet_app/core/enums/animal_status.dart';
 import 'package:cysvet_app/models/animal_summary_model.dart';
 import 'package:cysvet_app/models/property_summary_model.dart';
@@ -143,44 +144,55 @@ void main() {
   }
 
   testWidgets(
-    'marcar prenha e ir ao próximo salva o animal sem confirmar à parte',
+    'digitar o próximo brinco salva o atual e abre a vaca que entrou',
     (tester) async {
       final saved = await pumpForm(tester);
 
-      await tester.tap(find.text('101'));
-      await tester.pumpAndSettle();
-      expect(
-        find.text('1 de 2 · ao trocar de animal o atual é salvo.'),
-        findsOneWidget,
+      final proximoBrinco = find.descendant(
+        of: find.widgetWithText(AppTextField, 'Próximo brinco'),
+        matching: find.byType(EditableText),
       );
 
+      // As vacas entram fora de ordem: abre a 102 primeiro.
+      await tester.ensureVisible(find.text('102'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('102'));
+      await tester.pumpAndSettle();
+      expect(
+        find.text('0 de 2 coletados · cada mudança já fica salva.'),
+        findsOneWidget,
+      );
       await tester.tap(find.widgetWithText(OutlinedButton, 'Prenha'));
       await tester.pumpAndSettle();
-      await tester.ensureVisible(find.text('Próximo'));
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('Próximo'));
-      await tester.pumpAndSettle();
 
-      // O modal já mostra o segundo animal; fecha sem mexer nele.
+      // Brinco que não está na visita: avisa e continua no animal.
+      await tester.enterText(proximoBrinco, '999');
+      await tester.testTextInput.receiveAction(TextInputAction.go);
+      await tester.pumpAndSettle();
       expect(
-        find.text('2 de 2 · ao trocar de animal o atual é salvo.'),
+        find.text('Brinco 999 não encontrado nesta visita'),
         findsOneWidget,
       );
-      await tester.ensureVisible(find.text('Concluir'));
+
+      await tester.enterText(proximoBrinco, '101');
+      await tester.testTextInput.receiveAction(TextInputAction.go);
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Concluir'));
+      expect(find.text('Brinco 101'), findsOneWidget);
+
+      await tester.ensureVisible(find.text('Concluir animal'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Concluir animal'));
       await tester.pumpAndSettle();
 
       await tester.tap(find.text('Finalizar visita'));
       await tester.pumpAndSettle();
 
-      expect(saved, hasLength(1));
       final entries = saved.single.animais;
-      expect(entries.map((entry) => entry.animalCodigo), ['101', '102']);
-      expect(entries.first.situacaoReprodutiva, 'prenha');
-      // Só a situação marcada vira evento; o segundo animal só foi visto.
-      expect(entries.first.camposInformados, contains('situacaoReprodutiva'));
-      expect(entries.last.camposInformados, isEmpty);
+      final vaca102 = entries.firstWhere(
+        (entry) => entry.animalCodigo == '102',
+      );
+      expect(vaca102.situacaoReprodutiva, 'prenha');
+      expect(entries.map((entry) => entry.animalCodigo), contains('101'));
     },
   );
 
