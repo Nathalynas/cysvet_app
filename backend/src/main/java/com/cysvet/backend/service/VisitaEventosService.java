@@ -213,22 +213,29 @@ public class VisitaEventosService {
         // Fato com data depois da visita e erro de digitacao (ex.: IA em 2062):
         // nao vira evento, senao passaria a ser "o mais recente" para sempre.
         // A visita guarda o valor digitado; so o evento deixa de existir.
-        if (dataValida(item.dataUltimoParto(), visita)) {
+        if (item.informou("dataUltimoParto") && dataValida(item.dataUltimoParto(), visita)) {
             eventos.add(evento(visita, animal, TipoEventoReprodutivo.CALVING, item.dataUltimoParto(), Map.of(), null));
         }
-        if (dataValida(item.dataUltimaIa(), visita)) {
+        if (item.informou("dataUltimaIa") && dataValida(item.dataUltimaIa(), visita)) {
             Map<String, Object> detalhes = new LinkedHashMap<>();
             if (item.numeroIaRecebida() != null) {
                 detalhes.put("numeroIa", item.numeroIaRecebida());
             }
             eventos.add(evento(visita, animal, TipoEventoReprodutivo.INSEMINATION, item.dataUltimaIa(), detalhes, null));
         }
-        if (dataValida(item.dataSecagemEfetiva(), visita)) {
+        if (item.informou("dataSecagemEfetiva") && dataValida(item.dataSecagemEfetiva(), visita)) {
             eventos.add(evento(visita, animal, TipoEventoReprodutivo.DRY_OFF, item.dataSecagemEfetiva(), Map.of(), null));
         }
 
-        StatusReprodutivoAnimal status = statusInformado(item.situacaoReprodutiva());
-        SituacaoProdutivaAnimal situacaoProdutiva = SituacaoProdutivaAnimal.fromValueOrNull(item.situacaoProdutiva());
+        // Situacao que veio do cache do aparelho sem o veterinario mexer nao vira
+        // "situacao observada": senao uma visita offline com cache velho apagaria
+        // o diagnostico mais novo de outro veterinario.
+        StatusReprodutivoAnimal status = item.informou("situacaoReprodutiva")
+                ? statusInformado(item.situacaoReprodutiva())
+                : null;
+        SituacaoProdutivaAnimal situacaoProdutiva = item.informou("situacaoProdutiva")
+                ? SituacaoProdutivaAnimal.fromValueOrNull(item.situacaoProdutiva())
+                : null;
         if (status == StatusReprodutivoAnimal.DRY) {
             // "Seca" na coluna reprodutiva e a situacao produtiva.
             status = null;

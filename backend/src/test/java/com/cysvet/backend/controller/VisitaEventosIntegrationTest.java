@@ -213,6 +213,27 @@ class VisitaEventosIntegrationTest {
     }
 
     @Test
+    void situacaoDoCacheNaoInformadaNaoApagaODiagnosticoDeOutroVeterinario() throws Exception {
+        AuthContext auth = registerAndAuthenticate("visita.cache.velho@example.com");
+        long propertyId = createProperty(auth, "prop-ve-cache");
+        createAnimal(auth, propertyId, "animal-ve-cache", "VE-CACHE", "vazia");
+        LocalDate dg = HOJE.plusDays(30);
+
+        // Veterinario A faz o DG: prenha.
+        syncVisit(auth, "mut-cache-a", visitPayload("visit-cache-a", "prop-ve-cache", dg, """
+                { "animalIdExterno": "animal-ve-cache", "situacaoReprodutiva": "prenha",
+                  "camposInformados": ["situacaoReprodutiva"] }
+                """));
+        // Veterinario B, sem sinal e com o cadastro de antes ("vazia"), so anota o leite.
+        syncVisit(auth, "mut-cache-b", visitPayload("visit-cache-b", "prop-ve-cache", dg.plusDays(5), """
+                { "animalIdExterno": "animal-ve-cache", "situacaoReprodutiva": "vazia", "controleLeiteiro": 28.5,
+                  "camposInformados": ["controleLeiteiro"] }
+                """));
+
+        assertEquals("prenha", animal(auth, "animal-ve-cache").path("statusReprodutivo").asText());
+    }
+
+    @Test
     void editarOuExcluirVisitaRefazOResumoAPartirDaBase() throws Exception {
         AuthContext auth = registerAndAuthenticate("visita.edicao@example.com");
         long propertyId = createProperty(auth, "prop-ve-3");

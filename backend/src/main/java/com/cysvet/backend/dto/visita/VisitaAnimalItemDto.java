@@ -112,6 +112,16 @@ public record VisitaAnimalItemDto(
         @Schema(description = "IEP projetado em meses.", example = "13.1")
         Double iepProjetado,
         @Schema(description = "Controle leiteiro com desconto.", example = "27.4")
-        Double controleLeiteiroComDesconto
+        Double controleLeiteiroComDesconto,
+        @Schema(description = "Campos que o veterinario alterou ou confirmou nesta visita "
+                + "(ex.: situacaoReprodutiva, dataUltimaIa). So eles viram eventos; os demais vem do "
+                + "cadastro do aparelho e podem estar desatualizados. Ausente (app antigo): todos valem.",
+                example = "[\"situacaoReprodutiva\"]")
+        java.util.List<@Size(max = 40) String> camposInformados
 ) {
+
+    /** Campo informado pelo veterinario nesta visita (app antigo: todos). */
+    public boolean informou(String campo) {
+        return camposInformados == null || camposInformados.contains(campo);
+    }
 }
