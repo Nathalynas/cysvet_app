@@ -1,3 +1,4 @@
+import 'package:cysvet_app/models/animal_forecast.dart';
 import 'package:cysvet_app/app/theme.dart';
 import 'package:cysvet_app/core/enums/animal_status.dart';
 import 'package:cysvet_app/core/utils/formatters.dart';
@@ -273,7 +274,60 @@ class AnimalMobileCard extends StatelessWidget {
                   Expanded(child: _LastEventCell(animal: animal)),
                 ],
               ),
+              _ForecastStrip(animal: animal),
             ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Previsões da vaca prenhe, calculadas no aparelho (funciona sem internet).
+class _ForecastStrip extends StatelessWidget {
+  const _ForecastStrip({required this.animal});
+
+  final AnimalSummaryModel animal;
+
+  @override
+  Widget build(BuildContext context) {
+    final hoje = DateTime.now();
+    final forecast = AnimalForecast.of(animal, hoje);
+    if (forecast == null) return const SizedBox.shrink();
+
+    final theme = Theme.of(context);
+    final paraSecar = forecast.diasAte(forecast.secagem, hoje);
+    final paraParto = forecast.diasAte(forecast.parto, hoje);
+    final partes = [
+      '${forecast.diasGestacao} d de prenhez',
+      if (!forecast.jaSeca)
+        paraSecar < 0
+            ? 'Secagem atrasada ${-paraSecar} d'
+            : 'Secar ${formatDate(forecast.secagem)} (em $paraSecar d)',
+      paraParto < 0
+          ? 'Parto previsto há ${-paraParto} d'
+          : 'Parto ${formatDate(forecast.parto)}',
+    ];
+    final atrasado = (!forecast.jaSeca && paraSecar < 0) || paraParto < 0;
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 12),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: atrasado
+              ? theme.colorScheme.errorContainer
+              : theme.colorScheme.secondaryContainer,
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Text(
+          partes.join(' · '),
+          style: theme.textTheme.bodyMedium?.copyWith(
+            fontWeight: FontWeight.w700,
+            color: atrasado
+                ? theme.colorScheme.onErrorContainer
+                : theme.colorScheme.onSecondaryContainer,
           ),
         ),
       ),

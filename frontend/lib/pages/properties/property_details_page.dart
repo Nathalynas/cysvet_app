@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:math' as math;
 
+import 'package:cysvet_app/models/animal_forecast.dart';
 import 'package:cysvet_app/app/app_shell.dart';
 import 'package:cysvet_app/app/theme.dart';
 import 'package:cysvet_app/core/constants/app_constants.dart';
@@ -1411,23 +1412,40 @@ class _PropertyAnimalsTable extends StatelessWidget {
           label: 'Dias secar',
           flex: 2,
           alignment: Alignment.center,
-          cellBuilder: (context, animal) =>
-              const _AnimalTableText(value: '--', textAlign: TextAlign.center),
+          cellBuilder: (context, animal) {
+            final forecast = AnimalForecast.of(animal, DateTime.now());
+            return _AnimalTableText(
+              value: forecast == null || forecast.jaSeca
+                  ? '--'
+                  : '${forecast.diasAte(forecast.secagem, DateTime.now())}',
+              textAlign: TextAlign.center,
+            );
+          },
         ),
         AppTableColumn<AnimalSummaryModel>(
           label: 'Secagem',
           flex: 2,
-          cellBuilder: (context, animal) => const _AnimalTableText(value: '--'),
+          cellBuilder: (context, animal) => _AnimalTableText(
+            value: formatDate(
+              AnimalForecast.of(animal, DateTime.now())?.secagem,
+            ),
+          ),
         ),
         AppTableColumn<AnimalSummaryModel>(
           label: 'Pré-parto',
           flex: 2,
-          cellBuilder: (context, animal) => const _AnimalTableText(value: '--'),
+          cellBuilder: (context, animal) => _AnimalTableText(
+            value: formatDate(
+              AnimalForecast.of(animal, DateTime.now())?.preParto,
+            ),
+          ),
         ),
         AppTableColumn<AnimalSummaryModel>(
           label: 'Parto',
           flex: 2,
-          cellBuilder: (context, animal) => const _AnimalTableText(value: '--'),
+          cellBuilder: (context, animal) => _AnimalTableText(
+            value: formatDate(AnimalForecast.of(animal, DateTime.now())?.parto),
+          ),
         ),
         AppTableColumn<AnimalSummaryModel>(
           label: 'Último evento',
