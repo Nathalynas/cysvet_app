@@ -127,6 +127,68 @@ class VisitaEventosIntegrationTest {
         assertEquals(1, countOfType(listEvents(auth, animal.path("id").asLong()), "INSEMINATION"));
     }
 
+    /**
+     * Prova da tese: quatro visitas da mesma vaca, duas delas no mesmo dia com
+     * situacoes conflitantes (dois veterinarios), sincronizadas nas 24 ordens
+     * possiveis. Cada ordem roda numa empresa propria com os mesmos idExterno;
+     * o resumo final tem que ser identico em todas.
+     */
+    @Test
+    void quatroVisitasEmQualquerOrdemDeChegadaProduzemOMesmoResumo() throws Exception {
+        LocalDate ia = HOJE.plusDays(5);
+        List<String> visitas = List.of(
+                visitPayload("perm-a", "prop-perm", ia, """
+                        { "animalIdExterno": "animal-perm", "situacaoReprodutiva": "inseminada", "dataUltimaIa": "%s" }
+                        """.formatted(ia)),
+                visitPayload("perm-d", "prop-perm", ia.plusDays(20), """
+                        { "animalIdExterno": "animal-perm", "situacaoReprodutiva": "aguardando dg", "dataUltimaIa": "%s" }
+                        """.formatted(ia)),
+                visitPayload("perm-b", "prop-perm", ia.plusDays(35), """
+                        { "animalIdExterno": "animal-perm", "situacaoReprodutiva": "prenha", "dataUltimaIa": "%s" }
+                        """.formatted(ia)),
+                visitPayload("perm-c", "prop-perm", ia.plusDays(35), """
+                        { "animalIdExterno": "animal-perm", "situacaoReprodutiva": "vazia", "dataUltimaIa": "%s" }
+                        """.formatted(ia)));
+
+        List<String> resumos = new ArrayList<>();
+        int ordem = 0;
+        for (List<Integer> permutacao : permutacoes(List.of(0, 1, 2, 3))) {
+            AuthContext auth = registerAndAuthenticate("perm" + (ordem++) + "@example.com");
+            long propertyId = createProperty(auth, "prop-perm");
+            createAnimal(auth, propertyId, "animal-perm", "PERM-01", "pev");
+            for (int indice : permutacao) {
+                syncVisit(auth, "mut-perm-" + indice, visitas.get(indice));
+            }
+            JsonNode animal = animal(auth, "animal-perm");
+            resumos.add(String.join("|",
+                    animal.path("statusReprodutivo").asText(),
+                    animal.path("situacaoProdutiva").asText(),
+                    animal.path("dataInseminacao").asText(),
+                    animal.path("numeroLactacao").asText()));
+        }
+
+        assertEquals(24, resumos.size());
+        assertEquals(1, resumos.stream().distinct().count(), "Resumos diferentes por ordem: " + resumos);
+    }
+
+    private static List<List<Integer>> permutacoes(List<Integer> itens) {
+        if (itens.size() <= 1) {
+            return List.of(itens);
+        }
+        List<List<Integer>> resultado = new ArrayList<>();
+        for (int i = 0; i < itens.size(); i++) {
+            List<Integer> resto = new ArrayList<>(itens);
+            Integer primeiro = resto.remove(i);
+            for (List<Integer> sub : permutacoes(resto)) {
+                List<Integer> combinada = new ArrayList<>();
+                combinada.add(primeiro);
+                combinada.addAll(sub);
+                resultado.add(combinada);
+            }
+        }
+        return resultado;
+    }
+
     @Test
     void editarOuExcluirVisitaRefazOResumoAPartirDaBase() throws Exception {
         AuthContext auth = registerAndAuthenticate("visita.edicao@example.com");

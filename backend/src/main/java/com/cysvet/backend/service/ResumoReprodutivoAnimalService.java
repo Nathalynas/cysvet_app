@@ -42,7 +42,9 @@ public class ResumoReprodutivoAnimalService {
     private static final Comparator<EventoReprodutivo> ORDEM_CRONOLOGICA = Comparator
             .comparing(EventoReprodutivo::getDataEvento)
             .thenComparingInt(evento -> prioridadeNoMesmoDia(evento.getTipo()))
-            .thenComparing(EventoReprodutivo::getDataCriacao, Comparator.nullsLast(Comparator.naturalOrder()));
+            // Desempate fixo (nao a hora de chegada ao servidor): dois eventos do
+            // mesmo tipo no mesmo dia dao o mesmo resultado em qualquer ordem de sync.
+            .thenComparing(EventoReprodutivo::getIdExterno, Comparator.nullsLast(Comparator.naturalOrder()));
 
     private final EventoReprodutivoRepository eventoReprodutivoRepository;
     private final ObjectMapper objectMapper;
@@ -167,11 +169,10 @@ public class ResumoReprodutivoAnimalService {
         if (baseEm == null) {
             return true;
         }
+        // No mesmo dia a correcao manual vence: comparar com a hora de chegada do
+        // evento faria o resultado depender da ordem do sync.
         LocalDate diaDaBase = baseEm.atZone(FUSO_FAZENDA).toLocalDate();
-        if (!evento.getDataEvento().equals(diaDaBase)) {
-            return evento.getDataEvento().isAfter(diaDaBase);
-        }
-        return evento.getDataCriacao() != null && evento.getDataCriacao().isAfter(baseEm);
+        return evento.getDataEvento().isAfter(diaDaBase);
     }
 
     private StatusReprodutivoAnimal aplicarStatus(StatusReprodutivoAnimal atual, EventoReprodutivo evento) {
