@@ -14,7 +14,7 @@ final usersControllerProvider = Provider<UsersController>((ref) {
 });
 
 final usersProvider = FutureProvider<List<UserSummaryModel>>((ref) async {
-  final session = ref.watch(authSessionProvider);
+  final session = ref.watch(sessionKeyProvider);
 
   if (session == null) {
     throw StateError('Sessao indisponivel.');

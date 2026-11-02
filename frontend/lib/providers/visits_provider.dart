@@ -57,7 +57,7 @@ final localVisitRecordsProvider = FutureProvider<Map<String, LocalVisitRecord>>(
 );
 
 final visitsProvider = FutureProvider<List<VisitSummaryModel>>((ref) async {
-  final session = ref.watch(authSessionProvider);
+  final session = ref.watch(sessionKeyProvider);
   final propertyId = ref.watch(visitsPropertyFilterProvider);
 
   if (session == null) {

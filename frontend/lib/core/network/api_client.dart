@@ -48,8 +48,10 @@ void handleForbiddenAction(
   }
 }
 
+// O Dio é criado uma vez: a sessão é lida a cada requisição. Antes, cada
+// renovação do token recriava o Dio e todos os repositórios, e as telas
+// buscavam tudo de novo.
 final apiClientProvider = Provider<Dio>((ref) {
-  final session = ref.watch(authSessionProvider);
 
   final dio = Dio(
     BaseOptions(
@@ -74,6 +76,7 @@ final apiClientProvider = Provider<Dio>((ref) {
           return;
         }
 
+        final session = ref.read(authSessionProvider);
         final token = session?.accessToken;
         if (token != null && token.isNotEmpty) {
           options.headers['Authorization'] = 'Bearer $token';

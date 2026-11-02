@@ -19,6 +19,18 @@ final authBootstrapProvider = NotifierProvider<AuthBootstrapNotifier, bool>(
 );
 final authBusyProvider = NotifierProvider<BusyNotifier, bool>(BusyNotifier.new);
 
+/// Quem está logado e em qual empresa. Muda no login, no logout e na troca de
+/// empresa, mas não na renovação do token: as listas observam isto em vez da
+/// sessão inteira para não buscar tudo de novo a cada hora.
+final sessionKeyProvider = Provider<({int userId, int companyId})?>((ref) {
+  final session = ref.watch(authSessionProvider);
+  if (session == null) return null;
+  return (
+    userId: session.user.id,
+    companyId: session.activeCompany?.id ?? session.activeCompanyId,
+  );
+});
+
 final authControllerProvider = Provider<AuthController>((ref) {
   return AuthController(ref);
 });

@@ -6,7 +6,7 @@ import 'package:cysvet_app/api/dashboard_api.dart';
 import 'package:cysvet_app/models/dashboard_metrics_model.dart';
 
 final dashboardProvider = FutureProvider<DashboardMetricsModel>((ref) async {
-  final session = ref.watch(authSessionProvider);
+  final session = ref.watch(sessionKeyProvider);
   final propertyId = ref.watch(dashboardPropertyFilterProvider);
 
   if (session == null) {

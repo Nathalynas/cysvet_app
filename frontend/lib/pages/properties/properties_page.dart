@@ -28,7 +28,7 @@ import 'property_dialog.dart';
 
 final propertiesRelatedDataProvider =
     FutureProvider.autoDispose<_PropertiesRelatedData>((ref) async {
-      final session = ref.watch(authSessionProvider);
+      final session = ref.watch(sessionKeyProvider);
       final localAnimals = ref.watch(localAnimalsProvider);
       final deletedAnimalIds = ref.watch(deletedAnimalsProvider);
       final localVisits = ref.watch(localVisitsProvider);

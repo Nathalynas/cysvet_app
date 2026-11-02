@@ -28,7 +28,7 @@ final deletedPropertiesProvider =
 final propertiesProvider = FutureProvider<List<PropertySummaryModel>>((
   ref,
 ) async {
-  final session = ref.watch(authSessionProvider);
+  final session = ref.watch(sessionKeyProvider);
   final localItems = ref.watch(localPropertiesProvider);
   final deletedIds = ref.watch(deletedPropertiesProvider);
 

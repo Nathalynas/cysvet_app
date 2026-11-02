@@ -27,7 +27,7 @@ final deletedAnimalsProvider =
     );
 
 final animalsProvider = FutureProvider<List<AnimalSummaryModel>>((ref) async {
-  final session = ref.watch(authSessionProvider);
+  final session = ref.watch(sessionKeyProvider);
   final propertyId = ref.watch(animalsPropertyFilterProvider);
   final localItems = ref.watch(localAnimalsProvider);
   final deletedIds = ref.watch(deletedAnimalsProvider);

@@ -21,15 +21,20 @@ import 'app_shell.dart';
 import 'auth_redirect.dart';
 import 'theme.dart';
 
+// Um GoRouter só durante toda a vida do app. Recriá-lo a cada mudança da
+// sessão (inclusive a renovação do token, de hora em hora) voltava o usuário
+// ao início no meio do trabalho; agora a sessão só reavalia o redirect.
 final appRouterProvider = Provider<GoRouter>((ref) {
-  final bootstrapComplete = ref.watch(authBootstrapProvider);
-  final session = ref.watch(authSessionProvider);
+  final refresh = ValueNotifier<int>(0);
+  ref.listen(authBootstrapProvider, (_, _) => refresh.value++);
+  ref.listen(authSessionProvider, (_, _) => refresh.value++);
 
-  return GoRouter(
+  final router = GoRouter(
     initialLocation: '/splash',
+    refreshListenable: refresh,
     redirect: (context, state) => resolveAuthRedirect(
-      bootstrapComplete: bootstrapComplete,
-      session: session,
+      bootstrapComplete: ref.read(authBootstrapProvider),
+      session: ref.read(authSessionProvider),
       location: state.matchedLocation,
     ),
     routes: [
@@ -147,6 +152,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       ),
     ],
   );
+  ref.onDispose(() {
+    router.dispose();
+    refresh.dispose();
+  });
+  return router;
 });
 
 Page<void> _buildAppShellPage(Widget child) {

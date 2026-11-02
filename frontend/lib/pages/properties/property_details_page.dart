@@ -78,7 +78,7 @@ final propertyDetailsAnimalsProvider = FutureProvider.autoDispose
       final propertyFuture = ref.watch(
         propertyDetailsProvider(propertyId).future,
       );
-      final session = ref.watch(authSessionProvider);
+      final session = ref.watch(sessionKeyProvider);
       final localItems = ref.watch(localAnimalsProvider);
       final deletedIds = ref.watch(deletedAnimalsProvider);
       final repository = ref.watch(animalsRepositoryProvider);
@@ -110,7 +110,7 @@ final propertyDetailsVisitsProvider = FutureProvider.autoDispose
       final propertyFuture = ref.watch(
         propertyDetailsProvider(propertyId).future,
       );
-      final session = ref.watch(authSessionProvider);
+      final session = ref.watch(sessionKeyProvider);
       final localItems = ref.watch(localVisitsProvider);
       final repository = ref.watch(visitsRepositoryProvider);
 

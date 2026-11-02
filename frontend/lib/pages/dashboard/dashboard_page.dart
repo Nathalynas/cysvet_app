@@ -41,7 +41,7 @@ import 'package:cysvet_app/models/dashboard_metrics_model.dart';
 
 final dashboardRelatedDataProvider = FutureProvider.autoDispose
     .family<_DashboardRelatedData, int?>((ref, propertyId) async {
-      final session = ref.watch(authSessionProvider);
+      final session = ref.watch(sessionKeyProvider);
       final localAnimals = ref.watch(localAnimalsProvider);
       final deletedAnimalIds = ref.watch(deletedAnimalsProvider);
       final localVisits = ref.watch(localVisitsProvider);
