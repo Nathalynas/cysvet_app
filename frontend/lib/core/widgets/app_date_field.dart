@@ -12,6 +12,7 @@ class AppDateField extends StatefulWidget {
     this.onChanged,
     this.showToday = false,
     this.required = false,
+    this.allowFuture = false,
   });
 
   final String label;
@@ -21,6 +22,10 @@ class AppDateField extends StatefulWidget {
 
   /// Exige uma data válida ao validar o formulário.
   final bool required;
+
+  /// Nascimento, parto, IA e secagem são fatos que já aconteceram: por
+  /// padrão uma data depois de hoje é recusada (ex.: IA digitada como 2062).
+  final bool allowFuture;
 
   @override
   State<AppDateField> createState() => _AppDateFieldState();
@@ -52,6 +57,10 @@ class _AppDateFieldState extends State<AppDateField> {
     super.dispose();
   }
 
+  bool _isFuture(DateTime value) =>
+      !widget.allowFuture &&
+      DateUtils.dateOnly(value).isAfter(DateUtils.dateOnly(DateTime.now()));
+
   void _set(DateTime? value) {
     final date = value == null ? null : DateUtils.dateOnly(value);
     _controller.text = formatDateInput(date);
@@ -62,9 +71,11 @@ class _AppDateFieldState extends State<AppDateField> {
     final now = DateTime.now();
     final picked = await showDatePicker(
       context: context,
-      initialDate: widget.value ?? now,
+      initialDate: widget.value == null || _isFuture(widget.value!)
+          ? now
+          : widget.value!,
       firstDate: DateTime(now.year - 30),
-      lastDate: DateTime(now.year + 2),
+      lastDate: widget.allowFuture ? DateTime(now.year + 2) : now,
       helpText: widget.label,
     );
     if (picked != null) _set(picked);
@@ -85,19 +96,26 @@ class _AppDateFieldState extends State<AppDateField> {
           controller: _controller,
           readOnly: !enabled,
           required: widget.required,
+          autovalidateMode: AutovalidateMode.onUserInteraction,
           validator: (text) {
             final value = (text ?? '').trim();
             if (value.isEmpty) {
               return widget.required ? 'Informe a data' : null;
             }
-            return parseDateInput(value) == null
-                ? 'Informe uma data válida'
-                : null;
+            final parsed = parseDateInput(value);
+            if (parsed == null) return 'Informe uma data válida';
+            return _isFuture(parsed) ? 'A data não pode ser depois de hoje' : null;
           },
           keyboardType: TextInputType.number,
           inputFormatters: const [DateInputFormatter()],
           onChanged: enabled
-              ? (text) => widget.onChanged!(parseDateInput(text))
+              ? (text) {
+                  final parsed = parseDateInput(text);
+                  // Data futura fica só no campo, com o aviso; não vai
+                  // para o animal até ser corrigida.
+                  if (parsed != null && _isFuture(parsed)) return;
+                  widget.onChanged!(parsed);
+                }
               : null,
           suffixIcon: enabled
               ? IconButton(

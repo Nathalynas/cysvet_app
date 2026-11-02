@@ -32,6 +32,7 @@ class AppTextField extends StatefulWidget {
     this.prefixIcon,
     this.suffixIcon,
     this.validator,
+    this.autovalidateMode,
     this.onChanged,
     this.onSubmitted,
     this.onTap,
@@ -69,6 +70,9 @@ class AppTextField extends StatefulWidget {
   final Widget? prefixIcon;
   final Widget? suffixIcon;
   final FormFieldValidator<String>? validator;
+
+  /// Ex.: `onUserInteraction` para mostrar o erro enquanto digita.
+  final AutovalidateMode? autovalidateMode;
   final ValueChanged<String>? onChanged;
   final ValueChanged<String>? onSubmitted;
   final VoidCallback? onTap;
@@ -202,6 +206,7 @@ class _AppTextFieldState extends State<AppTextField> {
     return FormField<String>(
       initialValue: _controller.text,
       validator: _validate,
+      autovalidateMode: widget.autovalidateMode,
       builder: (field) {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
