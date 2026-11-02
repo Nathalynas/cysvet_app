@@ -210,17 +210,20 @@ public class VisitaEventosService {
     private List<EventoGerado> gerar(Visita visita, VisitaAnimalItemDto item, Animal animal) {
         List<EventoGerado> eventos = new ArrayList<>();
 
-        if (item.dataUltimoParto() != null) {
+        // Fato com data depois da visita e erro de digitacao (ex.: IA em 2062):
+        // nao vira evento, senao passaria a ser "o mais recente" para sempre.
+        // A visita guarda o valor digitado; so o evento deixa de existir.
+        if (dataValida(item.dataUltimoParto(), visita)) {
             eventos.add(evento(visita, animal, TipoEventoReprodutivo.CALVING, item.dataUltimoParto(), Map.of(), null));
         }
-        if (item.dataUltimaIa() != null) {
+        if (dataValida(item.dataUltimaIa(), visita)) {
             Map<String, Object> detalhes = new LinkedHashMap<>();
             if (item.numeroIaRecebida() != null) {
                 detalhes.put("numeroIa", item.numeroIaRecebida());
             }
             eventos.add(evento(visita, animal, TipoEventoReprodutivo.INSEMINATION, item.dataUltimaIa(), detalhes, null));
         }
-        if (item.dataSecagemEfetiva() != null) {
+        if (dataValida(item.dataSecagemEfetiva(), visita)) {
             eventos.add(evento(visita, animal, TipoEventoReprodutivo.DRY_OFF, item.dataSecagemEfetiva(), Map.of(), null));
         }
 
@@ -246,6 +249,10 @@ public class VisitaEventosService {
                     visita.getDataVisita(), detalhes, textoOuNulo(item.decisao())));
         }
         return eventos;
+    }
+
+    private static boolean dataValida(LocalDate data, Visita visita) {
+        return data != null && !data.isAfter(visita.getDataVisita());
     }
 
     private EventoGerado evento(Visita visita, Animal animal, TipoEventoReprodutivo tipo, LocalDate data,

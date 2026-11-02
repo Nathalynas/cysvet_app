@@ -190,6 +190,29 @@ class VisitaEventosIntegrationTest {
     }
 
     @Test
+    void dataDeIaDepoisDaVisitaNaoViraEventoNemTravaAsIasSeguintes() throws Exception {
+        AuthContext auth = registerAndAuthenticate("visita.data.futura@example.com");
+        long propertyId = createProperty(auth, "prop-ve-fut");
+        createAnimal(auth, propertyId, "animal-ve-fut", "VE-FUT", "pev");
+        LocalDate visita = HOJE.plusDays(1);
+
+        // Erro de digitacao: IA em 2062 numa visita de hoje.
+        createVisit(auth, visitPayload("visit-ve-fut-a", "prop-ve-fut", visita, """
+                { "animalIdExterno": "animal-ve-fut", "situacaoReprodutiva": "inseminada", "dataUltimaIa": "2062-05-10" }
+                """));
+        JsonNode events = listEvents(auth, animalId(auth, "animal-ve-fut"));
+        assertEquals(0, countOfType(events, "INSEMINATION"));
+        assertEquals(1, countOfType(events, "REPRODUCTIVE_STATUS_CHECK"));
+
+        // A IA real lancada depois continua valendo.
+        LocalDate iaReal = visita.plusDays(10);
+        createVisit(auth, visitPayload("visit-ve-fut-b", "prop-ve-fut", iaReal, """
+                { "animalIdExterno": "animal-ve-fut", "situacaoReprodutiva": "inseminada", "dataUltimaIa": "%s" }
+                """.formatted(iaReal)));
+        assertEquals(iaReal.toString(), animal(auth, "animal-ve-fut").path("dataInseminacao").asText());
+    }
+
+    @Test
     void editarOuExcluirVisitaRefazOResumoAPartirDaBase() throws Exception {
         AuthContext auth = registerAndAuthenticate("visita.edicao@example.com");
         long propertyId = createProperty(auth, "prop-ve-3");
