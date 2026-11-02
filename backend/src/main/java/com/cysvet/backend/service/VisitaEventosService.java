@@ -45,6 +45,12 @@ public class VisitaEventosService {
 
     // Tipos que representam um fato unico do animal: se outra visita ou um
     // registro direto ja tem o mesmo fato na mesma data, nao e criado outro.
+    static final int DIAS_MINIMOS_DG_ULTRASSOM = 28;
+    static final int DIAS_MINIMOS_DG_PALPACAO = 45;
+    private static final String METODO_ULTRASSOM = "ultrassom";
+    private static final String METODO_PALPACAO = "palpacao";
+    private static final Set<String> TIPOS_DE_PERDA = Set.of("reabsorcao", "aborto", "mumificacao", "natimorto");
+
     private static final Set<TipoEventoReprodutivo> FATOS_UNICOS = Set.of(
             TipoEventoReprodutivo.INSEMINATION,
             TipoEventoReprodutivo.CALVING,
@@ -255,7 +261,78 @@ public class VisitaEventosService {
             eventos.add(evento(visita, animal, TipoEventoReprodutivo.REPRODUCTIVE_STATUS_CHECK,
                     visita.getDataVisita(), detalhes, textoOuNulo(item.decisao())));
         }
+
+        EventoGerado diagnostico = diagnosticoDeGestacao(visita, item, animal, status);
+        if (diagnostico != null) {
+            eventos.add(diagnostico);
+        }
+        EventoGerado perda = perdaGestacional(visita, item, animal);
+        if (perda != null) {
+            eventos.add(perda);
+        }
         return eventos;
+    }
+
+    /**
+     * "Prenha" ou "vazia" informada numa vaca com IA conhecida tambem e um
+     * diagnostico de gestacao (DG), desde que ja tenha passado o tempo minimo
+     * do metodo: {@value #DIAS_MINIMOS_DG_ULTRASSOM} dias por ultrassom,
+     * {@value #DIAS_MINIMOS_DG_PALPACAO} por palpacao. Primeiro DG ou
+     * reconfirmacao e deduzido na leitura (depende das outras visitas).
+     */
+    private EventoGerado diagnosticoDeGestacao(Visita visita, VisitaAnimalItemDto item, Animal animal,
+                                               StatusReprodutivoAnimal status) {
+        if (status != StatusReprodutivoAnimal.PREGNANT && status != StatusReprodutivoAnimal.EMPTY) {
+            return null;
+        }
+        LocalDate ia = item.dataUltimaIa();
+        if (ia == null || ia.isAfter(visita.getDataVisita())) {
+            return null;
+        }
+        String metodo = metodoDiagnostico(item.metodoDiagnostico());
+        long diasPosIa = java.time.temporal.ChronoUnit.DAYS.between(ia, visita.getDataVisita());
+        int minimo = METODO_PALPACAO.equals(metodo) ? DIAS_MINIMOS_DG_PALPACAO : DIAS_MINIMOS_DG_ULTRASSOM;
+        if (diasPosIa < minimo) {
+            return null;
+        }
+        Map<String, Object> detalhes = new LinkedHashMap<>();
+        detalhes.put("metodo", metodo);
+        detalhes.put("diasPosIa", diasPosIa);
+        detalhes.put("dataIa", ia.toString());
+        EventoGerado base = evento(visita, animal, TipoEventoReprodutivo.PREGNANCY_DIAGNOSIS,
+                visita.getDataVisita(), detalhes, null);
+        return new EventoGerado(base.idExterno(), base.tipo(), base.data(), base.detalhes(), base.observacoes(),
+                status == StatusReprodutivoAnimal.PREGNANT);
+    }
+
+    /** Perda informada pelo veterinario (reabsorcao, aborto, mumificacao, natimorto). */
+    private EventoGerado perdaGestacional(Visita visita, VisitaAnimalItemDto item, Animal animal) {
+        String tipo = tipoPerda(item.tipoPerda());
+        if (tipo == null) {
+            return null;
+        }
+        Map<String, Object> detalhes = new LinkedHashMap<>();
+        detalhes.put("tipo", tipo);
+        LocalDate ia = item.dataUltimaIa();
+        if (ia != null && !ia.isAfter(visita.getDataVisita())) {
+            detalhes.put("diasGestacao", java.time.temporal.ChronoUnit.DAYS.between(ia, visita.getDataVisita()));
+        }
+        putIfPresent(detalhes, "causaSuspeita", item.causaPerda());
+        return evento(visita, animal, TipoEventoReprodutivo.GESTATIONAL_LOSS, visita.getDataVisita(), detalhes, null);
+    }
+
+    private static String metodoDiagnostico(String valor) {
+        String normalizado = valor == null ? "" : com.cysvet.backend.util.Textos.semAcentos(valor)
+                .trim().toLowerCase(java.util.Locale.ROOT);
+        return normalizado.startsWith("palp") ? METODO_PALPACAO : METODO_ULTRASSOM;
+    }
+
+    private static String tipoPerda(String valor) {
+        if (valor == null || valor.isBlank()) {
+            return null;
+        }
+        String normalizado = com.cysvet.backend.util.Textos.semAcentos(valor).trim().toLowerCase(java.util.Locale.ROOT);
+        return TIPOS_DE_PERDA.contains(normalizado) ? normalizado : "outra";
     }
 
     private static boolean dataValida(LocalDate data, Visita visita) {
@@ -266,7 +343,7 @@ public class VisitaEventosService {
                                 Map<String, Object> detalhes, String observacoes) {
         String chave = "visita|" + visita.getIdExterno() + "|" + animal.getIdExterno() + "|" + tipo.name();
         String idExterno = UUID.nameUUIDFromBytes(chave.getBytes(StandardCharsets.UTF_8)).toString();
-        return new EventoGerado(idExterno, tipo, data, detalhes, observacoes);
+        return new EventoGerado(idExterno, tipo, data, detalhes, observacoes, null);
     }
 
     private void preencher(EventoReprodutivo evento, Visita visita, Animal animal, EventoGerado gerado) {
@@ -276,7 +353,7 @@ public class VisitaEventosService {
         evento.setTipo(gerado.tipo());
         evento.setDataEvento(gerado.data());
         evento.setDataPrevistaParto(EventoReprodutivoService.previsaoDeParto(gerado.tipo(), gerado.data()));
-        evento.setPrenhezConfirmada(null);
+        evento.setPrenhezConfirmada(gerado.prenhezConfirmada());
         evento.setObservacoes(gerado.observacoes());
         evento.setDetalhesJson(escreverDetalhes(gerado.detalhes()));
     }
@@ -365,7 +442,8 @@ public class VisitaEventosService {
             TipoEventoReprodutivo tipo,
             LocalDate data,
             Map<String, Object> detalhes,
-            String observacoes
+            String observacoes,
+            Boolean prenhezConfirmada
     ) {
     }
 

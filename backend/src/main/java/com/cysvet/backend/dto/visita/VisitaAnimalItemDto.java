@@ -117,7 +117,15 @@ public record VisitaAnimalItemDto(
                 + "(ex.: situacaoReprodutiva, dataUltimaIa). So eles viram eventos; os demais vem do "
                 + "cadastro do aparelho e podem estar desatualizados. Ausente (app antigo): todos valem.",
                 example = "[\"situacaoReprodutiva\"]")
-        java.util.List<@Size(max = 40) String> camposInformados
+        java.util.List<@Size(max = 40) String> camposInformados,
+        @Schema(description = "Metodo do diagnostico de gestacao: ultrassom (padrao) ou palpacao.",
+                example = "ultrassom")
+        @Size(max = 20) String metodoDiagnostico,
+        @Schema(description = "Perda gestacional informada: reabsorcao, aborto, mumificacao ou natimorto.",
+                example = "aborto")
+        @Size(max = 20) String tipoPerda,
+        @Schema(description = "Causa suspeita da perda (texto livre).", example = "suspeita de BVD")
+        @Size(max = 200) String causaPerda
 ) {
 
     /** Campo informado pelo veterinario nesta visita (app antigo: todos). */

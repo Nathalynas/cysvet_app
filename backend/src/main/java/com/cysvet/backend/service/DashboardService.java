@@ -72,6 +72,8 @@ public class DashboardService {
         long inseminations = events.stream().filter(event -> event.getTipo() == TipoEventoReprodutivo.INSEMINATION).count();
         long pregnancies = countInseminationsFollowedByPregnancy(events);
         Double taxaConcepcaoIa = inseminations == 0 ? null : (double) pregnancies / inseminations;
+        long perdas = events.stream().filter(event -> event.getTipo() == TipoEventoReprodutivo.GESTATIONAL_LOSS).count();
+        Double taxaPerda = pregnancies == 0 ? null : (double) perdas / pregnancies;
 
         long inseminatedAnimals = events.stream()
                 .filter(event -> event.getTipo() == TipoEventoReprodutivo.INSEMINATION)
@@ -105,7 +107,9 @@ public class DashboardService {
                 taxas.concebidas(),
                 inicio,
                 fim,
-                serie
+                serie,
+                perdas,
+                taxaPerda
         );
     }
 

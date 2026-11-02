@@ -234,6 +234,57 @@ class VisitaEventosIntegrationTest {
     }
 
     @Test
+    void prenhaOuVaziaDepoisDoPrazoViraDgEPerdaInformadaViraEvento() throws Exception {
+        AuthContext auth = registerAndAuthenticate("visita.dg.perda@example.com");
+        long propertyId = createProperty(auth, "prop-ve-dg");
+        createAnimal(auth, propertyId, "animal-ve-dg", "VE-DG", "pev");
+        LocalDate ia = HOJE.plusDays(1);
+
+        createVisit(auth, visitPayload("visit-dg-ia", "prop-ve-dg", ia, """
+                { "animalIdExterno": "animal-ve-dg", "situacaoReprodutiva": "inseminada", "dataUltimaIa": "%s",
+                  "camposInformados": ["situacaoReprodutiva", "dataUltimaIa"] }
+                """.formatted(ia)));
+        // 35 dias por palpacao: cedo demais (minimo 45), nao e DG.
+        createVisit(auth, visitPayload("visit-dg-cedo", "prop-ve-dg", ia.plusDays(35), """
+                { "animalIdExterno": "animal-ve-dg", "situacaoReprodutiva": "prenha", "dataUltimaIa": "%s",
+                  "metodoDiagnostico": "palpacao", "camposInformados": ["situacaoReprodutiva"] }
+                """.formatted(ia)));
+        long animalId = animalId(auth, "animal-ve-dg");
+        assertEquals(0, countOfType(listEvents(auth, animalId), "PREGNANCY_DIAGNOSIS"));
+
+        // 40 dias por ultrassom (minimo 28): DG positivo.
+        createVisit(auth, visitPayload("visit-dg-us", "prop-ve-dg", ia.plusDays(40), """
+                { "animalIdExterno": "animal-ve-dg", "situacaoReprodutiva": "prenha", "dataUltimaIa": "%s",
+                  "camposInformados": ["situacaoReprodutiva"] }
+                """.formatted(ia)));
+        JsonNode dg = eventOfType(listEvents(auth, animalId), "PREGNANCY_DIAGNOSIS");
+        assertTrue(dg.path("prenhezConfirmada").asBoolean());
+        assertEquals("ultrassom", dg.path("detalhes").path("metodo").asText());
+        assertEquals(40, dg.path("detalhes").path("diasPosIa").asInt());
+
+        // Aos 70 dias: vazia, com aborto informado.
+        createVisit(auth, visitPayload("visit-dg-perda", "prop-ve-dg", ia.plusDays(70), """
+                { "animalIdExterno": "animal-ve-dg", "situacaoReprodutiva": "vazia", "dataUltimaIa": "%s",
+                  "tipoPerda": "aborto", "causaPerda": "suspeita de BVD",
+                  "camposInformados": ["situacaoReprodutiva", "tipoPerda"] }
+                """.formatted(ia)));
+        JsonNode perda = eventOfType(listEvents(auth, animalId), "GESTATIONAL_LOSS");
+        assertEquals("aborto", perda.path("detalhes").path("tipo").asText());
+        assertEquals(70, perda.path("detalhes").path("diasGestacao").asInt());
+        assertEquals("suspeita de BVD", perda.path("detalhes").path("causaSuspeita").asText());
+        assertEquals("vazia", animal(auth, "animal-ve-dg").path("statusReprodutivo").asText());
+
+        JsonNode dashboard = readResponse(mockMvc.perform(get("/api/dashboard")
+                        .header("Authorization", auth.authorization())
+                        .header("empresaid", auth.tenantId())
+                        .queryParam("idPropriedade", Long.toString(propertyId)))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString());
+        assertEquals(1, dashboard.path("perdasGestacionais").asInt());
+        assertEquals(1.0, dashboard.path("taxaPerdaGestacional").asDouble(), 1e-9);
+    }
+
+    @Test
     void editarOuExcluirVisitaRefazOResumoAPartirDaBase() throws Exception {
         AuthContext auth = registerAndAuthenticate("visita.edicao@example.com");
         long propertyId = createProperty(auth, "prop-ve-3");

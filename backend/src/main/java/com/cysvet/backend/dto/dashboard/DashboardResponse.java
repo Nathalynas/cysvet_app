@@ -41,7 +41,11 @@ public record DashboardResponse(
         @Schema(description = "Ultimo dia do periodo avaliado.", example = "2026-11-02")
         LocalDate periodoFim,
         @Schema(description = "Taxas por mes dos ultimos 6 meses do periodo.")
-        List<PontoMensal> serieMensal
+        List<PontoMensal> serieMensal,
+        @Schema(description = "Perdas gestacionais registradas no periodo.", example = "3")
+        long perdasGestacionais,
+        @Schema(description = "Perdas / prenhezes do periodo. Nulo sem prenhezes.", example = "0.08")
+        Double taxaPerdaGestacional
 ) {
 
     @Schema(description = "Taxas dos ciclos que comecam no mes. Nulas quando ainda nao ha dados.")
