@@ -320,6 +320,28 @@ void main() {
     },
   );
 
+  testWidgets(
+    'voltar do Android com o animal aberto mantém o que foi marcado',
+    (tester) async {
+      final saved = await pumpForm(tester);
+
+      await tester.tap(find.text('101'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(OutlinedButton, 'Prenha'));
+      await tester.pumpAndSettle();
+
+      // Botão voltar do sistema fecha o modal.
+      await tester.binding.handlePopRoute();
+      await tester.pumpAndSettle();
+
+      expect(find.text('1 com coleta'), findsOneWidget);
+
+      await tester.tap(find.text('Finalizar visita'));
+      await tester.pumpAndSettle();
+      expect(saved.single.animais.first.situacaoReprodutiva, 'prenha');
+    },
+  );
+
   testWidgets('"Outras situações" mostra as demais e grava a escolhida', (
     tester,
   ) async {

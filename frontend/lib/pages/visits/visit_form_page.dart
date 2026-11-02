@@ -338,6 +338,26 @@ class _VisitFormPageState extends ConsumerState<VisitFormPage> {
     ref.read(visitInProgressProvider.notifier).clear();
   }
 
+  /// "Cancelar": sai da visita e oferece desfazer, que reabre a visita onde
+  /// estava (antes, um toque apagava tudo sem volta).
+  void _cancelVisit() {
+    final notifier = ref.read(visitInProgressProvider.notifier);
+    final router = GoRouter.of(context);
+    final saved = ref.read(visitInProgressProvider);
+    notifier.clear();
+    router.go('/visitas');
+    if (saved != null && saved.collectedCount > 0) {
+      showAppUndo(
+        'Visita cancelada (${saved.collectedCount} '
+        '${saved.collectedCount == 1 ? 'animal coletado' : 'animais coletados'}).',
+        onUndo: () {
+          notifier.remember(saved);
+          router.go(saved.route);
+        },
+      );
+    }
+  }
+
   /// Descarta a visita reaberta e começa outra do zero.
   void _startOver() {
     _discardProgress();
@@ -513,10 +533,7 @@ class _VisitFormPageState extends ConsumerState<VisitFormPage> {
           _VisitActionsBar(
             isBusy: isBusy,
             isLoadingAnimals: _isLoadingAnimals,
-            onCancel: () {
-              _discardProgress();
-              context.go('/visitas');
-            },
+            onCancel: _cancelVisit,
             onSave: _saveVisit,
             // Rascunho só no app mobile e enquanto a visita não foi finalizada.
             onSaveDraft:
@@ -976,19 +993,46 @@ class _VisitFormPageState extends ConsumerState<VisitFormPage> {
       );
 
       if (!mounted) return;
-      if (result == null) {
-        // "Descartar mudanças deste animal" (ou voltar): desfaz o que foi
-        // aplicado enquanto o modal estava aberto.
+      final edited = _animalEntries.firstWhere(
+        (item) => item.animalId == shown.animalId,
+        orElse: () => shown,
+      );
+      final editedWasReviewed = _reviewedAnimalIds.contains(shown.animalId);
+      void restore(VisitAnimalEntryModel value, {required bool reviewed}) {
+        if (!mounted) return;
         setState(() {
           _animalEntries = [
             for (final entry in _animalEntries)
-              entry.animalId == shown.animalId ? shown : entry,
+              entry.animalId == shown.animalId ? value : entry,
           ];
-          if (!wasReviewed) {
-            _reviewedAnimalIds = {..._reviewedAnimalIds}
-              ..remove(shown.animalId);
-          }
+          _reviewedAnimalIds = reviewed
+              ? {..._reviewedAnimalIds, shown.animalId}
+              : ({..._reviewedAnimalIds}..remove(shown.animalId));
         });
+      }
+
+      final label = shown.animalCodigo.isEmpty
+          ? 'do animal'
+          : 'do brinco ${shown.animalCodigo}';
+      if (result == null) {
+        // Voltar do Android, X ou toque fora: mantém o que foi marcado (já
+        // aplicado a cada mudança) e oferece desfazer, em vez de perder.
+        if (edited != shown) {
+          showAppUndo(
+            'Alterações $label mantidas.',
+            onUndo: () => restore(shown, reviewed: wasReviewed),
+          );
+        }
+        return;
+      }
+      if (result.discard) {
+        restore(shown, reviewed: wasReviewed);
+        if (edited != shown) {
+          showAppUndo(
+            'Mudanças $label descartadas.',
+            onUndo: () => restore(edited, reviewed: editedWasReviewed),
+          );
+        }
         return;
       }
       _updateAnimalEntry(result.entry);
@@ -2350,7 +2394,9 @@ class _AnimalEditorModalContentState extends State<_AnimalEditorModalContent> {
         Align(
           alignment: Alignment.center,
           child: TextButton(
-            onPressed: () => Navigator.of(context).maybePop(),
+            onPressed: () => Navigator.of(
+              context,
+            ).pop(_ModalResult(_draft, 0, discard: true)),
             child: const Text('Descartar mudanças deste animal'),
           ),
         ),
@@ -2431,10 +2477,13 @@ class _SummaryChip extends StatelessWidget {
 /// Resultado do modal do animal no mobile: o que foi preenchido e para onde ir
 /// (-1 anterior, 0 fechar, 1 próximo).
 class _ModalResult {
-  const _ModalResult(this.entry, this.step);
+  const _ModalResult(this.entry, this.step, {this.discard = false});
 
   final VisitAnimalEntryModel entry;
   final int step;
+
+  /// Tocou em "Descartar mudanças deste animal" (o voltar mantém).
+  final bool discard;
 }
 
 /// Números calculados em uma linha, em vez de campos somente leitura.
