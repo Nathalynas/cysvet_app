@@ -21,6 +21,10 @@ const diasParaDiagnostico = 30;
 const antecedenciaAviso = 15;
 const antecedenciaPreParto = 30;
 
+/// Janela, em dias de gestação, para lembrar de reconfirmar a prenhez.
+const reconfirmacaoInicio = 60;
+const reconfirmacaoFim = 75;
+
 /// Vazia sem nova IA depois deste DEL merece atenção.
 const delSemIa = 60;
 
@@ -52,6 +56,13 @@ List<VisitActionHint> visitActionHints(
   }
 
   if (status == AnimalReproductiveStatus.pregnant) {
+    final gestacao = entry.diasPrenhez;
+    if (gestacao != null &&
+        gestacao >= reconfirmacaoInicio &&
+        gestacao <= reconfirmacaoFim) {
+      hints.add(VisitActionHint('Reconfirmar prenhez · $gestacao dias'));
+    }
+
     final paraSecar = entry.diasParaSecar;
     final jaSeca =
         produtiva == AnimalProductiveSituation.dry ||

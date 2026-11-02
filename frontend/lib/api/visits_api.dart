@@ -179,6 +179,9 @@ class VisitsRepository {
       'controleLeiteiroComDesconto': item.controleLeiteiroComDesconto,
       if (item.camposInformados != null)
         'camposInformados': item.camposInformados,
+      'metodoDiagnostico': item.metodoDiagnostico,
+      'tipoPerda': item.tipoPerda,
+      'causaPerda': item.causaPerda,
     };
   }
 }

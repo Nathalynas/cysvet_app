@@ -13,6 +13,8 @@ const informableVisitFields = <String>[
   'decisao',
   'controleLeiteiro',
   'numeroIaRecebida',
+  'tipoPerda',
+  'causaPerda',
 ];
 
 Object? _fieldValue(VisitAnimalEntryModel entry, String field) {
@@ -27,6 +29,8 @@ Object? _fieldValue(VisitAnimalEntryModel entry, String field) {
     'decisao' => entry.decisao,
     'controleLeiteiro' => entry.controleLeiteiro,
     'numeroIaRecebida' => entry.numeroIaRecebida,
+    'tipoPerda' => entry.tipoPerda,
+    'causaPerda' => entry.causaPerda,
     _ => null,
   };
 }

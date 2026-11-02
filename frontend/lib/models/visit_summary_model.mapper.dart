@@ -648,6 +648,22 @@ class VisitAnimalEntryModelMapper
       v.camposInformados;
   static const Field<VisitAnimalEntryModel, List<String>> _f$camposInformados =
       Field('camposInformados', _$camposInformados, opt: true);
+  static String? _$metodoDiagnostico(VisitAnimalEntryModel v) =>
+      v.metodoDiagnostico;
+  static const Field<VisitAnimalEntryModel, String> _f$metodoDiagnostico =
+      Field('metodoDiagnostico', _$metodoDiagnostico, opt: true);
+  static String? _$tipoPerda(VisitAnimalEntryModel v) => v.tipoPerda;
+  static const Field<VisitAnimalEntryModel, String> _f$tipoPerda = Field(
+    'tipoPerda',
+    _$tipoPerda,
+    opt: true,
+  );
+  static String? _$causaPerda(VisitAnimalEntryModel v) => v.causaPerda;
+  static const Field<VisitAnimalEntryModel, String> _f$causaPerda = Field(
+    'causaPerda',
+    _$causaPerda,
+    opt: true,
+  );
 
   @override
   final MappableFields<VisitAnimalEntryModel> fields = const {
@@ -705,6 +721,9 @@ class VisitAnimalEntryModelMapper
     #iepProjetado: _f$iepProjetado,
     #controleLeiteiroComDesconto: _f$controleLeiteiroComDesconto,
     #camposInformados: _f$camposInformados,
+    #metodoDiagnostico: _f$metodoDiagnostico,
+    #tipoPerda: _f$tipoPerda,
+    #causaPerda: _f$causaPerda,
   };
 
   static VisitAnimalEntryModel _instantiate(DecodingData data) {
@@ -763,6 +782,9 @@ class VisitAnimalEntryModelMapper
       iepProjetado: data.dec(_f$iepProjetado),
       controleLeiteiroComDesconto: data.dec(_f$controleLeiteiroComDesconto),
       camposInformados: data.dec(_f$camposInformados),
+      metodoDiagnostico: data.dec(_f$metodoDiagnostico),
+      tipoPerda: data.dec(_f$tipoPerda),
+      causaPerda: data.dec(_f$causaPerda),
     );
   }
 
@@ -893,6 +915,9 @@ abstract class VisitAnimalEntryModelCopyWith<
     double? iepProjetado,
     double? controleLeiteiroComDesconto,
     List<String>? camposInformados,
+    String? metodoDiagnostico,
+    String? tipoPerda,
+    String? causaPerda,
   });
   VisitAnimalEntryModelCopyWith<$R2, $In, $Out2> $chain<$R2, $Out2>(
     Then<$Out2, $R2> t,
@@ -972,6 +997,9 @@ class _VisitAnimalEntryModelCopyWithImpl<$R, $Out>
     Object? iepProjetado = $none,
     Object? controleLeiteiroComDesconto = $none,
     Object? camposInformados = $none,
+    Object? metodoDiagnostico = $none,
+    Object? tipoPerda = $none,
+    Object? causaPerda = $none,
   }) => $apply(
     FieldCopyWithData({
       if (animalId != null) #animalId: animalId,
@@ -1032,6 +1060,9 @@ class _VisitAnimalEntryModelCopyWithImpl<$R, $Out>
       if (controleLeiteiroComDesconto != $none)
         #controleLeiteiroComDesconto: controleLeiteiroComDesconto,
       if (camposInformados != $none) #camposInformados: camposInformados,
+      if (metodoDiagnostico != $none) #metodoDiagnostico: metodoDiagnostico,
+      if (tipoPerda != $none) #tipoPerda: tipoPerda,
+      if (causaPerda != $none) #causaPerda: causaPerda,
     }),
   );
   @override
@@ -1117,6 +1148,12 @@ class _VisitAnimalEntryModelCopyWithImpl<$R, $Out>
       or: $value.controleLeiteiroComDesconto,
     ),
     camposInformados: data.get(#camposInformados, or: $value.camposInformados),
+    metodoDiagnostico: data.get(
+      #metodoDiagnostico,
+      or: $value.metodoDiagnostico,
+    ),
+    tipoPerda: data.get(#tipoPerda, or: $value.tipoPerda),
+    causaPerda: data.get(#causaPerda, or: $value.causaPerda),
   );
 
   @override

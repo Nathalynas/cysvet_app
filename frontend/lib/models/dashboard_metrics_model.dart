@@ -20,6 +20,8 @@ class DashboardMetricsModel with DashboardMetricsModelMappable {
     this.servidas = 0,
     this.concebidas = 0,
     this.serieMensal = const [],
+    this.perdasGestacionais = 0,
+    this.taxaPerdaGestacional,
   });
 
   final int totalPropriedades;
@@ -44,6 +46,10 @@ class DashboardMetricsModel with DashboardMetricsModelMappable {
   final int servidas;
   final int concebidas;
   final List<DashboardMonthlyRateModel> serieMensal;
+
+  /// Perdas gestacionais do período e perdas / prenhezes (nulo sem prenhez).
+  final int perdasGestacionais;
+  final double? taxaPerdaGestacional;
 }
 
 @MappableClass()

@@ -345,6 +345,30 @@ void main() {
     },
   );
 
+  testWidgets('prenha que vira vazia registra a perda e o método do DG', (
+    tester,
+  ) async {
+    final saved = await pumpForm(tester, size: const Size(1400, 1000));
+
+    await tester.tap(find.widgetWithText(OutlinedButton, 'Prenha'));
+    await tester.pumpAndSettle();
+    expect(find.text('Perda gestacional'), findsNothing);
+
+    await tester.tap(find.widgetWithText(OutlinedButton, 'Vazia'));
+    await tester.pumpAndSettle();
+    expect(find.text('Perda gestacional'), findsOneWidget);
+
+    await tester.tap(find.text('Palpação'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Finalizar visita'));
+    await tester.pumpAndSettle();
+
+    final entry = saved.single.animais.first;
+    expect(entry.tipoPerda, 'aborto');
+    expect(entry.metodoDiagnostico, 'palpacao');
+    expect(entry.camposInformados, contains('tipoPerda'));
+  });
+
   testWidgets('"Outras situações" mostra as demais e grava a escolhida', (
     tester,
   ) async {

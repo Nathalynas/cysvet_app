@@ -27,7 +27,10 @@ import 'package:cysvet_app/models/property_summary_model.dart';
 import 'package:cysvet_app/models/visit_action_hint.dart';
 import 'package:cysvet_app/providers/visit_in_progress_provider.dart';
 import 'package:cysvet_app/providers/visits_provider.dart';
+import 'package:cysvet_app/local/sync_queue_store.dart';
+import 'package:cysvet_app/models/gestational_loss.dart';
 import 'package:cysvet_app/models/visit_informed_fields.dart';
+import 'package:cysvet_app/providers/offline_first.dart';
 import 'package:cysvet_app/models/visit_summary_model.dart';
 
 List<DateTime> _iaDatesFromEntry(VisitAnimalEntryModel entry) {
@@ -235,6 +238,28 @@ class _VisitFormPageState extends ConsumerState<VisitFormPage> {
   /// Reservado ao abrir: tentar salvar de novo não cria outra visita.
   String _newVisitIdExterno = const Uuid().v4();
 
+  /// Método do DG da visita, lembrado no aparelho entre visitas.
+  String _metodoDg = 'ultrassom';
+  static const _metodoDgKey = 'metodo_dg';
+
+  Future<void> _loadMetodoDg() async {
+    if (ref.read(offlineScopeProvider) == null) return;
+    try {
+      final saved = await ref.read(syncQueueStoreProvider).readMeta(_metodoDgKey);
+      if (mounted && saved != null && metodosDiagnostico.containsKey(saved)) {
+        setState(() => _metodoDg = saved);
+      }
+    } catch (_) {
+      // Preferência é só conveniência.
+    }
+  }
+
+  void _setMetodoDg(String value) {
+    setState(() => _metodoDg = value);
+    if (ref.read(offlineScopeProvider) == null) return;
+    ref.read(syncQueueStoreProvider).writeMeta(_metodoDgKey, value).ignore();
+  }
+
   /// Esta tela reabriu a visita que tinha ficado em andamento.
   bool _resumed = false;
 
@@ -244,6 +269,7 @@ class _VisitFormPageState extends ConsumerState<VisitFormPage> {
     _dataVisita.text = formatDateInput(DateTime.now());
     _propertyId = widget.initialPropertyId;
     _dataVisita.addListener(_rememberProgress);
+    _loadMetodoDg();
     if (_restoreProgress()) {
       _resumed = true;
     } else if (widget.editingIdExterno != null) {
@@ -446,6 +472,8 @@ class _VisitFormPageState extends ConsumerState<VisitFormPage> {
                             _HeaderFields(
                               propertyId: _propertyId,
                               properties: properties,
+                              metodoDg: _metodoDg,
+                              onMetodoDgChanged: _setMetodoDg,
                               dataVisitaController: _dataVisita,
                               onVisitDateChanged: (_) =>
                                   _recalculateAnimalEntries(),
@@ -886,6 +914,7 @@ class _VisitFormPageState extends ConsumerState<VisitFormPage> {
         nomeUsuario: editing?.nomeUsuario,
         animais: _animalEntries
             .where((item) => _reviewedAnimalIds.contains(item.animalId))
+            .map((item) => item.copyWith(metodoDiagnostico: _metodoDg))
             .toList(growable: false),
       );
 
@@ -1282,6 +1311,8 @@ class _HeaderFields extends StatelessWidget {
   const _HeaderFields({
     required this.propertyId,
     required this.properties,
+    required this.metodoDg,
+    required this.onMetodoDgChanged,
     required this.dataVisitaController,
     required this.onVisitDateChanged,
     required this.onPropertyChanged,
@@ -1292,9 +1323,41 @@ class _HeaderFields extends StatelessWidget {
   final TextEditingController dataVisitaController;
   final ValueChanged<String> onVisitDateChanged;
   final ValueChanged<int?> onPropertyChanged;
+  final String metodoDg;
+  final ValueChanged<String> onMetodoDgChanged;
 
   @override
   Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _buildFields(),
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            const Text('DG por'),
+            const SizedBox(width: 12),
+            Expanded(
+              child: SegmentedButton<String>(
+                showSelectedIcon: false,
+                style: SegmentedButton.styleFrom(
+                  minimumSize: const Size(0, 48),
+                ),
+                segments: [
+                  for (final item in metodosDiagnostico.entries)
+                    ButtonSegment(value: item.key, label: Text(item.value)),
+                ],
+                selected: {metodoDg},
+                onSelectionChanged: (value) => onMetodoDgChanged(value.first),
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildFields() {
     return LayoutBuilder(
       builder: (context, constraints) {
         final stacked = constraints.maxWidth < 900;
@@ -2205,8 +2268,13 @@ class _AnimalEditorFields extends StatelessWidget {
         ReproductiveStatusPicker(
           value: entry.situacaoReprodutiva,
           onChanged: (value) =>
-              emitChanged(entry.copyWith(situacaoReprodutiva: value)),
+              emitChanged(withReproductiveStatus(entry, value)),
         ),
+        if (AnimalReproductiveStatus.fromApiValue(entry.situacaoReprodutiva) ==
+            AnimalReproductiveStatus.empty) ...[
+          const SizedBox(height: 12),
+          _GestationalLossSection(entry: entry, onChanged: emitChanged),
+        ],
         const SizedBox(height: 14),
         _CalculatedSummary(entry: entry, iaHistory: iaHistory),
         const SizedBox(height: 14),
@@ -2487,6 +2555,68 @@ class _SummaryChip extends StatelessWidget {
 
 /// Resultado do modal do animal no mobile: o que foi preenchido e para onde ir
 /// (-1 anterior, 0 fechar, 1 próximo).
+/// Perda gestacional da vaca vista vazia. Vem pré-marcada quando ela estava
+/// prenha (reabsorção até 45 dias de gestação, aborto depois).
+class _GestationalLossSection extends StatelessWidget {
+  const _GestationalLossSection({required this.entry, required this.onChanged});
+
+  final VisitAnimalEntryModel entry;
+  final ValueChanged<VisitAnimalEntryModel> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final selected = entry.tipoPerda;
+    Widget chip(String? value, String label) => ChoiceChip(
+      label: Text(label),
+      selected: selected == value,
+      materialTapTargetSize: MaterialTapTargetSize.padded,
+      onSelected: (_) => onChanged(
+        entry.copyWith(
+          tipoPerda: value,
+          causaPerda: value == null ? null : entry.causaPerda,
+        ),
+      ),
+    );
+
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text('Perda gestacional', style: theme.textTheme.titleSmall),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            runSpacing: 4,
+            children: [
+              chip(null, 'Não houve perda'),
+              for (final item in gestationalLossTypes.entries)
+                chip(item.key, item.value),
+            ],
+          ),
+          if (selected != null) ...[
+            const SizedBox(height: 8),
+            AppTextField(
+              label: 'Causa suspeita (opcional)',
+              initialValue: entry.causaPerda ?? '',
+              onChanged: (value) => onChanged(
+                entry.copyWith(
+                  causaPerda: value.trim().isEmpty ? null : value.trim(),
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
 class _ModalResult {
   const _ModalResult(this.entry, this.step, {this.discard = false});
 

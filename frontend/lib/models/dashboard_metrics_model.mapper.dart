@@ -124,6 +124,18 @@ class DashboardMetricsModelMapper
     opt: true,
     def: const [],
   );
+  static int _$perdasGestacionais(DashboardMetricsModel v) =>
+      v.perdasGestacionais;
+  static const Field<DashboardMetricsModel, int> _f$perdasGestacionais = Field(
+    'perdasGestacionais',
+    _$perdasGestacionais,
+    opt: true,
+    def: 0,
+  );
+  static double? _$taxaPerdaGestacional(DashboardMetricsModel v) =>
+      v.taxaPerdaGestacional;
+  static const Field<DashboardMetricsModel, double> _f$taxaPerdaGestacional =
+      Field('taxaPerdaGestacional', _$taxaPerdaGestacional, opt: true);
 
   @override
   final MappableFields<DashboardMetricsModel> fields = const {
@@ -141,6 +153,8 @@ class DashboardMetricsModelMapper
     #servidas: _f$servidas,
     #concebidas: _f$concebidas,
     #serieMensal: _f$serieMensal,
+    #perdasGestacionais: _f$perdasGestacionais,
+    #taxaPerdaGestacional: _f$taxaPerdaGestacional,
   };
 
   static DashboardMetricsModel _instantiate(DecodingData data) {
@@ -159,6 +173,8 @@ class DashboardMetricsModelMapper
       servidas: data.dec(_f$servidas),
       concebidas: data.dec(_f$concebidas),
       serieMensal: data.dec(_f$serieMensal),
+      perdasGestacionais: data.dec(_f$perdasGestacionais),
+      taxaPerdaGestacional: data.dec(_f$taxaPerdaGestacional),
     );
   }
 
@@ -257,6 +273,8 @@ abstract class DashboardMetricsModelCopyWith<
     int? servidas,
     int? concebidas,
     List<DashboardMonthlyRateModel>? serieMensal,
+    int? perdasGestacionais,
+    double? taxaPerdaGestacional,
   });
   DashboardMetricsModelCopyWith<$R2, $In, $Out2> $chain<$R2, $Out2>(
     Then<$Out2, $R2> t,
@@ -302,6 +320,8 @@ class _DashboardMetricsModelCopyWithImpl<$R, $Out>
     int? servidas,
     int? concebidas,
     List<DashboardMonthlyRateModel>? serieMensal,
+    int? perdasGestacionais,
+    Object? taxaPerdaGestacional = $none,
   }) => $apply(
     FieldCopyWithData({
       if (totalPropriedades != null) #totalPropriedades: totalPropriedades,
@@ -319,6 +339,9 @@ class _DashboardMetricsModelCopyWithImpl<$R, $Out>
       if (servidas != null) #servidas: servidas,
       if (concebidas != null) #concebidas: concebidas,
       if (serieMensal != null) #serieMensal: serieMensal,
+      if (perdasGestacionais != null) #perdasGestacionais: perdasGestacionais,
+      if (taxaPerdaGestacional != $none)
+        #taxaPerdaGestacional: taxaPerdaGestacional,
     }),
   );
   @override
@@ -346,6 +369,14 @@ class _DashboardMetricsModelCopyWithImpl<$R, $Out>
     servidas: data.get(#servidas, or: $value.servidas),
     concebidas: data.get(#concebidas, or: $value.concebidas),
     serieMensal: data.get(#serieMensal, or: $value.serieMensal),
+    perdasGestacionais: data.get(
+      #perdasGestacionais,
+      or: $value.perdasGestacionais,
+    ),
+    taxaPerdaGestacional: data.get(
+      #taxaPerdaGestacional,
+      or: $value.taxaPerdaGestacional,
+    ),
   );
 
   @override

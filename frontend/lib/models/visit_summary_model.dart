@@ -91,6 +91,9 @@ class VisitAnimalEntryModel with VisitAnimalEntryModelMappable {
     this.iepProjetado,
     this.controleLeiteiroComDesconto,
     this.camposInformados,
+    this.metodoDiagnostico,
+    this.tipoPerda,
+    this.causaPerda,
   });
 
   final int animalId;
@@ -166,6 +169,13 @@ class VisitAnimalEntryModel with VisitAnimalEntryModelMappable {
   /// Campos que o veterinário alterou ou confirmou nesta visita; só eles
   /// viram eventos no servidor. `null` = visita de versão antiga (todos).
   final List<String>? camposInformados;
+
+  /// Método do DG desta visita: `ultrassom` ou `palpacao`.
+  final String? metodoDiagnostico;
+
+  /// Perda gestacional informada (ver `gestational_loss.dart`).
+  final String? tipoPerda;
+  final String? causaPerda;
 
   bool get hasCollectedData {
     return dataNascimento != null ||

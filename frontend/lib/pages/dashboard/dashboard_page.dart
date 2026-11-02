@@ -3125,6 +3125,14 @@ class _DashboardInsights {
         value: _formatCount(productiveCounts.heifers),
         color: _ChartColors.amber,
       ),
+      _MetricItem(
+        label: 'Perda gestacional',
+        value: metrics.taxaPerdaGestacional == null
+            ? '--'
+            : '${_formatWholePercent(metrics.taxaPerdaGestacional)} '
+                  '(${metrics.perdasGestacionais})',
+        color: _ChartColors.rose,
+      ),
     ];
 
     return items;
