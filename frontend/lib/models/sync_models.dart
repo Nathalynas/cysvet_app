@@ -32,7 +32,36 @@ enum SyncOperationType {
   }
 }
 
+/// `error` = recusado pelo servidor (dado inválido): sai do reenvio
+/// automático e espera o usuário tentar de novo ou descartar. Falhas de rede
+/// ou do servidor voltam para `pending`.
 enum SyncMutationStatus { pending, syncing, error }
+
+/// Divide a fila em lotes pequenos para rede ruim: no máximo [maxItems] itens
+/// e cerca de [maxBytes] por requisição (um item maior que o limite vai
+/// sozinho). Lotes de 50 visitas com 300 animais passavam do tempo limite.
+List<List<SyncMutation>> buildSyncBatches(
+  List<SyncMutation> mutations, {
+  int maxItems = 10,
+  int maxBytes = 256 * 1024,
+}) {
+  final batches = <List<SyncMutation>>[];
+  var current = <SyncMutation>[];
+  var currentBytes = 0;
+  for (final mutation in mutations) {
+    final bytes = utf8.encode(jsonEncode(mutation.toRequestItem())).length;
+    final full = current.length >= maxItems || currentBytes + bytes > maxBytes;
+    if (current.isNotEmpty && full) {
+      batches.add(current);
+      current = <SyncMutation>[];
+      currentBytes = 0;
+    }
+    current.add(mutation);
+    currentBytes += bytes;
+  }
+  if (current.isNotEmpty) batches.add(current);
+  return batches;
+}
 
 class SyncMutation {
   const SyncMutation({

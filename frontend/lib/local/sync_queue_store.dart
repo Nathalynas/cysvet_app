@@ -115,16 +115,18 @@ class SyncQueueStore {
 
   /// Mutações a enviar, na ordem oficial do contrato
   /// (property -> lot -> animal -> visit -> event) e, dentro da entidade, na
-  /// ordem de criação. Inclui as que falharam antes (nova tentativa).
+  /// ordem de criação. Só as pendentes (as recusadas esperam o usuário).
   Future<List<SyncMutation>> listSendable({
     required int companyId,
     required int userId,
   }) async {
     final db = await _database();
+    // Recusados pelo servidor não são reenviados sozinhos: o mesmo dado seria
+    // recusado de novo a cada 2 minutos, para sempre.
     final rows = await db.query(
       'sync_mutations',
-      where: 'company_id = ? AND user_id = ? AND status != ?',
-      whereArgs: [companyId, userId, SyncMutationStatus.syncing.name],
+      where: 'company_id = ? AND user_id = ? AND status = ?',
+      whereArgs: [companyId, userId, SyncMutationStatus.pending.name],
       orderBy: 'id ASC',
     );
 
@@ -134,6 +136,21 @@ class SyncQueueStore {
       return order != 0 ? order : a.id.compareTo(b.id);
     });
     return mutations;
+  }
+
+  /// Itens recusados pelo servidor, com o motivo, para o usuário decidir.
+  Future<List<SyncMutation>> listRejected({
+    required int companyId,
+    required int userId,
+  }) async {
+    final db = await _database();
+    final rows = await db.query(
+      'sync_mutations',
+      where: 'company_id = ? AND user_id = ? AND status = ?',
+      whereArgs: [companyId, userId, SyncMutationStatus.error.name],
+      orderBy: 'id ASC',
+    );
+    return rows.map(SyncMutation.fromRow).toList();
   }
 
   Future<int> countPending({

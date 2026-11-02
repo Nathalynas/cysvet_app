@@ -173,6 +173,23 @@ class VisitsLocalStore {
   }
 
   /// Marca a visita como confirmada pelo backend, gravando o id do servidor.
+  /// Volta a visita para rascunho no aparelho (ex.: envio recusado e
+  /// descartado da fila): nada se perde e ela pode ser corrigida e
+  /// finalizada de novo.
+  Future<void> markAsDraft(String idExterno, {String? reason}) async {
+    final db = await _database();
+    await db.update(
+      'visits',
+      {
+        'local_status': VisitLocalStatus.draft.name,
+        'sync_status': SyncStatusEnum.localOnly.name,
+        'sync_error': reason,
+      },
+      where: 'id_externo = ?',
+      whereArgs: [idExterno],
+    );
+  }
+
   Future<void> markSynced(String idExterno, {int? serverId}) async {
     final db = await _database();
     await db.update(

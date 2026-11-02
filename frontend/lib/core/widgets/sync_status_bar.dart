@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:cysvet_app/core/enums/sync_status_enum.dart';
 import 'package:cysvet_app/core/presentation/app_scaffold_messenger.dart';
+import 'package:cysvet_app/core/widgets/rejected_sync_items_dialog.dart';
 import 'package:cysvet_app/providers/connectivity_provider.dart';
 import 'package:cysvet_app/providers/sync_provider.dart';
 
@@ -82,8 +83,10 @@ class SyncStatusBar extends ConsumerWidget {
     } else if (sync.status == SyncStatusEnum.error) {
       view = (
         icon: Icons.cloud_off_outlined,
-        title: 'Erro ao sincronizar',
-        subtitle: sync.lastMessage ?? pendingLabel,
+        title: sync.errorCount == 1
+            ? '1 registro não aceito pelo servidor'
+            : '${sync.errorCount} registros não aceitos pelo servidor',
+        subtitle: 'Continuam salvos no aparelho. Toque em "Ver" para decidir.',
         background: colorScheme.errorContainer,
         foreground: colorScheme.onErrorContainer,
       );
@@ -160,6 +163,13 @@ class SyncStatusBar extends ConsumerWidget {
                     .read(syncControllerProvider.notifier)
                     .dismissRejectedNotice,
                 icon: const Icon(Icons.close),
+              )
+            else if (!sync.isSyncing && sync.status == SyncStatusEnum.error)
+              TextButton.icon(
+                onPressed: () => showRejectedSyncItemsDialog(context),
+                style: TextButton.styleFrom(foregroundColor: view.foreground),
+                icon: const Icon(Icons.list_alt, size: 18),
+                label: const Text('Ver'),
               )
             else if (!isOffline && !sync.isSyncing && pending > 0)
               TextButton.icon(

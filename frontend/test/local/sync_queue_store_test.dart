@@ -97,4 +97,32 @@ void main() {
     final orfas = await visits.listFinalizedWithoutMutation(1);
     expect(orfas.map((r) => r.visit.idExterno), ['v-orfa']);
   });
+
+  test('recusado pelo servidor não volta sozinho para o envio', () async {
+    final mutation = await enfileirar(SyncOperationType.create);
+    await queue.markError([mutation.id], 'Dado inválido');
+
+    expect(await queue.listSendable(companyId: 1, userId: 1), isEmpty);
+    final recusados = await queue.listRejected(companyId: 1, userId: 1);
+    expect(recusados.single.lastError, 'Dado inválido');
+
+    await queue.markPending([mutation.id]);
+    expect(await queue.listSendable(companyId: 1, userId: 1), hasLength(1));
+  });
+
+  test('visita descartada do envio volta a ser rascunho, sem se perder', () async {
+    await visits.saveLocal(
+      companyId: 1,
+      visit: visita('v-recusada'),
+      localStatus: VisitLocalStatus.finalized,
+      syncStatus: SyncStatusEnum.error,
+    );
+    await visits.markAsDraft('v-recusada', reason: 'Dado inválido');
+
+    final record = await visits.findByIdExterno('v-recusada');
+    expect(record!.isDraft, isTrue);
+    expect(record.syncError, 'Dado inválido');
+    // Rascunho não é reenfileirado sozinho ao abrir o app.
+    expect(await visits.listFinalizedWithoutMutation(1), isEmpty);
+  });
 }

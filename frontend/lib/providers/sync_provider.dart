@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:dio/dio.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:cysvet_app/api/sync_api.dart';
@@ -95,13 +96,21 @@ class SyncState {
 /// Dispara automaticamente ao abrir o app, ao voltar a conexão, após cada
 /// gravação local e periodicamente enquanto houver pendências.
 class SyncController extends Notifier<SyncState> {
-  static const _batchSize = 50;
-  static const _retryInterval = Duration(minutes: 2);
+  static const _tick = Duration(minutes: 1);
+  static const _firstRetry = Duration(minutes: 2);
+  static const _maxRetry = Duration(minutes: 30);
+  static const _resumeMinGap = Duration(seconds: 30);
   static const _sentNoticeDuration = Duration(seconds: 4);
 
   bool _running = false;
   bool _rerunRequested = false;
   Timer? _sentNoticeTimer;
+
+  /// Falhas seguidas sem falar com o servidor: a espera entre tentativas
+  /// automáticas dobra (2, 4, 8... até 30 min) para poupar bateria e dados.
+  int _failures = 0;
+  DateTime _nextAutoSync = DateTime.fromMillisecondsSinceEpoch(0);
+  DateTime? _lastAttempt;
 
   @override
   SyncState build() {
@@ -113,14 +122,31 @@ class SyncController extends Notifier<SyncState> {
       final wasOnline = previous?.asData?.value;
       if (wasOnline == null) return;
       if (next.asData?.value == true && !wasOnline) {
+        _resetBackoff();
         unawaited(syncNow());
       }
     });
 
-    final timer = Timer.periodic(_retryInterval, (_) {
-      if (state.pendingCount > 0) unawaited(syncNow());
+    final timer = Timer.periodic(_tick, (_) {
+      if (state.pendingCount > state.errorCount &&
+          !DateTime.now().isBefore(_nextAutoSync)) {
+        unawaited(syncNow());
+      }
     });
     ref.onDispose(timer.cancel);
+
+    // Voltou ao app (o Android pode ter pausado tudo em segundo plano):
+    // tenta enviar e buscar o que mudou.
+    final lifecycle = AppLifecycleListener(
+      onResume: () {
+        final last = _lastAttempt;
+        if (last == null || DateTime.now().difference(last) > _resumeMinGap) {
+          _resetBackoff();
+          unawaited(syncNow());
+        }
+      },
+    );
+    ref.onDispose(lifecycle.dispose);
     ref.onDispose(() => _sentNoticeTimer?.cancel());
 
     Future.microtask(() async {
@@ -163,6 +189,7 @@ class SyncController extends Notifier<SyncState> {
     }
 
     _running = true;
+    _lastAttempt = DateTime.now();
     state = state.copyWith(isSyncing: true, clearMessage: true);
     var reachedBackend = false;
 
@@ -199,12 +226,61 @@ class SyncController extends Notifier<SyncState> {
       }
     }
 
+    if (reachedBackend) {
+      _resetBackoff();
+    } else {
+      _failures++;
+      final factor = 1 << (_failures - 1).clamp(0, 10);
+      final wait = _firstRetry * factor;
+      _nextAutoSync = DateTime.now().add(wait > _maxRetry ? _maxRetry : wait);
+    }
+
     if (_rerunRequested && ref.mounted) {
       _rerunRequested = false;
       return syncNow();
     }
     return reachedBackend;
   }
+
+  void _resetBackoff() {
+    _failures = 0;
+    _nextAutoSync = DateTime.fromMillisecondsSinceEpoch(0);
+  }
+
+  /// Itens que o servidor recusou, com o motivo (`lastError`).
+  Future<List<SyncMutation>> rejectedItems() async {
+    final scope = ref.read(offlineScopeProvider);
+    if (scope == null) return const [];
+    return ref
+        .read(syncQueueStoreProvider)
+        .listRejected(companyId: scope.companyId, userId: scope.userId);
+  }
+
+  /// Devolve o item recusado para a fila e tenta enviar de novo.
+  Future<void> retryRejected(SyncMutation mutation) async {
+    await ref.read(syncQueueStoreProvider).markPending([mutation.id]);
+    await ref
+        .read(visitsLocalStoreProvider)
+        .updateSyncStatus(_visitIds([mutation]), SyncStatusEnum.pending);
+    await notifyLocalChange();
+    _resetBackoff();
+    unawaited(syncNow());
+  }
+
+  /// Tira o item recusado da fila. A visita não é apagada: volta a ser
+  /// rascunho no aparelho para ser corrigida e finalizada de novo.
+  Future<void> discardRejected(SyncMutation mutation) async {
+    await ref.read(syncQueueStoreProvider).deleteByIds([mutation.id]);
+    if (mutation.entity == SyncEntity.visit) {
+      await ref
+          .read(visitsLocalStoreProvider)
+          .markAsDraft(mutation.entityIdExterno, reason: mutation.lastError);
+    }
+    await notifyLocalChange();
+  }
+
+  /// Nome curto do registro (ex.: "visita de 05/10") para avisos.
+  static String describeMutation(SyncMutation mutation) => _describe(mutation);
 
   /// Visita finalizada sem mutação na fila (app fechado entre as duas
   /// gravações, antes de irem para a mesma transação) volta para a fila.
@@ -262,11 +338,8 @@ class SyncController extends Notifier<SyncState> {
 
     var sent = 0;
     final conflicts = <String>[];
-    for (var start = 0; start < mutations.length; start += _batchSize) {
-      final batch = mutations.sublist(
-        start,
-        (start + _batchSize).clamp(0, mutations.length),
-      );
+    var start = 0;
+    for (final batch in buildSyncBatches(mutations)) {
       try {
         final result = await _pushBatch(batch);
         sent += result.sent;
@@ -291,6 +364,7 @@ class SyncController extends Notifier<SyncState> {
         );
         rethrow;
       }
+      start += batch.length;
     }
     return (sent: sent, conflicts: conflicts);
   }
@@ -303,8 +377,16 @@ class SyncController extends Notifier<SyncState> {
       return await _applyResults(batch, results);
     } on DioException catch (error) {
       final statusCode = error.response?.statusCode;
+      // Só 4xx é recusa do dado. 5xx (servidor fora, deploy) e 408/429 são
+      // passageiros: o lote volta para a fila e tenta mais tarde.
       final rejectedByServer =
-          !isNetworkError(error) && statusCode != null && statusCode != 401;
+          !isNetworkError(error) &&
+          statusCode != null &&
+          statusCode >= 400 &&
+          statusCode < 500 &&
+          statusCode != 401 &&
+          statusCode != 408 &&
+          statusCode != 429;
       if (!rejectedByServer) rethrow;
 
       // O backend devolve REJECTED por item; um erro no lote inteiro indica
@@ -403,12 +485,12 @@ class SyncController extends Notifier<SyncState> {
     }
 
     if (missing.isNotEmpty) {
-      const message = 'O servidor não confirmou o recebimento deste item.';
-      await queue.markError(_ids(missing), message);
+      // Sem confirmação não é recusa: tenta de novo no próximo envio (o
+      // servidor deduplica pela chave da mutação).
+      await queue.markPending(_ids(missing));
       await visitsStore.updateSyncStatus(
         _visitIds(missing),
-        SyncStatusEnum.error,
-        error: message,
+        SyncStatusEnum.pending,
       );
     }
     for (final entry in rejected.entries) {

@@ -16,8 +16,13 @@ class SyncRepository {
 
   /// `POST /api/sync` — envia a fila de mutações.
   Future<List<SyncItemResult>> push(List<SyncMutation> mutations) async {
+    // Rede rural: 15 s não bastam para subir uma visita grande em 3G fraco.
     final response = await _dio.post<Object?>(
       '/api/sync',
+      options: Options(
+        sendTimeout: const Duration(seconds: 60),
+        receiveTimeout: const Duration(seconds: 60),
+      ),
       data: {
         'items': mutations
             .map((mutation) => mutation.toRequestItem())
