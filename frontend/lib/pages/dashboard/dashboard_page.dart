@@ -3169,13 +3169,8 @@ class _DashboardInsights {
       reproductiveChartItems: _buildReproductiveChartItems(reproductiveCounts),
       lactationThirds: _buildLactationThirds(records),
       parityChartItems: _buildParityChartItems(records),
-      rateItems: _buildRateItems(metrics, records, periodEntries),
-      rateTrendPoints: _buildRateTrendPoints(
-        metrics: metrics,
-        visits: data.visits,
-        records: records,
-        now: now,
-      ),
+      rateItems: _buildRateItems(metrics),
+      rateTrendPoints: _buildRateTrendPoints(metrics),
       monthlySchedule: _buildMonthlySchedule(records, range, now),
       agendaItems: _buildAgendaItems(
         visits: data.visits,
@@ -3716,122 +3711,56 @@ List<_ChartCountItem> _buildParityChartItems(List<_AnimalRecord> records) {
       .toList(growable: false);
 }
 
-List<_RateItem> _buildRateItems(
-  DashboardMetricsModel metrics,
-  List<_AnimalRecord> records,
-  List<_VisitEntryRecord> entries,
-) {
-  // Dados integrados ao back-end: taxa de serviço e taxa de prenhez.
-  // Dados apenas front-end: taxa de concepção e concepção por IA derivadas
-  // dos status/lançamentos de visitas. Pendente de integração: concepção IATF
-  // depende de campo/endpoint especifico.
+List<_RateItem> _buildRateItems(DashboardMetricsModel metrics) {
+  // Todas as taxas vêm do servidor (ciclos de 21 dias); o app só exibe.
   return [
     _RateItem(
       label: 'Taxa de serviço',
       shortLabel: 'Serviço',
-      value: metrics.taxaServico,
+      value: metrics.ciclos == 0 ? null : metrics.taxaServico,
       color: _ChartColors.primary,
       target: 0.65,
     ),
     _RateItem(
       label: 'Taxa de concepção',
       shortLabel: 'Concepção',
-      value: _conceptionRate(records),
+      value: metrics.taxaConcepcao,
       color: _ChartColors.blue,
       target: 0.40,
     ),
     _RateItem(
       label: 'Taxa de prenhez',
       shortLabel: 'Prenhez',
-      value: metrics.taxaPrenhez,
+      value: metrics.ciclos == 0 ? null : metrics.taxaPrenhez,
       color: _ChartColors.amber,
       target: 0.25,
     ),
     _RateItem(
       label: 'Concepção por IA',
       shortLabel: 'IA',
-      value: _iaConceptionRate(entries),
+      value: metrics.taxaConcepcaoIa,
       color: _ChartColors.indigo,
       target: 0.35,
     ),
   ];
 }
 
-List<_MonthlyRatePoint> _buildRateTrendPoints({
-  required DashboardMetricsModel metrics,
-  required List<VisitSummaryModel> visits,
-  required List<_AnimalRecord> records,
-  required DateTime now,
-}) {
-  final months = List<DateTime>.generate(6, (index) {
-    return DateTime(now.year, now.month - 5 + index);
-  });
-  final fallbackConception = _conceptionRate(records);
-
-  return months
-      .map((month) {
-        final monthVisits = visits
-            .where((visit) {
-              final date = visit.dataVisita;
-              return date != null &&
-                  date.year == month.year &&
-                  date.month == month.month;
-            })
-            .toList(growable: false);
-        final entries = _visitEntryRecords(monthVisits);
-        final service = _monthlyServiceRate(entries) ?? metrics.taxaServico;
-        final conception =
-            _monthlyConceptionRate(entries) ?? fallbackConception;
-        final pregnancy = _monthlyPregnancyRate(entries) ?? metrics.taxaPrenhez;
-
+List<_MonthlyRatePoint> _buildRateTrendPoints(DashboardMetricsModel metrics) {
+  return metrics.serieMensal
+      .map((point) {
+        final parts = point.mes.split('-');
+        final month = parts.length == 2
+            ? DateTime(int.tryParse(parts[0]) ?? 0, int.tryParse(parts[1]) ?? 1)
+            : DateTime(0);
         return _MonthlyRatePoint(
           month: month,
-          service: _normalizeRate(service),
-          conception: _normalizeRate(conception),
-          pregnancy: _normalizeRate(pregnancy),
+          service: _normalizeRate(point.taxaServico),
+          conception: _normalizeRate(point.taxaConcepcao),
+          pregnancy: _normalizeRate(point.taxaPrenhez),
         );
       })
+      .where((point) => point.month.year > 0)
       .toList(growable: false);
-}
-
-double? _monthlyServiceRate(List<_VisitEntryRecord> entries) {
-  final denominator = entries.where((record) {
-    return record.entry.hasCollectedData;
-  }).length;
-  if (denominator == 0) return null;
-
-  final serviced = entries.where((record) {
-    final entry = record.entry;
-    final reproductiveText = [
-      entry.situacaoReprodutiva,
-      entry.diagnostico,
-      entry.decisao,
-    ].whereType<String>().join(' ').normalize();
-
-    return entry.dataUltimaIa != null ||
-        (entry.numeroIaRecebida ?? 0) > 0 ||
-        reproductiveText.contains('insemin');
-  }).length;
-
-  return serviced / denominator;
-}
-
-double? _monthlyConceptionRate(List<_VisitEntryRecord> entries) {
-  return IndicadorReprodutivoCalculator.pregnancyRateFromStatuses(
-    entries.map((record) {
-      final entry = record.entry;
-      return IndicadorReprodutivoCalculator.resolveStatusFromTexts(
-        texts: [entry.situacaoReprodutiva, entry.diagnostico, entry.decisao],
-      );
-    }),
-  );
-}
-
-double? _monthlyPregnancyRate(List<_VisitEntryRecord> entries) {
-  final service = _monthlyServiceRate(entries);
-  final conception = _monthlyConceptionRate(entries);
-  if (service == null || conception == null) return null;
-  return service * conception;
 }
 
 double? _normalizeRate(double? value) {
@@ -4341,18 +4270,6 @@ String _normalizedRecordText(_AnimalRecord record) {
     entry?.decisao ?? '',
     entry?.diagnostico ?? '',
   ].join(' ').normalize();
-}
-
-double? _conceptionRate(List<_AnimalRecord> records) {
-  return IndicadorReprodutivoCalculator.pregnancyRateFromStatuses(
-    records.map(_reproductiveStatusFor),
-  );
-}
-
-double? _iaConceptionRate(List<_VisitEntryRecord> entries) {
-  return IndicadorReprodutivoCalculator.iaConceptionRateFromEntries(
-    entries.map((record) => record.entry),
-  );
 }
 
 bool _animalMatchesPropertyId(AnimalSummaryModel animal, int? propertyId) {
