@@ -178,6 +178,9 @@ void main() {
       final entries = saved.single.animais;
       expect(entries.map((entry) => entry.animalCodigo), ['101', '102']);
       expect(entries.first.situacaoReprodutiva, 'prenha');
+      // Só a situação marcada vira evento; o segundo animal só foi visto.
+      expect(entries.first.camposInformados, contains('situacaoReprodutiva'));
+      expect(entries.last.camposInformados, isEmpty);
     },
   );
 

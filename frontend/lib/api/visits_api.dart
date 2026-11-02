@@ -177,6 +177,8 @@ class VisitsRepository {
       'mesPrevistoParto': item.mesPrevistoParto,
       'iepProjetado': item.iepProjetado,
       'controleLeiteiroComDesconto': item.controleLeiteiroComDesconto,
+      if (item.camposInformados != null)
+        'camposInformados': item.camposInformados,
     };
   }
 }

@@ -90,6 +90,7 @@ class VisitAnimalEntryModel with VisitAnimalEntryModelMappable {
     this.mesPrevistoParto,
     this.iepProjetado,
     this.controleLeiteiroComDesconto,
+    this.camposInformados,
   });
 
   final int animalId;
@@ -161,6 +162,10 @@ class VisitAnimalEntryModel with VisitAnimalEntryModelMappable {
   final String? mesPrevistoParto;
   final double? iepProjetado;
   final double? controleLeiteiroComDesconto;
+
+  /// Campos que o veterinário alterou ou confirmou nesta visita; só eles
+  /// viram eventos no servidor. `null` = visita de versão antiga (todos).
+  final List<String>? camposInformados;
 
   bool get hasCollectedData {
     return dataNascimento != null ||

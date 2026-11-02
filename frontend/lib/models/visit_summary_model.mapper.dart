@@ -644,6 +644,10 @@ class VisitAnimalEntryModelMapper
     _$controleLeiteiroComDesconto,
     opt: true,
   );
+  static List<String>? _$camposInformados(VisitAnimalEntryModel v) =>
+      v.camposInformados;
+  static const Field<VisitAnimalEntryModel, List<String>> _f$camposInformados =
+      Field('camposInformados', _$camposInformados, opt: true);
 
   @override
   final MappableFields<VisitAnimalEntryModel> fields = const {
@@ -700,6 +704,7 @@ class VisitAnimalEntryModelMapper
     #mesPrevistoParto: _f$mesPrevistoParto,
     #iepProjetado: _f$iepProjetado,
     #controleLeiteiroComDesconto: _f$controleLeiteiroComDesconto,
+    #camposInformados: _f$camposInformados,
   };
 
   static VisitAnimalEntryModel _instantiate(DecodingData data) {
@@ -757,6 +762,7 @@ class VisitAnimalEntryModelMapper
       mesPrevistoParto: data.dec(_f$mesPrevistoParto),
       iepProjetado: data.dec(_f$iepProjetado),
       controleLeiteiroComDesconto: data.dec(_f$controleLeiteiroComDesconto),
+      camposInformados: data.dec(_f$camposInformados),
     );
   }
 
@@ -830,6 +836,8 @@ abstract class VisitAnimalEntryModelCopyWith<
   $Out
 >
     implements ClassCopyWith<$R, $In, $Out> {
+  ListCopyWith<$R, String, ObjectCopyWith<$R, String, String>>?
+  get camposInformados;
   $R call({
     int? animalId,
     String? animalIdExterno,
@@ -884,6 +892,7 @@ abstract class VisitAnimalEntryModelCopyWith<
     String? mesPrevistoParto,
     double? iepProjetado,
     double? controleLeiteiroComDesconto,
+    List<String>? camposInformados,
   });
   VisitAnimalEntryModelCopyWith<$R2, $In, $Out2> $chain<$R2, $Out2>(
     Then<$Out2, $R2> t,
@@ -898,6 +907,15 @@ class _VisitAnimalEntryModelCopyWithImpl<$R, $Out>
   @override
   late final ClassMapperBase<VisitAnimalEntryModel> $mapper =
       VisitAnimalEntryModelMapper.ensureInitialized();
+  @override
+  ListCopyWith<$R, String, ObjectCopyWith<$R, String, String>>?
+  get camposInformados => $value.camposInformados != null
+      ? ListCopyWith(
+          $value.camposInformados!,
+          (v, t) => ObjectCopyWith(v, $identity, t),
+          (v) => call(camposInformados: v),
+        )
+      : null;
   @override
   $R call({
     int? animalId,
@@ -953,6 +971,7 @@ class _VisitAnimalEntryModelCopyWithImpl<$R, $Out>
     Object? mesPrevistoParto = $none,
     Object? iepProjetado = $none,
     Object? controleLeiteiroComDesconto = $none,
+    Object? camposInformados = $none,
   }) => $apply(
     FieldCopyWithData({
       if (animalId != null) #animalId: animalId,
@@ -1012,6 +1031,7 @@ class _VisitAnimalEntryModelCopyWithImpl<$R, $Out>
       if (iepProjetado != $none) #iepProjetado: iepProjetado,
       if (controleLeiteiroComDesconto != $none)
         #controleLeiteiroComDesconto: controleLeiteiroComDesconto,
+      if (camposInformados != $none) #camposInformados: camposInformados,
     }),
   );
   @override
@@ -1096,6 +1116,7 @@ class _VisitAnimalEntryModelCopyWithImpl<$R, $Out>
       #controleLeiteiroComDesconto,
       or: $value.controleLeiteiroComDesconto,
     ),
+    camposInformados: data.get(#camposInformados, or: $value.camposInformados),
   );
 
   @override
@@ -1103,5 +1124,4 @@ class _VisitAnimalEntryModelCopyWithImpl<$R, $Out>
   $chain<$R2, $Out2>(Then<$Out2, $R2> t) =>
       _VisitAnimalEntryModelCopyWithImpl<$R2, $Out2>($value, $cast, t);
 }
-
 

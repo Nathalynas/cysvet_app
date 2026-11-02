@@ -27,6 +27,7 @@ import 'package:cysvet_app/models/property_summary_model.dart';
 import 'package:cysvet_app/models/visit_action_hint.dart';
 import 'package:cysvet_app/providers/visit_in_progress_provider.dart';
 import 'package:cysvet_app/providers/visits_provider.dart';
+import 'package:cysvet_app/models/visit_informed_fields.dart';
 import 'package:cysvet_app/models/visit_summary_model.dart';
 
 List<DateTime> _iaDatesFromEntry(VisitAnimalEntryModel entry) {
@@ -931,7 +932,8 @@ class _VisitFormPageState extends ConsumerState<VisitFormPage> {
       _animalEntries = _animalEntries
           .map((entry) {
             if (entry.animalId == calculated.animalId) {
-              return calculated;
+              // Marca o que o veterinário mexeu: só isso vira evento.
+              return withInformedChanges(entry, calculated);
             }
             return entry;
           })
@@ -942,6 +944,13 @@ class _VisitFormPageState extends ConsumerState<VisitFormPage> {
   void _confirmAnimal(int animalId) {
     setState(() {
       _reviewedAnimalIds = {..._reviewedAnimalIds, animalId};
+      _animalEntries = _animalEntries
+          .map(
+            (entry) => entry.animalId == animalId
+                ? withConfirmedSituation(entry)
+                : entry,
+          )
+          .toList(growable: false);
     });
   }
 
@@ -1071,6 +1080,8 @@ class _VisitFormPageState extends ConsumerState<VisitFormPage> {
         lastBirthByAnimalId[animal.id] ?? animal.dataUltimoParto;
 
     final entry = VisitAnimalEntryModel(
+      // Veio do cadastro do aparelho: nada informado ainda nesta visita.
+      camposInformados: const [],
       animalId: animal.id,
       animalIdExterno: animal.idExterno,
       animalCodigo: animal.codigo,
