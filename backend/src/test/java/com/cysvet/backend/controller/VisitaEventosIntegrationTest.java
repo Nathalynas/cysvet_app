@@ -549,7 +549,7 @@ class VisitaEventosIntegrationTest {
     }
 
     @Test
-    void taxaDePrenhezDoDashboardContaAPrenhezObservadaNaVisitaUmaVezPorIa() throws Exception {
+    void concepcaoPorIaDoDashboardContaAPrenhezObservadaNaVisitaUmaVezPorIa() throws Exception {
         AuthContext auth = registerAndAuthenticate("visita.dashboard@example.com");
         long propertyId = createProperty(auth, "prop-ve-dash");
         createAnimal(auth, propertyId, "animal-ve-dash-a", "VD-A", "pev");
@@ -577,7 +577,9 @@ class VisitaEventosIntegrationTest {
                         .queryParam("idPropriedade", Long.toString(propertyId)))
                 .andExpect(status().isOk())
                 .andReturn().getResponse().getContentAsString());
-        assertEquals(0.5, dashboard.path("taxaPrenhez").asDouble(), 1e-9);
+        assertEquals(0.5, dashboard.path("taxaConcepcaoIa").asDouble(), 1e-9);
+        assertEquals(6, dashboard.path("serieMensal").size());
+        assertTrue(dashboard.path("ciclos").asInt() > 0);
     }
 
     private long createProperty(AuthContext auth, String idExterno) throws Exception {
