@@ -253,11 +253,9 @@ class _IbgeLocationFields extends ConsumerWidget {
                 onChanged: (_) {},
                 options: const [],
               ),
-              error: (_, _) => Text(
-                'Nao foi possivel carregar estados e cidades.',
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: colorScheme.error,
-                ),
+              error: (_, _) => _LoadError(
+                message: 'Não foi possível carregar os estados.',
+                onRetry: () => ref.invalidate(ibgeUfsProvider),
               ),
             ),
             if (field.hasError)
@@ -298,8 +296,6 @@ class _MunicipioDropdown extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
     final selectedUf = uf;
     if (selectedUf == null) {
       return AppDropdown<String>(
@@ -345,9 +341,11 @@ class _MunicipioDropdown extends ConsumerWidget {
         onChanged: (_) {},
         options: const [],
       ),
-      error: (_, _) => Text(
-        'Nao foi possivel carregar cidades.',
-        style: theme.textTheme.bodySmall?.copyWith(color: colorScheme.error),
+      // O erro fica guardado no provider: sem o botão, escolher o estado de
+      // novo não buscava as cidades outra vez.
+      error: (_, _) => _LoadError(
+        message: 'Não foi possível carregar as cidades.',
+        onRetry: () => ref.invalidate(ibgeMunicipiosProvider(selectedUf.sigla)),
       ),
     );
   }
@@ -361,5 +359,34 @@ class _MunicipioDropdown extends ConsumerWidget {
     }
 
     return null;
+  }
+}
+
+class _LoadError extends StatelessWidget {
+  const _LoadError({required this.message, required this.onRetry});
+
+  final String message;
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Row(
+      children: [
+        Expanded(
+          child: Text(
+            message,
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.error,
+            ),
+          ),
+        ),
+        TextButton.icon(
+          onPressed: onRetry,
+          icon: const Icon(Icons.refresh, size: 18),
+          label: const Text('Tentar novamente'),
+        ),
+      ],
+    );
   }
 }

@@ -298,16 +298,22 @@ class _ForecastStrip extends StatelessWidget {
     final theme = Theme.of(context);
     final paraSecar = forecast.diasAte(forecast.secagem, hoje);
     final paraParto = forecast.diasAte(forecast.parto, hoje);
-    final partes = [
-      '${forecast.diasGestacao} d de prenhez',
-      if (!forecast.jaSeca)
-        paraSecar < 0
-            ? 'Secagem atrasada ${-paraSecar} d'
-            : 'Secar ${formatDate(forecast.secagem)} (em $paraSecar d)',
-      paraParto < 0
-          ? 'Parto previsto há ${-paraParto} d'
-          : 'Parto ${formatDate(forecast.parto)}',
-    ];
+    final confirmarParto = forecast.partoAtrasado(hoje);
+    final partes = confirmarParto
+        ? [
+            '${forecast.diasGestacao} d de prenhez',
+            'Parto previsto há ${-paraParto} d: confirmar se pariu',
+          ]
+        : [
+            '${forecast.diasGestacao} d de prenhez',
+            if (!forecast.jaSeca)
+              paraSecar < 0
+                  ? 'Secagem atrasada ${-paraSecar} d'
+                  : 'Secar ${formatDate(forecast.secagem)} (em $paraSecar d)',
+            paraParto < 0
+                ? 'Parto previsto há ${-paraParto} d'
+                : 'Parto ${formatDate(forecast.parto)}',
+          ];
     final atrasado = (!forecast.jaSeca && paraSecar < 0) || paraParto < 0;
 
     return Padding(

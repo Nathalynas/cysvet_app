@@ -216,7 +216,9 @@ class AnimalSpreadsheetPreview {
         .toList(growable: false);
     final rows = (map['rows'] as List? ?? const [])
         .whereType<Map>()
-        .map((item) {
+        .indexed
+        .map((indexed) {
+          final (index, item) = indexed;
           final row = item.map((key, value) => MapEntry(key.toString(), value));
           final issues = (row['issues'] as List? ?? const [])
               .whereType<Map>()
@@ -232,8 +234,9 @@ class AnimalSpreadsheetPreview {
             'invalid' => AnimalsExcelRowStatus.invalid,
             _ => AnimalsExcelRowStatus.pending,
           };
+          // A tabela procura a validação pela posição da linha na prévia.
           return AnimalExcelRowValidation(
-            rowIndex: 0,
+            rowIndex: index,
             excelRowNumber: (row['excelRowNumber'] as num?)?.toInt() ?? 0,
             status: status,
             issues: issues,

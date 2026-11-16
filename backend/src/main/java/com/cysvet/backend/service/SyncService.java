@@ -51,6 +51,7 @@ public class SyncService {
     private final UsuarioAutenticadoProvider authenticatedUserProvider;
     private final IdempotencyService idempotencyService;
     private final PropriedadeService propriedadeService;
+    private final ExclusaoPropriedadeService exclusaoPropriedadeService;
     private final LoteService loteService;
     private final AnimalService animalService;
     private final EventoReprodutivoService eventoReprodutivoService;
@@ -236,7 +237,7 @@ public class SyncService {
 
     private SyncItemResponse deleteProperty(SyncItemRequest item, Usuario user) {
         DeleteRequest request = convertAndValidate(item.payload(), DeleteRequest.class);
-        return deleteEntity(item, user, request.idExterno(), null, () -> propriedadeService.deleteByExternalId(request.idExterno(), user),
+        return deleteEntity(item, user, request.idExterno(), null, () -> exclusaoPropriedadeService.excluirPorIdExterno(request.idExterno(), user),
                 () -> propriedadeService.getByExternalId(request.idExterno()).getId());
     }
 

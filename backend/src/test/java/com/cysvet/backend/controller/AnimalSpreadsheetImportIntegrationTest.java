@@ -109,6 +109,92 @@ class AnimalSpreadsheetImportIntegrationTest {
         assertEquals("2026-02-05", textual.path("dataUltimoParto").asText());
     }
 
+    /**
+     * Relatorio "Controle Reprodutivo" exportado de outro sistema de gestao: titulo antes do
+     * cabecalho, brinco na coluna "Nome", "Penultimo Parto" antes de "Ultimo Parto", DEL (dias em
+     * lactacao, nao numero de lactacoes) e uma linha de medias no fim.
+     */
+    @Test
+    void importaRelatorioExportadoDeOutroSistema() throws Exception {
+        AuthContext auth = registerAndAuthenticate("importacao.outro.sistema@example.com");
+        long propertyId = createProperty(auth);
+        MockMultipartFile file;
+        try (XSSFWorkbook workbook = new XSSFWorkbook(); ByteArrayOutputStream output = new ByteArrayOutputStream()) {
+            Sheet sheet = workbook.createSheet("Planilha");
+            sheet.createRow(0).createCell(0).setCellValue("Controle Reprodutivo");
+            sheet.createRow(1).createCell(0).setCellValue("Propriedade: Fazenda Teste");
+            sheet.createRow(2).createCell(0).setCellValue("Data Emissão: 11/11/2026 16:21");
+            String[] cabecalho = {"Nome", "Raça", "Peso", "Nascimento", "Número de lactações",
+                    "Idade 1º parto (meses)", "Penúltimo Parto", "Último Parto", "IEPA", "IEPP", "DEL", "DEA",
+                    "Nº de coberturas pós parto"};
+            Row header = sheet.createRow(3);
+            for (int i = 0; i < cabecalho.length; i++) {
+                header.createCell(i).setCellValue(cabecalho[i]);
+            }
+            Object[][] linhas = {
+                    {"01", "Holandês", null, "20/10/2021", 3, 28.9, "08/03/2025", "14/07/2026", 16.22, 12.6, 120, 101, 2},
+                    {11, "Holandês", null, "20/06/2021", 3, 19.9, "19/01/2024", "21/06/2025", 17.07, 23.98, 508, 447, 6},
+                    {"167 a", "Holandês", null, null, 2, "Sem nascimento", "20/09/2025", "27/08/2026", 11.22, 11.15, 76, 57, 1},
+            };
+            for (int r = 0; r < linhas.length; r++) {
+                Row row = sheet.createRow(4 + r);
+                for (int c = 0; c < linhas[r].length; c++) {
+                    Object value = linhas[r][c];
+                    if (value instanceof Number number) {
+                        row.createCell(c).setCellValue(number.doubleValue());
+                    } else if (value != null) {
+                        row.createCell(c).setCellValue(value.toString());
+                    }
+                }
+            }
+            Row medias = sheet.createRow(4 + linhas.length);
+            medias.createCell(4).setCellValue("Média");
+            medias.createCell(5).setCellValue(29);
+            medias.createCell(7).setCellValue("Média");
+            workbook.write(output);
+            file = new MockMultipartFile("file", "controle.xlsx",
+                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", output.toByteArray());
+        }
+
+        JsonNode preview = readResponse(mockMvc.perform(multipart("/api/animals/import/xlsx/preview")
+                        .file(file)
+                        .param("sheetName", "Planilha")
+                        .param("idPropriedade", Long.toString(propertyId))
+                        .header("Authorization", auth.authorization())
+                        .header("empresaid", auth.tenantId()))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString());
+        JsonNode mappings = preview.path("mappings");
+        assertEquals("codigo", mappings.path("0").asText());
+        assertEquals("dataNascimento", mappings.path("3").asText());
+        assertEquals("numeroLactacao", mappings.path("4").asText());
+        assertTrue(mappings.path("6").isMissingNode(), "Penúltimo parto não é o último parto");
+        assertEquals("dataUltimoParto", mappings.path("7").asText());
+        assertTrue(mappings.path("10").isMissingNode(), "DEL não é número de lactações");
+        assertEquals(3, preview.path("validRows").asInt());
+        assertEquals(0, preview.path("invalidRows").asInt());
+
+        JsonNode result = readResponse(mockMvc.perform(multipart("/api/animals/import/xlsx")
+                        .file(file)
+                        .param("sheetName", "Planilha")
+                        .param("idPropriedade", Long.toString(propertyId))
+                        .header("Authorization", auth.authorization())
+                        .header("empresaid", auth.tenantId()))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString());
+        assertEquals(3, result.path("importedRows").asInt());
+
+        JsonNode primeira = animal(auth, "01");
+        assertEquals("2021-10-20", primeira.path("dataNascimento").asText());
+        assertEquals("2026-07-14", primeira.path("dataUltimoParto").asText());
+        assertEquals(3, primeira.path("numeroLactacao").asInt());
+
+        JsonNode semNascimento = animal(auth, "167 a");
+        assertTrue(semNascimento.path("dataNascimento").isNull());
+        assertEquals("2026-08-27", semNascimento.path("dataUltimoParto").asText());
+        assertEquals(2, semNascimento.path("numeroLactacao").asInt());
+    }
+
     @Test
     void datasImpossiveisOuFuturasSaoRecusadasEAnoComDoisDigitosFicaNoPassado() throws Exception {
         AuthContext auth = registerAndAuthenticate("importacao.datas@example.com");

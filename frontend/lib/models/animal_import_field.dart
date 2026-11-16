@@ -49,6 +49,8 @@ const animalImportFields = <AnimalImportFieldSpec>[
       'matriz numero',
       'numero',
       'n animal',
+      'nome',
+      'identificacao',
     ],
   ),
   AnimalImportFieldSpec(
@@ -109,10 +111,12 @@ const animalImportFields = <AnimalImportFieldSpec>[
       'n lactacao',
       'lactacao',
       'numero lactacao',
+      'numero de lactacoes',
+      'n de lactacoes',
+      'lactacoes',
       'numero de partos',
       'n de partos',
       'partos',
-      'del',
     ],
   ),
   AnimalImportFieldSpec(
@@ -183,18 +187,25 @@ AnimalImportFieldSpec? animalImportFieldForHeader(String header) {
     }
   }
 
+  // Igual ao backend: só palavras inteiras e vence o apelido mais longo, para
+  // "Penúltimo parto" não virar último parto nem "Número de lactações" o brinco.
+  final padded = ' $normalized ';
+  AnimalImportFieldSpec? best;
+  var bestLength = 0;
   for (final field in animalImportFields) {
-    final specificAliases = field.aliases.where((alias) {
-      return normalizeAnimalImportToken(alias).length >= 6;
-    });
-
-    for (final alias in specificAliases) {
+    for (final alias in field.aliases) {
       final normalizedAlias = normalizeAnimalImportToken(alias);
-      if (normalized.contains(normalizedAlias)) return field;
+      if (normalizedAlias.length < 6 || normalizedAlias.length <= bestLength) {
+        continue;
+      }
+      if (padded.contains(' $normalizedAlias ')) {
+        best = field;
+        bestLength = normalizedAlias.length;
+      }
     }
   }
 
-  return null;
+  return best;
 }
 
 String normalizeAnimalImportToken(String value) {

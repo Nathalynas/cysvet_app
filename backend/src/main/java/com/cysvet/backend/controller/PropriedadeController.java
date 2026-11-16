@@ -4,6 +4,7 @@ import com.cysvet.backend.config.SwaggerConfig;
 import com.cysvet.backend.dto.propriedade.PropriedadeRequest;
 import com.cysvet.backend.dto.propriedade.PropriedadeResponse;
 import com.cysvet.backend.dto.propriedade.PropriedadeStatusRequest;
+import com.cysvet.backend.service.ExclusaoPropriedadeService;
 import com.cysvet.backend.service.PropriedadeService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -34,6 +35,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class PropriedadeController {
 
     private final PropriedadeService propriedadeService;
+    private final ExclusaoPropriedadeService exclusaoPropriedadeService;
 
     @GetMapping
     @Operation(summary = "Lista propriedades")
@@ -111,6 +113,6 @@ public class PropriedadeController {
             @ApiResponse(responseCode = "500", description = "Erro interno no servidor")
     })
     public void delete(@PathVariable("id") Long id) {
-        propriedadeService.delete(id);
+        exclusaoPropriedadeService.excluir(id);
     }
 }

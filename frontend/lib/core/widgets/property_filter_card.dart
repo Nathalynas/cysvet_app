@@ -2,8 +2,24 @@ import 'package:cysvet_app/core/widgets/app_button.dart';
 import 'package:cysvet_app/app/theme.dart';
 import 'package:cysvet_app/core/widgets/app_card.dart';
 import 'package:cysvet_app/core/widgets/app_dropdown.dart';
+import 'package:cysvet_app/core/enums/property_status.dart';
 import 'package:cysvet_app/models/property_summary_model.dart';
 import 'package:flutter/material.dart';
+
+/// Propriedades oferecidas nos filtros: só as ativas (a excluída fica inativa
+/// e não deve aparecer), mais a selecionada, para o filtro não ficar órfão.
+List<PropertySummaryModel> propertiesForFilter(
+  List<PropertySummaryModel> properties,
+  int? selectedPropertyId,
+) {
+  return properties
+      .where(
+        (property) =>
+            property.status == PropertyStatus.active ||
+            property.id == selectedPropertyId,
+      )
+      .toList(growable: false);
+}
 
 class PropertyFilterCard extends StatelessWidget {
   const PropertyFilterCard({
@@ -31,7 +47,7 @@ class PropertyFilterCard extends StatelessWidget {
       onChanged: onChanged,
       options: [
         AppDropdownOption<int>(label: allPropertiesText, value: null),
-        ...properties.map(
+        ...propertiesForFilter(properties, selectedPropertyId).map(
           (property) =>
               AppDropdownOption<int>(label: property.nome, value: property.id),
         ),
@@ -144,7 +160,10 @@ class _PropertySegmentedFilterState extends State<PropertySegmentedFilter> {
                 child: SizedBox(
                   width: size.width,
                   child: _PropertyMenuCard(
-                    properties: widget.properties,
+                    properties: propertiesForFilter(
+                      widget.properties,
+                      widget.selectedPropertyId,
+                    ),
                     selectedPropertyId: widget.selectedPropertyId,
                     searchController: _searchController,
                     searchHintText: widget.searchHintText,

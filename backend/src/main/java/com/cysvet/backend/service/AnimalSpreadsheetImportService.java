@@ -79,17 +79,20 @@ public class AnimalSpreadsheetImportService {
     private static final Set<String> MARCADORES_DE_VAZIO = Set.of(
             "0", "0,0", "0.0", "false", "falso", "s/inf", "s/ inf", "s inf", "sem inf", "sem informacao", "-", "--", "n/a");
 
+    // Linha de resumo no fim de planilhas exportadas ("Media", "Total"): nao e animal.
+    private static final Set<String> ROTULOS_DE_TOTAIS = Set.of("media", "medias", "total", "totais", "soma");
+
     private static final Map<String, List<String>> ALIASES = Map.ofEntries(
             Map.entry("codigo", tokens(
                     "brinco", "id", "codigo", "cod animal", "animal", "matriz", "matriz n", "matriz numero", "numero",
-                    "n animal")),
+                    "n animal", "nome", "identificacao")),
             Map.entry("dataNascimento", tokens(
                     "data de nascimento", "data nascimento", "data nasci", "nascimento", "dt nascimento", "data nasc")),
             Map.entry("situacaoProdutiva", tokens("situacao produtiva", "sit produtiva")),
             Map.entry("statusReprodutivo", tokens("status reprodutivo", "situacao reprodutiva", "sit reprodutiva")),
             Map.entry("numeroLactacao", tokens(
-                    "numero de lactacao", "n lactacao", "lactacao", "numero lactacao", "numero de partos", "n de partos",
-                    "partos", "del")),
+                    "numero de lactacao", "n lactacao", "lactacao", "numero lactacao", "numero de lactacoes",
+                    "n de lactacoes", "lactacoes", "numero de partos", "n de partos", "partos")),
             Map.entry("dataUltimoParto", tokens(
                     "data do parto", "data ultimo parto", "ultimo parto", "data up", "up", "parto anterior")),
             Map.entry("dataInseminacao", tokens(
@@ -303,10 +306,19 @@ public class AnimalSpreadsheetImportService {
                 columns.add(header.get(i).isBlank() ? "Coluna " + (i + 1) : header.get(i).trim());
             }
             if (autoMap) {
+                // A coluna com nome exato ganha da que so contem o apelido ("Ultimo parto" x "Data do ultimo parto").
+                List<int[]> candidatas = new ArrayList<>();
                 for (int i = 0; i < columns.size(); i++) {
-                    String field = fieldForHeader(columns.get(i));
-                    if (field != null && !mappings.containsValue(field)) {
-                        mappings.put(i, field);
+                    HeaderMatch match = matchHeader(columns.get(i));
+                    if (match != null) {
+                        candidatas.add(new int[] {i, match.score()});
+                    }
+                }
+                candidatas.sort((a, b) -> a[1] != b[1] ? Integer.compare(b[1], a[1]) : Integer.compare(a[0], b[0]));
+                for (int[] candidata : candidatas) {
+                    String field = fieldForHeader(columns.get(candidata[0]));
+                    if (!mappings.containsValue(field)) {
+                        mappings.put(candidata[0], field);
                     }
                 }
             } else {
@@ -320,7 +332,7 @@ public class AnimalSpreadsheetImportService {
         }
 
         void process(int rowNumber, List<String> cells) {
-            if (columns.isEmpty() || rowNumber <= headerRowIndex) {
+            if (columns.isEmpty() || rowNumber <= headerRowIndex || isTotalsRow(cells)) {
                 return;
             }
             total++;
@@ -514,6 +526,15 @@ public class AnimalSpreadsheetImportService {
             return new IllegalArgumentException(field + "|" + message);
         }
 
+        boolean isTotalsRow(List<String> cells) {
+            int codeColumn = columnFor("codigo");
+            boolean semCodigo = !mappings.containsValue("codigo")
+                    || codeColumn >= cells.size()
+                    || cells.get(codeColumn).isBlank();
+            return semCodigo && cells.stream().map(AnimalSpreadsheetImportService::normalize)
+                    .anyMatch(ROTULOS_DE_TOTAIS::contains);
+        }
+
         int columnFor(String field) {
             return mappings.entrySet().stream()
                     .filter(entry -> entry.getValue().equals(field))
@@ -591,14 +612,42 @@ public class AnimalSpreadsheetImportService {
     }
 
     private static String fieldForHeader(String header) {
+        HeaderMatch match = matchHeader(header);
+        return match == null ? null : match.field();
+    }
+
+    private record HeaderMatch(String field, int score) {
+    }
+
+    private static final int EXACT_MATCH_SCORE = 1000;
+
+    /**
+     * Nome exato vale mais; senao vence o apelido mais longo contido no cabecalho como palavras inteiras.
+     * Assim "Penultimo parto" nao vira "ultimo parto" e "Numero de lactacoes" nao vira o brinco ("numero").
+     */
+    private static HeaderMatch matchHeader(String header) {
         String normalized = normalize(header);
+        if (normalized.isEmpty()) {
+            return null;
+        }
+        String padded = " " + normalized + " ";
+        HeaderMatch best = null;
         for (var entry : ALIASES.entrySet()) {
-            if (entry.getValue().stream().anyMatch(alias -> normalized.equals(alias)
-                    || (alias.length() >= 6 && normalized.contains(alias)))) {
-                return entry.getKey();
+            for (String alias : entry.getValue()) {
+                int score;
+                if (normalized.equals(alias)) {
+                    score = EXACT_MATCH_SCORE;
+                } else if (alias.length() >= 6 && padded.contains(" " + alias + " ")) {
+                    score = alias.length();
+                } else {
+                    continue;
+                }
+                if (best == null || score > best.score()) {
+                    best = new HeaderMatch(entry.getKey(), score);
+                }
             }
         }
-        return null;
+        return best;
     }
 
     private static Propriedade property(List<Propriedade> properties, Long propertyId) {

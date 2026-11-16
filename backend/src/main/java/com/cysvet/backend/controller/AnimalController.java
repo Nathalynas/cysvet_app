@@ -71,7 +71,7 @@ public class AnimalController {
             @RequestPart("file") MultipartFile file,
             @RequestParam("sheetName") String sheetName,
             @RequestParam Long idPropriedade,
-            @RequestParam String mappings
+            @RequestParam(required = false) String mappings
     ) {
         return animalSpreadsheetImportService.importValid(file, sheetName, idPropriedade, parseMappings(mappings));
     }

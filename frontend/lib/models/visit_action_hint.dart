@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 
 import 'package:cysvet_app/core/enums/animal_status.dart';
+import 'package:cysvet_app/models/animal_forecast.dart';
 import 'package:cysvet_app/models/visit_summary_model.dart';
 
 /// Tipo de ação, para agrupar na tela "Hoje".
 enum VisitActionKind {
+  confirmCalving('Confirmar parto'),
   diagnosis('Fazer DG'),
   reconfirm('Reconfirmar prenhez'),
   dryOff('Secar'),
@@ -66,12 +68,31 @@ List<VisitActionHint> visitActionHints(
     final dias = hoje.difference(DateUtils.dateOnly(ultimaIa)).inDays;
     if (dias >= diasParaDiagnostico) {
       hints.add(
-        VisitActionHint('Fazer DG · IA há $dias dias', VisitActionKind.diagnosis),
+        VisitActionHint(
+          'Fazer DG · IA há $dias dias',
+          VisitActionKind.diagnosis,
+        ),
       );
     }
   }
 
-  if (status == AnimalReproductiveStatus.pregnant) {
+  final previsaoParto = entry.previsaoParto;
+  final partoAtrasado =
+      status == AnimalReproductiveStatus.pregnant &&
+      previsaoParto != null &&
+      hoje.difference(DateUtils.dateOnly(previsaoParto)).inDays >
+          toleranciaPartoAtrasado;
+  if (partoAtrasado) {
+    // Os outros avisos de prenhe (secar, pré-parto) não fazem sentido aqui.
+    final dias = hoje.difference(DateUtils.dateOnly(previsaoParto)).inDays;
+    hints.add(
+      VisitActionHint(
+        'Confirmar parto · previsto há $dias dias',
+        VisitActionKind.confirmCalving,
+        urgent: true,
+      ),
+    );
+  } else if (status == AnimalReproductiveStatus.pregnant) {
     final gestacao = entry.diasPrenhez;
     if (gestacao != null &&
         gestacao >= reconfirmacaoInicio &&

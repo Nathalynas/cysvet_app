@@ -2,6 +2,7 @@ import 'dart:math' as math;
 import 'package:cysvet_app/app/theme.dart';
 import 'package:cysvet_app/core/constants/app_constants.dart';
 import 'package:cysvet_app/core/enums/animal_status.dart';
+import 'package:cysvet_app/core/enums/property_status.dart';
 import 'package:cysvet_app/core/presentation/app_scaffold_messenger.dart';
 import 'package:cysvet_app/core/widgets/app_button.dart';
 import 'package:cysvet_app/core/widgets/app_card.dart';
@@ -19,6 +20,7 @@ import 'package:cysvet_app/app/app_shell.dart';
 import 'package:cysvet_app/core/presentation/async_value_view.dart';
 import 'package:cysvet_app/core/utils/formatters.dart';
 import 'package:cysvet_app/filters/animal_filter.dart';
+import 'package:cysvet_app/models/animal_forecast.dart';
 import 'package:cysvet_app/models/indicador_reprodutivo_calculator.dart';
 import 'package:cysvet_app/providers/properties_provider.dart';
 import 'package:cysvet_app/models/property_summary_model.dart';
@@ -52,10 +54,21 @@ class AnimalsPage extends ConsumerWidget {
       data: (items) => items.isEmpty ? null : items,
       orElse: () => null,
     );
+    // Propriedade excluída fica inativa no servidor; os animais dela somem da
+    // lista em qualquer filtro, como se tivessem sido apagados.
+    final excludedPropertyIds = {
+      for (final property in propertyOptions)
+        if (property.status != PropertyStatus.active) property.id,
+    };
     final filteredItems = loadedAnimals == null
         ? const <AnimalSummaryModel>[]
         : _filterAnimals(
-            loadedAnimals,
+            loadedAnimals
+                .where(
+                  (animal) =>
+                      !excludedPropertyIds.contains(animal.idPropriedade),
+                )
+                .toList(),
             searchQuery,
             statusFilter,
             reproductiveStatusFilter,
@@ -322,6 +335,10 @@ class _AnimalsToolbarState extends State<_AnimalsToolbar> {
           return Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
+              // A fazenda é o filtro mais usado: fica sempre à vista, e o
+              // botão abre só os demais.
+              propertyFilter,
+              const SizedBox(height: 10),
               Row(
                 children: [
                   Expanded(child: search),
@@ -330,8 +347,6 @@ class _AnimalsToolbarState extends State<_AnimalsToolbar> {
                 ],
               ),
               if (_filtersOpen) ...[
-                const SizedBox(height: 10),
-                propertyFilter,
                 const SizedBox(height: 10),
                 status,
                 const SizedBox(height: 10),
@@ -381,7 +396,7 @@ List<AnimalSummaryModel> _filterAnimals(
 ) {
   final normalizedQuery = query.trim().normalize();
 
-  return items.where((animal) {
+  final filtered = items.where((animal) {
     final matchesStatus = switch (statusFilter) {
       AnimalStatusFilter.all => true,
       AnimalStatusFilter.active => animal.status == AnimalStatus.active,
@@ -404,6 +419,20 @@ List<AnimalSummaryModel> _filterAnimals(
         matchesReproductiveStatus &&
         (normalizedQuery.isEmpty || searchable.contains(normalizedQuery));
   }).toList();
+  // Parto atrasado (provavelmente pariu e não foi lançado) vai para o topo,
+  // para o veterinário confirmar; o resto mantém a ordem.
+  final hoje = DateTime.now();
+  final atrasados = filtered
+      .where(
+        (animal) =>
+            AnimalForecast.of(animal, hoje)?.partoAtrasado(hoje) ?? false,
+      )
+      .toList();
+  if (atrasados.isEmpty) return filtered;
+  return [
+    ...atrasados,
+    ...filtered.where((animal) => !atrasados.contains(animal)),
+  ];
 }
 
 typedef _AnimalCallback = void Function(AnimalSummaryModel animal);
@@ -674,7 +703,18 @@ class _AnimalsTable extends StatelessWidget {
         AppTableColumn<AnimalSummaryModel>(
           label: 'Parto',
           flex: 2,
-          cellBuilder: (context, animal) => const _AnimalTableText(value: '--'),
+          cellBuilder: (context, animal) {
+            final hoje = DateTime.now();
+            final forecast = AnimalForecast.of(animal, hoje);
+            if (forecast == null) return const _AnimalTableText(value: '--');
+            final atrasado = forecast.partoAtrasado(hoje);
+            return _AnimalTableText(
+              value: atrasado
+                  ? '${formatDate(forecast.parto)} · Confirmar parto'
+                  : formatDate(forecast.parto),
+              alert: atrasado,
+            );
+          },
         ),
         AppTableColumn<AnimalSummaryModel>(
           label: 'Último evento',
@@ -981,10 +1021,15 @@ class _LastEventCell extends StatelessWidget {
 }
 
 class _AnimalTableText extends StatelessWidget {
-  const _AnimalTableText({required this.value, this.textAlign});
+  const _AnimalTableText({
+    required this.value,
+    this.textAlign,
+    this.alert = false,
+  });
 
   final String value;
   final TextAlign? textAlign;
+  final bool alert;
 
   @override
   Widget build(BuildContext context) {
@@ -994,7 +1039,9 @@ class _AnimalTableText extends StatelessWidget {
       overflow: TextOverflow.visible,
       textAlign: textAlign,
       style: Theme.of(context).textTheme.bodySmall?.copyWith(
-        color: Theme.of(context).colorScheme.onSurfaceVariant,
+        color: alert
+            ? Theme.of(context).colorScheme.error
+            : Theme.of(context).colorScheme.onSurfaceVariant,
         fontWeight: FontWeight.w700,
         height: 1.2,
       ),

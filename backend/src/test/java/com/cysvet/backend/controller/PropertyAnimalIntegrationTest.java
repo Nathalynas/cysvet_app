@@ -345,6 +345,48 @@ class PropertyAnimalIntegrationTest {
     }
 
     @Test
+    void deletingPropertyShouldInactivateItsActiveAnimals() throws Exception {
+        AuthContext auth = registerAndAuthenticate("property.cascade@example.com");
+        long propertyId = createProperty(auth, """
+                {
+                  "idExterno": "prop-cascade-1",
+                  "nome": "Fazenda Excluida",
+                  "nomeProprietario": "Carlos"
+                }
+                """).path("id").asLong();
+        long otherPropertyId = createProperty(auth, """
+                {
+                  "idExterno": "prop-cascade-2",
+                  "nome": "Fazenda Mantida",
+                  "nomeProprietario": "Carlos"
+                }
+                """).path("id").asLong();
+        long activeId = createAnimal(auth, """
+                {"idExterno": "cascade-a1", "idPropriedade": %d, "codigo": "C-01", "numeroLactacao": 0}
+                """.formatted(propertyId)).path("id").asLong();
+        long soldId = createAnimal(auth, """
+                {"idExterno": "cascade-a2", "idPropriedade": %d, "codigo": "C-02", "numeroLactacao": 0, "status": "VENDIDO"}
+                """.formatted(propertyId)).path("id").asLong();
+        long otherId = createAnimal(auth, """
+                {"idExterno": "cascade-a3", "idPropriedade": %d, "codigo": "C-03", "numeroLactacao": 0}
+                """.formatted(otherPropertyId)).path("id").asLong();
+
+        mockMvc.perform(delete("/api/properties/{id}", propertyId)
+                        .header("Authorization", auth.authorization())
+                        .header("empresaid", auth.tenantId()))
+                .andExpect(status().isNoContent());
+
+        // Ativo vira inativo; vendido fica vendido; animal de outra propriedade nao muda.
+        mockMvc.perform(get("/api/animals")
+                        .header("Authorization", auth.authorization())
+                        .header("empresaid", auth.tenantId()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[?(@.id == %d)].status".formatted(activeId)).value("INATIVO"))
+                .andExpect(jsonPath("$[?(@.id == %d)].status".formatted(soldId)).value("VENDIDO"))
+                .andExpect(jsonPath("$[?(@.id == %d)].status".formatted(otherId)).value("ATIVO"));
+    }
+
+    @Test
     void syncPullShouldReturnSoftDeletedPropertyLotAndAnimalWithoutDeletionMarkers() throws Exception {
         AuthContext auth = registerAndAuthenticate("sync.status@example.com");
         JsonNode property = createProperty(auth, """

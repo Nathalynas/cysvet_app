@@ -96,4 +96,31 @@ void main() {
       ['Sem IA · DEL 90'],
     );
   });
+
+  test('prenha muito além da previsão pede confirmar o parto', () {
+    // IA há 282 + 15 dias: ainda dentro da tolerância, segue "parto previsto".
+    expect(
+      labels(
+        VisitAnimalEntryModel(
+          animalId: 10,
+          situacaoReprodutiva: 'prenha',
+          situacaoProdutiva: AnimalProductiveSituation.dry,
+          dataUltimaIa: visita.subtract(const Duration(days: 297)),
+        ),
+      ),
+      ['Parto previsto há 15 dias'],
+    );
+    // 522 dias de prenhez, em pré-parto: antes não gerava aviso nenhum.
+    expect(
+      labels(
+        VisitAnimalEntryModel(
+          animalId: 11,
+          situacaoReprodutiva: 'prenha',
+          situacaoProdutiva: AnimalProductiveSituation.prepartum,
+          dataUltimaIa: visita.subtract(const Duration(days: 522)),
+        ),
+      ),
+      ['Confirmar parto · previsto há 240 dias'],
+    );
+  });
 }

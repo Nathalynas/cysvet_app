@@ -168,6 +168,16 @@ public class AnimalService {
         updateStatus(animal, StatusAnimal.INATIVO, user);
     }
 
+    /** Inativa os animais ativos da propriedade, como se cada um fosse excluido; vendidos e obitos ficam como estao. */
+    @Transactional
+    public void inativarAnimaisDaPropriedade(Long idPropriedade, Usuario user) {
+        for (Animal animal : animalRepository.findAllByPropriedadeIdOrderByCodigoAsc(idPropriedade)) {
+            if (animal.getStatus() == StatusAnimal.ATIVO) {
+                updateStatus(animal, StatusAnimal.INATIVO, user);
+            }
+        }
+    }
+
     private void apply(Animal animal, AnimalRequest request, Usuario user) {
         Propriedade property = propriedadeService.resolve(request.idPropriedade(), request.idExternoPropriedade(), "Animal");
         Lote lote = resolveLote(request);

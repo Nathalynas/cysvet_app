@@ -171,6 +171,14 @@ class LocalAnimalsNotifier extends Notifier<Map<int, AnimalSummaryModel>> {
     state = updated;
   }
 
+  /// Descarta as cópias locais dos animais da propriedade excluída: o servidor
+  /// inativou todos e a próxima leitura traz o status novo.
+  void removeOfProperty(int propertyId) {
+    final updated = {...state}
+      ..removeWhere((_, animal) => animal.idPropriedade == propertyId);
+    if (updated.length != state.length) state = updated;
+  }
+
   void saveAll(List<AnimalSummaryModel> animals) {
     var nextId = _nextLocalId();
     final updated = {...state};

@@ -302,15 +302,15 @@ class _PreviewStep extends ConsumerWidget {
     final validation = state.validation!;
     final visibleRows = sheet.rows.take(maxPreviewRows).toList(growable: false);
     final hiddenRows = sheet.rows.length - visibleRows.length;
+    // Todas as colunas aparecem: a que não foi reconhecida (ex.: "Nome" com o
+    // brinco) precisa estar na tabela para o usuário escolher o campo dela.
     final visibleColumns = [
       for (
         var columnIndex = 0;
         columnIndex < sheet.columns.length;
         columnIndex++
       )
-        if (state.mappings[columnIndex]?.field != null &&
-            state.mappings[columnIndex]?.ignored != true)
-          columnIndex,
+        columnIndex,
     ];
 
     return Column(
@@ -609,7 +609,9 @@ class _PreviewTable extends ConsumerWidget {
                             cell: rows[rowIndex].cells[columnIndex],
                             validation: validationByRow[rowIndex],
                             columnIndex: columnIndex,
-                            ignored: mappings[columnIndex]?.ignored ?? false,
+                            ignored:
+                                mappings[columnIndex]?.ignored == true ||
+                                mappings[columnIndex]?.field == null,
                           ),
                         ),
                     ],
@@ -833,7 +835,7 @@ class _ImportCell extends StatelessWidget {
         : hasExcelError
         ? 'Erro de fórmula'
         : ignored
-        ? 'Coluna marcada para não importar'
+        ? 'Coluna sem campo do sistema: não será importada'
         : '';
 
     final child = Container(

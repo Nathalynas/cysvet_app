@@ -1,5 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:cysvet_app/filters/animal_filter.dart';
+import 'package:cysvet_app/providers/animals_provider.dart';
 import 'package:cysvet_app/providers/auth_state.dart';
 import 'package:cysvet_app/core/enums/property_status.dart';
 import 'package:cysvet_app/api/properties_api.dart';
@@ -105,6 +107,13 @@ class PropertiesController {
       } else {
         _ref.read(deletedPropertiesProvider.notifier).delete(id);
       }
+      // Os animais saem junto (o servidor inativa os da propriedade) e o
+      // filtro de animais não pode continuar apontando para ela.
+      _ref.read(localAnimalsProvider.notifier).removeOfProperty(id);
+      if (_ref.read(animalsPropertyFilterProvider) == id) {
+        _ref.read(animalsPropertyFilterProvider.notifier).set(null);
+      }
+      _ref.invalidate(animalsProvider);
     } finally {
       _ref.read(propertiesBusyProvider.notifier).setBusy(false);
     }
